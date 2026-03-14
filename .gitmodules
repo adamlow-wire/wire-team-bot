@@ -1,0 +1,3 @@
+[submodule "wire-apps-js-sdk"]
+	path = wire-apps-js-sdk
+	url = https://github.com/adamlow-wire/wire-apps-js-sdk.git
