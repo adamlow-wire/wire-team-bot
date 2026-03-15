@@ -1,20 +1,32 @@
-FROM node:20-alpine
+# ── Stage 1: build ───────────────────────────────────────────────────────────
+# Install all dependencies (including devDeps so pbjs is available for the
+# SDK's proto:generate step), compile TypeScript, then prune to prod-only deps.
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json tsconfig.json ./
+COPY wire-apps-js-sdk ./wire-apps-js-sdk
+
+# Full install — devDependencies required for sdk:setup (pbjs) and tsc.
+RUN npm ci
+
+COPY src ./src
+RUN npm run build
+
+# Drop devDependencies so the runner stage gets a clean prod-only node_modules.
+RUN npm prune --omit=dev
+
+# ── Stage 2: run ─────────────────────────────────────────────────────────────
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install app dependencies
-COPY package.json tsconfig.json ./
-COPY wire-apps-js-sdk ./wire-apps-js-sdk
-RUN npm install --omit=dev
+COPY package.json ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/wire-apps-js-sdk ./wire-apps-js-sdk
 
-# Copy source
-COPY src ./src
-
-# Build TypeScript
-RUN npm run build
-
-# Default command
 CMD ["npm", "run", "start"]
-
