@@ -40,7 +40,7 @@ import { WeeklyDigestService } from "../application/services/WeeklyDigestService
 import { FireReminder } from "../application/usecases/reminders/FireReminder";
 import type { ScheduledJob } from "../application/ports/SchedulerPort";
 import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaClient";
-import { getPassiveLLMConfig } from "../infrastructure/llm/LLMConfigAdapter";
+import { getPassiveLLMConfig, getCapableLLMConfig } from "../infrastructure/llm/LLMConfigAdapter";
 import { StoreKnowledge } from "../application/usecases/knowledge/StoreKnowledge";
 import { RetrieveKnowledge } from "../application/usecases/knowledge/RetrieveKnowledge";
 import { DeleteKnowledge } from "../application/usecases/knowledge/DeleteKnowledge";
@@ -84,8 +84,10 @@ export function createContainer(config: Config, logger: Logger): Container {
   const scheduler = new InProcessScheduler(logger);
 
   const passiveLlmConfig = getPassiveLLMConfig(config);
-  const conversationIntelligence = passiveLlmConfig.enabled
-    ? new OpenAIConversationIntelligenceAdapter(passiveLlmConfig, logger)
+  const capableLlmConfig = getCapableLLMConfig(config);
+  const intelligenceLlmConfig = passiveLlmConfig.enabled ? passiveLlmConfig : capableLlmConfig;
+  const conversationIntelligence = intelligenceLlmConfig.enabled
+    ? new OpenAIConversationIntelligenceAdapter(intelligenceLlmConfig, logger)
     : new StubConversationIntelligenceAdapter(logger);
   const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);

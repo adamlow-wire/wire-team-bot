@@ -137,7 +137,7 @@ export class OpenAIConversationIntelligenceAdapter implements ConversationIntell
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 400,
+      max_tokens: 150,
       temperature: 0,
       // Disable Qwen3/Ollama chain-of-thought "thinking" mode — not needed for
       // intent classification and adds significant latency on CPU-only inference.
@@ -145,7 +145,7 @@ export class OpenAIConversationIntelligenceAdapter implements ConversationIntell
     };
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const timeout = setTimeout(() => controller.abort(), 60_000);
 
     let res: Response;
     try {
