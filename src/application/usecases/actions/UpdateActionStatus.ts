@@ -1,6 +1,7 @@
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export type ActionStatusUpdate = "open" | "in_progress" | "done" | "cancelled" | "overdue";
@@ -18,6 +19,7 @@ export class UpdateActionStatus {
   constructor(
     private readonly actions: ActionRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: UpdateActionStatusInput): Promise<Action | null> {
@@ -33,6 +35,16 @@ export class UpdateActionStatus {
     };
 
     await this.actions.update(updated);
+
+    await this.auditLog.append({
+      timestamp: new Date(),
+      actorId: input.actorId,
+      conversationId: input.conversationId,
+      action: "entity_updated",
+      entityType: "Action",
+      entityId: updated.id,
+      details: { newStatus: input.newStatus },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

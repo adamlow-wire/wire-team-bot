@@ -2,6 +2,7 @@ import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { KnowledgeEntry, KnowledgeCategory, KnowledgeConfidence } from "../../../domain/entities/KnowledgeEntry";
 import type { KnowledgeRepository } from "../../../domain/repositories/KnowledgeRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 
 export interface StoreKnowledgeInput {
   conversationId: QualifiedId;
@@ -21,6 +22,7 @@ export class StoreKnowledge {
   constructor(
     private readonly knowledge: KnowledgeRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: StoreKnowledgeInput): Promise<KnowledgeEntry> {
@@ -54,6 +56,16 @@ export class StoreKnowledge {
     };
 
     const saved = await this.knowledge.create(entry);
+
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "KnowledgeEntry",
+      entityId: saved.id,
+      details: { summary: saved.summary },
+    });
 
     const tagPart = saved.tags.length > 0 ? `. Tagged: ${saved.tags.join(", ")}` : "";
     await this.wireOutbound.sendPlainText(

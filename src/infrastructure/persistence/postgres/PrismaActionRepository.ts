@@ -2,6 +2,7 @@ import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository, ActionQuery } from "../../../domain/repositories/ActionRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import { getPrismaClient } from "./PrismaClient";
+import { nextEntityId } from "./PrismaIdGenerator";
 
 function reminderAtToJson(dates: Date[]): string[] {
   return dates.map((d) => d.toISOString());
@@ -16,8 +17,7 @@ export class PrismaActionRepository implements ActionRepository {
   private prisma = getPrismaClient();
 
   async nextId(): Promise<string> {
-    const count = await this.prisma.action.count();
-    return `ACT-${(count + 1).toString().padStart(4, "0")}`;
+    return nextEntityId("action");
   }
 
   async create(action: Action): Promise<Action> {

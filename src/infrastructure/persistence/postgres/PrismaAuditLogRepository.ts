@@ -10,7 +10,7 @@ export class PrismaAuditLogRepository implements AuditLogRepository {
   async append(entry: AuditLogEntry): Promise<void> {
     await this.prisma.auditLog.create({
       data: {
-        id: entry.id ?? undefined,
+        ...(entry.id != null ? { id: entry.id } : {}),
         timestamp: entry.timestamp,
         actorId: entry.actorId.id,
         actorDom: entry.actorId.domain,

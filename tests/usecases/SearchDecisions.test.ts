@@ -15,6 +15,7 @@ describe("SearchDecisions", () => {
       }),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
   }
 

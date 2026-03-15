@@ -49,9 +49,11 @@ describe("UpdateTaskStatus", () => {
       }),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
 
-    const useCase = new UpdateTaskStatus(tasksRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new UpdateTaskStatus(tasksRepo, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       taskId: "TASK-0001",
@@ -82,9 +84,11 @@ describe("UpdateTaskStatus", () => {
       sendPlainText: vi.fn(),
       sendCompositePrompt: vi.fn(),
       sendReaction: vi.fn(),
+      sendFile: vi.fn(),
     };
 
-    const useCase = new UpdateTaskStatus(tasksRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new UpdateTaskStatus(tasksRepo, wireOutbound, auditLog);
     const result = await useCase.execute({
       taskId: "TASK-9999",
       newStatus: "done",

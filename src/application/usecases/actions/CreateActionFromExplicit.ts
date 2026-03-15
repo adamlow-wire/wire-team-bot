@@ -3,7 +3,9 @@ import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { UserResolutionService } from "../../../domain/services/UserResolutionService";
+import type { ConversationConfigRepository } from "../../../domain/repositories/ConversationConfigRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 
 export interface CreateActionFromExplicitInput {
   conversationId: QualifiedId;
@@ -20,9 +22,11 @@ export interface CreateActionFromExplicitInput {
 export class CreateActionFromExplicit {
   constructor(
     private readonly actions: ActionRepository,
+    private readonly conversationConfig: ConversationConfigRepository,
     private readonly dateTimeService: DateTimeService,
     private readonly userResolutionService: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: CreateActionFromExplicitInput): Promise<Action> {
@@ -33,7 +37,7 @@ export class CreateActionFromExplicit {
     const assigneeId = assigneeResult.userId ?? input.creatorId;
     const assigneeName = input.assigneeReference ?? input.authorName;
 
-    const deadline = this.parseDeadline(input.deadlineText);
+    const deadline = await this.parseDeadline(input.deadlineText, input.conversationId);
     const linkedIds = input.linkedDecisionId ? [input.linkedDecisionId] : [];
 
     const action: Action = {
@@ -60,6 +64,16 @@ export class CreateActionFromExplicit {
 
     const saved = await this.actions.create(action);
 
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.creatorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "Action",
+      entityId: saved.id,
+      details: { description: saved.description, assigneeId },
+    });
+
     await this.wireOutbound.sendPlainText(
       input.conversationId,
       `Created ${saved.id} for ${assigneeName}: ${saved.description}`,
@@ -78,9 +92,11 @@ export class CreateActionFromExplicit {
     });
   }
 
-  private parseDeadline(deadlineText: string | undefined): Date | null {
+  private async parseDeadline(deadlineText: string | undefined, conversationId: QualifiedId): Promise<Date | null> {
     if (!deadlineText) return null;
-    const parsed = this.dateTimeService.parse(deadlineText, { timezone: "Europe/Berlin" });
+    const config = await this.conversationConfig.get(conversationId);
+    const timezone = config?.timezone ?? "UTC";
+    const parsed = this.dateTimeService.parse(deadlineText, { timezone });
     return parsed?.value ?? null;
   }
 }

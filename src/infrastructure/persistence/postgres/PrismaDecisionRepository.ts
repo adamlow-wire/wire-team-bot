@@ -3,6 +3,7 @@ import type { DecisionRepository, DecisionQuery } from "../../../domain/reposito
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./PrismaClient";
+import { nextEntityId } from "./PrismaIdGenerator";
 
 const toJson = (v: unknown): Prisma.InputJsonValue => v as Prisma.InputJsonValue;
 
@@ -19,8 +20,7 @@ export class PrismaDecisionRepository implements DecisionRepository {
   private prisma = getPrismaClient();
 
   async nextId(): Promise<string> {
-    const count = await this.prisma.decision.count();
-    return `DEC-${(count + 1).toString().padStart(4, "0")}`;
+    return nextEntityId("decision");
   }
 
   async create(decision: Decision): Promise<Decision> {

@@ -16,7 +16,7 @@ import { PrismaKnowledgeRepository } from "../infrastructure/persistence/postgre
 import { PrismaAuditLogRepository } from "../infrastructure/persistence/postgres/PrismaAuditLogRepository";
 import { PrismaSearchAdapter } from "../infrastructure/search/PrismaSearchAdapter";
 import { SystemDateTimeService } from "../infrastructure/services/SystemDateTimeService";
-import { TrivialUserResolutionService } from "../infrastructure/services/TrivialUserResolutionService";
+import { MemberCacheUserResolutionService } from "../infrastructure/services/MemberCacheUserResolutionService";
 import { InMemoryMemberCache } from "../infrastructure/services/InMemoryMemberCache";
 import { InProcessScheduler } from "../infrastructure/scheduler/InProcessScheduler";
 import { ConversationMessageBuffer } from "../application/services/ConversationMessageBuffer";
@@ -51,7 +51,7 @@ export interface Container {
   shutdown(): Promise<void>;
 }
 
-export function createContainer(config: Config, _logger: Logger): Container {
+export function createContainer(config: Config, logger: Logger): Container {
   const handlerRef: HandlerManagerRef = { current: null };
 
   const wireOutbound = createWireOutboundAdapter(handlerRef);
@@ -62,21 +62,20 @@ export function createContainer(config: Config, _logger: Logger): Container {
   const remindersRepo = new PrismaReminderRepository();
   const knowledgeRepo = new PrismaKnowledgeRepository();
   const conversationConfigRepo = new PrismaConversationConfigRepository();
+  const auditLogRepo = new PrismaAuditLogRepository();
   const searchService = new PrismaSearchAdapter(knowledgeRepo);
+  const systemActorId = { id: config.wire.userId, domain: config.wire.userDomain };
   const dateTimeService = new SystemDateTimeService();
-  const userResolutionService = new TrivialUserResolutionService(() => ({
-    id: config.wire.userId,
-    domain: config.wire.userDomain,
-  }));
-  const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
   const memberCache = new InMemoryMemberCache();
+  const userResolutionService = new MemberCacheUserResolutionService(memberCache);
+  const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
   const scheduler = new InProcessScheduler();
 
   const llmConfig = getLLMConfig(config);
   const implicitDetection = llmConfig.enabled
     ? new OpenAIImplicitDetectionAdapter(llmConfig)
     : new StubImplicitDetectionAdapter(llmConfig);
-  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound);
+  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
   const checkKnowledgeStaleness = new CheckKnowledgeStaleness(knowledgeRepo, wireOutbound);
 
@@ -86,25 +85,28 @@ export function createContainer(config: Config, _logger: Logger): Container {
     dateTimeService,
     userResolutionService,
     wireOutbound,
+    auditLogRepo,
   );
-  const updateTaskStatus = new UpdateTaskStatus(tasksRepo, wireOutbound);
+  const updateTaskStatus = new UpdateTaskStatus(tasksRepo, wireOutbound, auditLogRepo);
   const listMyTasks = new ListMyTasks(tasksRepo, wireOutbound);
-  const logDecision = new LogDecision(decisionsRepo, wireOutbound);
+  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo);
   const searchDecisions = new SearchDecisions(decisionsRepo, wireOutbound);
   const listDecisions = new ListDecisions(decisionsRepo, wireOutbound);
-  const supersedeDecision = new SupersedeDecision(decisionsRepo, wireOutbound);
-  const revokeDecision = new RevokeDecision(decisionsRepo, wireOutbound);
+  const supersedeDecision = new SupersedeDecision(decisionsRepo, wireOutbound, auditLogRepo);
+  const revokeDecision = new RevokeDecision(decisionsRepo, wireOutbound, auditLogRepo);
   const createActionFromExplicit = new CreateActionFromExplicit(
     actionsRepo,
+    conversationConfigRepo,
     dateTimeService,
     userResolutionService,
     wireOutbound,
+    auditLogRepo,
   );
-  const updateActionStatus = new UpdateActionStatus(actionsRepo, wireOutbound);
+  const updateActionStatus = new UpdateActionStatus(actionsRepo, wireOutbound, auditLogRepo);
   const listMyActions = new ListMyActions(actionsRepo, wireOutbound);
   const listTeamActions = new ListTeamActions(actionsRepo, wireOutbound);
-  const reassignAction = new ReassignAction(actionsRepo, userResolutionService, wireOutbound);
-  const fireReminder = new FireReminder(remindersRepo, wireOutbound);
+  const reassignAction = new ReassignAction(actionsRepo, userResolutionService, wireOutbound, auditLogRepo);
+  const fireReminder = new FireReminder(remindersRepo, wireOutbound, auditLogRepo, systemActorId);
   const overdueNudgeService = new OverdueNudgeService(actionsRepo, wireOutbound);
   const weeklyDigestService = new WeeklyDigestService(
     tasksRepo,
@@ -117,6 +119,7 @@ export function createContainer(config: Config, _logger: Logger): Container {
     dateTimeService,
     wireOutbound,
     scheduler,
+    auditLogRepo,
   );
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -177,7 +180,29 @@ export function createContainer(config: Config, _logger: Logger): Container {
     payload: {},
   });
 
+  // Rehydrate pending reminders that survived a restart. Fire immediately any
+  // that are already overdue; schedule future ones normally.
+  void remindersRepo
+    .query({ statusIn: ["pending"] })
+    .then((pending) => {
+      for (const r of pending) {
+        scheduler.schedule({
+          id: `rem-${r.id}`,
+          type: "reminder",
+          runAt: r.triggerAt,
+          payload: { reminderId: r.id },
+        });
+      }
+      if (pending.length > 0) {
+        logger.info("Rehydrated pending reminders from DB", { count: pending.length });
+      }
+    })
+    .catch((err: unknown) => {
+      logger.error("Failed to rehydrate pending reminders", { err: String(err) });
+    });
+
   const router = new WireEventRouter({
+    logger,
     createTaskFromExplicit,
     updateTaskStatus,
     listMyTasks,

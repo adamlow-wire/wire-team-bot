@@ -16,4 +16,6 @@ export interface KnowledgeRepository {
   findById(id: string): Promise<KnowledgeEntry | null>;
   query(criteria: KnowledgeQuery): Promise<KnowledgeEntry[]>;
   nextId(): Promise<string>;
+  /** Increment retrieval count and set lastRetrieved for a single entry (avoids N+1). */
+  incrementRetrievalCount(id: string): Promise<void>;
 }

@@ -21,8 +21,10 @@ describe("StoreKnowledge", () => {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push({ text })),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
-    const useCase = new StoreKnowledge(knowledgeRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       conversationId: convId,

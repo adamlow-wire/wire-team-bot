@@ -1,5 +1,7 @@
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { ReminderRepository } from "../../../domain/repositories/ReminderRepository";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
+import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface FireReminderInput {
   reminderId: string;
@@ -13,6 +15,8 @@ export class FireReminder {
   constructor(
     private readonly reminders: ReminderRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
+    private readonly systemActorId: QualifiedId,
   ) {}
 
   async execute(input: FireReminderInput): Promise<void> {
@@ -21,6 +25,16 @@ export class FireReminder {
 
     const updated = { ...reminder, status: "fired" as const, updatedAt: new Date() };
     await this.reminders.update(updated);
+
+    await this.auditLog.append({
+      timestamp: new Date(),
+      actorId: this.systemActorId,
+      conversationId: reminder.conversationId ?? undefined,
+      action: "entity_updated",
+      entityType: "Reminder",
+      entityId: reminder.id,
+      details: { status: "fired" },
+    });
 
     const convId = reminder.conversationId;
     const text = `Reminder: ${reminder.description}`;

@@ -5,6 +5,7 @@ import type { ConversationConfigRepository } from "../../../domain/repositories/
 import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { UserResolutionService } from "../../../domain/services/UserResolutionService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 
 export interface CreateTaskFromExplicitInput {
   conversationId: QualifiedId;
@@ -26,6 +27,7 @@ export class CreateTaskFromExplicit {
     private readonly dateTimeService: DateTimeService,
     private readonly userResolutionService: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   public async execute(input: CreateTaskFromExplicitInput): Promise<Task> {
@@ -65,6 +67,16 @@ export class CreateTaskFromExplicit {
     };
 
     const saved = await this.tasks.create(task);
+
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "Task",
+      entityId: saved.id,
+      details: { description: saved.description, assigneeId: assigneeId },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

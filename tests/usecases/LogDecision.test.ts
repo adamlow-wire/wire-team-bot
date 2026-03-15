@@ -24,9 +24,11 @@ describe("LogDecision", () => {
       }),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
 
-    const useCase = new LogDecision(decisionsRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new LogDecision(decisionsRepo, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       conversationId: convId,

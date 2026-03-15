@@ -8,7 +8,8 @@ export type AuditAction =
   | "export_triggered";
 
 export interface AuditLogEntry {
-  id: string;
+  /** Optional; adapter may omit so persistence layer generates (e.g. cuid). */
+  id?: string;
   timestamp: Date;
   actorId: QualifiedId;
   conversationId?: QualifiedId | null;

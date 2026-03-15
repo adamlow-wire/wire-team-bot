@@ -9,6 +9,7 @@ import type {
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./PrismaClient";
+import { nextEntityId } from "./PrismaIdGenerator";
 
 function verifiedByToJson(arr: KnowledgeVerifiedBy[]): Prisma.InputJsonValue {
   return arr.map((v) => ({
@@ -29,8 +30,7 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
   private prisma = getPrismaClient();
 
   async nextId(): Promise<string> {
-    const count = await this.prisma.knowledgeEntry.count();
-    return `KB-${(count + 1).toString().padStart(4, "0")}`;
+    return nextEntityId("knowledge");
   }
 
   async create(entry: KnowledgeEntry): Promise<KnowledgeEntry> {
@@ -89,6 +89,13 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
     const row = await this.prisma.knowledgeEntry.findUnique({ where: { id } });
     if (!row) return null;
     return this.fromRow(row);
+  }
+
+  async incrementRetrievalCount(id: string): Promise<void> {
+    await this.prisma.knowledgeEntry.update({
+      where: { id },
+      data: { retrievalCount: { increment: 1 }, lastRetrieved: new Date() },
+    });
   }
 
   async query(criteria: KnowledgeQuery): Promise<KnowledgeEntry[]> {

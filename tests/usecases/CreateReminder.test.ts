@@ -39,13 +39,16 @@ describe("CreateReminder", () => {
       }),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
 
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
     const useCase = new CreateReminder(
       remindersRepo,
       dateTimeService,
       wireOutbound,
       scheduler,
+      auditLog,
     );
 
     const result = await useCase.execute({

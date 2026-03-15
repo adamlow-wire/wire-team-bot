@@ -2,14 +2,13 @@ import type { Task } from "../../../domain/entities/Task";
 import type { TaskRepository, TaskQuery } from "../../../domain/repositories/TaskRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import { getPrismaClient } from "./PrismaClient";
+import { nextEntityId } from "./PrismaIdGenerator";
 
 export class PrismaTaskRepository implements TaskRepository {
   private prisma = getPrismaClient();
 
   async nextId(): Promise<string> {
-    const count = await this.prisma.task.count();
-    const next = count + 1;
-    return `TASK-${next.toString().padStart(4, "0")}`;
+    return nextEntityId("task");
   }
 
   async create(task: Task): Promise<Task> {
@@ -34,7 +33,7 @@ export class PrismaTaskRepository implements TaskRepository {
   }
 
   async query(criteria: TaskQuery): Promise<Task[]> {
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (criteria.conversationId) {
       where.conversationId = criteria.conversationId.id;
       where.conversationDom = criteria.conversationId.domain;
@@ -88,7 +87,33 @@ export class PrismaTaskRepository implements TaskRepository {
     };
   }
 
-  private fromRow(row: any): Task {
+  private fromRow(row: {
+    id: string;
+    conversationId: string;
+    conversationDom: string;
+    authorId: string;
+    authorDom: string;
+    authorName: string;
+    rawMessageId: string;
+    rawMessage: string;
+    timestamp: Date;
+    updatedAt: Date;
+    tags: string[];
+    status: string;
+    deleted: boolean;
+    version: number;
+    description: string;
+    assigneeId: string;
+    assigneeDom: string;
+    assigneeName: string;
+    creatorId: string;
+    creatorDom: string;
+    deadline: Date | null;
+    priority: string;
+    recurrence: string | null;
+    linkedIds: string[];
+    completionNote: string | null;
+  }): Task {
     const toQualifiedId = (id: string, domain: string): QualifiedId => ({ id, domain });
 
     return {
@@ -101,7 +126,7 @@ export class PrismaTaskRepository implements TaskRepository {
       timestamp: row.timestamp,
       updatedAt: row.updatedAt,
       tags: row.tags,
-      status: row.status,
+      status: row.status as Task["status"],
       deleted: row.deleted,
       version: row.version,
       description: row.description,
@@ -109,7 +134,7 @@ export class PrismaTaskRepository implements TaskRepository {
       assigneeName: row.assigneeName,
       creatorId: toQualifiedId(row.creatorId, row.creatorDom),
       deadline: row.deadline,
-      priority: row.priority,
+      priority: row.priority as Task["priority"],
       recurrence: row.recurrence,
       linkedIds: row.linkedIds,
       completionNote: row.completionNote,

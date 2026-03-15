@@ -2,6 +2,7 @@ import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Decision, DecisionContextItem } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { BufferedMessage } from "../../services/ConversationMessageBuffer";
 
 export interface LogDecisionInput {
@@ -19,6 +20,7 @@ export class LogDecision {
   constructor(
     private readonly decisions: DecisionRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: LogDecisionInput): Promise<Decision> {
@@ -54,6 +56,16 @@ export class LogDecision {
     };
 
     const saved = await this.decisions.create(decision);
+
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "Decision",
+      entityId: saved.id,
+      details: { summary: saved.summary },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

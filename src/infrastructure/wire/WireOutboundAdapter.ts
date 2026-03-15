@@ -5,32 +5,28 @@ import type {
   CompositePromptOptions,
   CompositeButton,
 } from "../../application/ports/WireOutboundPort";
+import { TextMessage, CompositeMessage, ReactionMessage } from "wire-apps-js-sdk";
+import type { WireApplicationManager } from "wire-apps-js-sdk";
 
 /**
  * Ref to the current Wire events handler. The SDK sets handler.manager after create;
  * the adapter uses this to send messages.
  */
 export interface HandlerManagerRef {
-  current: { manager?: { sendMessage(m: unknown): Promise<string> } } | null;
+  current: { manager?: Pick<WireApplicationManager, "sendMessage" | "sendAsset"> } | null;
 }
 
-function sendText(
-  handlerRef: HandlerManagerRef,
-  conversationId: QualifiedId,
-  text: string,
-): Promise<void> {
-  const h = handlerRef.current;
-  if (!h?.manager) return Promise.resolve();
-  const sdk = require("wire-apps-js-sdk") as {
-    TextMessage: { create: (p: { conversationId: QualifiedId; text: string }) => unknown };
-  };
-  const msg = sdk.TextMessage.create({ conversationId, text });
-  return h.manager.sendMessage(msg).then(() => {});
+async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8Array> {
+  const chunks: Buffer[] = [];
+  return new Promise<Uint8Array>((resolve, reject) => {
+    stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+    stream.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
+    stream.on("error", reject);
+  });
 }
 
 /**
- * Implements WireOutboundPort using wire-apps-js-sdk. Composite and reaction
- * use plain-text fallback until the SDK exposes Composite/Reaction APIs.
+ * Implements WireOutboundPort using wire-apps-js-sdk.
  */
 export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOutboundPort {
   return {
@@ -39,7 +35,9 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
       text: string,
       _options?: OutboundTextOptions,
     ): Promise<void> {
-      await sendText(handlerRef, conversationId, text);
+      const h = handlerRef.current;
+      if (!h?.manager) return;
+      await h.manager.sendMessage(TextMessage.create({ conversationId, text }));
     },
 
     async sendCompositePrompt(
@@ -48,17 +46,38 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
       buttons: CompositeButton[],
       _options?: CompositePromptOptions,
     ): Promise<void> {
-      const suffix =
-        buttons.length > 0 ? `\n[${buttons.map((b) => b.label).join(" | ")}]` : "";
-      await sendText(handlerRef, conversationId, text + suffix);
+      const h = handlerRef.current;
+      if (!h?.manager) return;
+      const items = [
+        { text: { content: text } },
+        ...buttons.map((b) => ({ button: { id: b.id, text: b.label } })),
+      ];
+      await h.manager.sendMessage(CompositeMessage.create({ conversationId, items }));
     },
 
     async sendReaction(
-      _conversationId: QualifiedId,
-      _messageId: string,
-      _emoji: string,
+      conversationId: QualifiedId,
+      messageId: string,
+      emoji: string,
     ): Promise<void> {
-      // SDK does not yet expose Reaction in WireMessage; no-op until supported.
+      const h = handlerRef.current;
+      if (!h?.manager) return;
+      await h.manager.sendMessage(
+        ReactionMessage.create({ conversationId, emoji, targetMessageId: messageId }),
+      );
+    },
+
+    async sendFile(
+      conversationId: QualifiedId,
+      fileStream: NodeJS.ReadableStream,
+      name: string,
+      mimeType: string,
+      _retention?: string,
+    ): Promise<void> {
+      const h = handlerRef.current;
+      if (!h?.manager) return;
+      const data = await streamToUint8Array(fileStream);
+      await h.manager.sendAsset(conversationId, { data, name, mimeType });
     },
   };
 }

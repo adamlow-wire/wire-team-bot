@@ -145,6 +145,15 @@ model ConversationConfig {
   @@id([conversationId, conversationDom])
 }
 
+/// Atomic per-entity-type ID counter. nextVal is incremented via a single
+/// INSERT … ON CONFLICT DO UPDATE so there are no race conditions under concurrent writes.
+model EntityIdSequence {
+  entityType String @id @map("entity_type")
+  nextVal    Int    @default(1) @map("next_val")
+
+  @@map("entity_id_sequences")
+}
+
 model AuditLog {
   id              String   @id @default(cuid())
   timestamp       DateTime

@@ -4,6 +4,7 @@ import type { ReminderRepository } from "../../../domain/repositories/ReminderRe
 import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { SchedulerPort, ScheduledJob } from "../../ports/SchedulerPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 
 export interface CreateReminderInput {
   conversationId: QualifiedId;
@@ -22,6 +23,7 @@ export class CreateReminder {
     private readonly dateTimeService: DateTimeService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly scheduler: SchedulerPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: CreateReminderInput): Promise<Reminder> {
@@ -58,6 +60,16 @@ export class CreateReminder {
       payload: { reminderId: saved.id },
     };
     this.scheduler.schedule(job);
+
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "Reminder",
+      entityId: saved.id,
+      details: { description: saved.description, triggerAt: saved.triggerAt },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

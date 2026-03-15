@@ -42,12 +42,15 @@ describe("SupersedeDecision", () => {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
-    const useCase = new SupersedeDecision(decisionsRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new SupersedeDecision(decisionsRepo, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       conversationId: convId,
       authorId,
+      authorName: "Alice",
       rawMessageId: "msg-1",
       rawMessage: "decision: Use Prisma supersedes DEC-0001",
       newSummary: "Use Prisma",
@@ -58,6 +61,7 @@ describe("SupersedeDecision", () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe("DEC-0002");
     expect(result!.supersedes).toBe("DEC-0001");
+    expect(result!.authorName).toBe("Alice");
     expect(decisionsRepo.update).toHaveBeenCalledWith(
       expect.objectContaining({ id: "DEC-0001", status: "superseded", supersededBy: "DEC-0002" }),
     );
@@ -78,12 +82,15 @@ describe("SupersedeDecision", () => {
       sendPlainText: vi.fn(),
       sendCompositePrompt: vi.fn(),
       sendReaction: vi.fn(),
+      sendFile: vi.fn(),
     };
-    const useCase = new SupersedeDecision(decisionsRepo, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new SupersedeDecision(decisionsRepo, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       conversationId: convId,
       authorId,
+      authorName: "",
       rawMessageId: "msg-1",
       rawMessage: "decision: New supersedes DEC-9999",
       newSummary: "New",

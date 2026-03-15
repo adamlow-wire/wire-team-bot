@@ -1,6 +1,7 @@
 import type { Decision } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface SupersedeDecisionInput {
@@ -8,6 +9,7 @@ export interface SupersedeDecisionInput {
   supersedesDecisionId: string;
   conversationId: QualifiedId;
   authorId: QualifiedId;
+  authorName: string;
   rawMessageId: string;
   rawMessage: string;
   replyToMessageId?: string;
@@ -17,6 +19,7 @@ export class SupersedeDecision {
   constructor(
     private readonly decisions: DecisionRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: SupersedeDecisionInput): Promise<Decision | null> {
@@ -35,7 +38,7 @@ export class SupersedeDecision {
       rawMessageId: input.rawMessageId,
       context: [],
       authorId: input.authorId,
-      authorName: "",
+      authorName: input.authorName,
       participants: [],
       conversationId: input.conversationId,
       status: "active",
@@ -60,6 +63,25 @@ export class SupersedeDecision {
       version: oldDecision.version + 1,
     };
     await this.decisions.update(updatedOld);
+
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_created",
+      entityType: "Decision",
+      entityId: newId,
+      details: { supersedes: input.supersedesDecisionId },
+    });
+    await this.auditLog.append({
+      timestamp: now,
+      actorId: input.authorId,
+      conversationId: input.conversationId,
+      action: "entity_updated",
+      entityType: "Decision",
+      entityId: input.supersedesDecisionId,
+      details: { supersededBy: newId },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

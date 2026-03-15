@@ -13,6 +13,7 @@ describe("ListDecisions", () => {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
   }
 

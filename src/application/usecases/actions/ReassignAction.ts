@@ -2,6 +2,7 @@ import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { UserResolutionService } from "../../../domain/services/UserResolutionService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface ReassignActionInput {
@@ -17,6 +18,7 @@ export class ReassignAction {
     private readonly actions: ActionRepository,
     private readonly userResolution: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: ReassignActionInput): Promise<Action | null> {
@@ -51,6 +53,16 @@ export class ReassignAction {
     };
 
     await this.actions.update(updated);
+
+    await this.auditLog.append({
+      timestamp: new Date(),
+      actorId: input.actorId,
+      conversationId: input.conversationId,
+      action: "entity_updated",
+      entityType: "Action",
+      entityId: action.id,
+      details: { reassignedTo: input.newAssigneeReference },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,

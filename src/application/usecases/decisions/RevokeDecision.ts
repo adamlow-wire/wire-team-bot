@@ -1,11 +1,13 @@
 import type { Decision } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface RevokeDecisionInput {
   decisionId: string;
   conversationId: QualifiedId;
+  actorId: QualifiedId;
   reason?: string;
   replyToMessageId?: string;
 }
@@ -14,6 +16,7 @@ export class RevokeDecision {
   constructor(
     private readonly decisions: DecisionRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: RevokeDecisionInput): Promise<Decision | null> {
@@ -30,6 +33,16 @@ export class RevokeDecision {
     };
 
     await this.decisions.update(updated);
+
+    await this.auditLog.append({
+      timestamp: new Date(),
+      actorId: input.actorId,
+      conversationId: input.conversationId,
+      action: "entity_updated",
+      entityType: "Decision",
+      entityId: input.decisionId,
+      details: { status: "revoked", reason: input.reason },
+    });
 
     const msg = input.reason
       ? `${input.decisionId} revoked. Reason: ${input.reason}`

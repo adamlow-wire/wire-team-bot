@@ -1,6 +1,6 @@
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
-import type { Conversation, ConversationMember, TextMessage } from "wire-apps-js-sdk";
-import { WireEventsHandler } from "wire-apps-js-sdk";
+import type { Conversation, ConversationMember, TextMessage, ButtonActionMessage } from "wire-apps-js-sdk";
+import { WireEventsHandler, ButtonActionConfirmationMessage } from "wire-apps-js-sdk";
 import type { CreateTaskFromExplicit } from "../../application/usecases/tasks/CreateTaskFromExplicit";
 import type { UpdateTaskStatus } from "../../application/usecases/tasks/UpdateTaskStatus";
 import type { ListMyTasks } from "../../application/usecases/tasks/ListMyTasks";
@@ -23,6 +23,7 @@ import type { ConversationMemberCache, CachedMember } from "../../domain/service
 import type { ConversationConfigRepository } from "../../domain/repositories/ConversationConfigRepository";
 import type { ImplicitDetectionService } from "../../domain/services/ImplicitDetectionService";
 import type { WireOutboundPort } from "../../application/ports/WireOutboundPort";
+import type { Logger } from "../../application/ports/Logger";
 
 const CONTEXT_WINDOW = 10;
 const IMPLICIT_RATE_LIMIT_MS = 60_000;
@@ -36,6 +37,7 @@ function toCachedMembers(members: ConversationMember[]): CachedMember[] {
 }
 
 export interface WireEventRouterDeps {
+  logger: Logger;
   createTaskFromExplicit: CreateTaskFromExplicit;
   updateTaskStatus: UpdateTaskStatus;
   listMyTasks: ListMyTasks;
@@ -63,8 +65,18 @@ export interface WireEventRouterDeps {
 /**
  * Maps Wire SDK events to application use cases. Handles explicit triggers and Phase 3 implicit detection.
  */
+interface PendingKnowledgeConfirmation {
+  summary: string;
+  detail: string;
+  authorId: QualifiedId;
+  rawMessageId: string;
+  rawMessage: string;
+}
+
 export class WireEventRouter extends WireEventsHandler {
   private readonly implicitLastRunByConv = new Map<string, number>();
+  /** Keyed by `convId.id@convId.domain`, holds the most recent implicit knowledge candidate awaiting confirmation. */
+  private readonly pendingKnowledge = new Map<string, PendingKnowledgeConfirmation>();
 
   constructor(private readonly deps: WireEventRouterDeps) {
     super();
@@ -74,6 +86,11 @@ export class WireEventRouter extends WireEventsHandler {
     const text = wireMessage.text ?? "";
     const convId = wireMessage.conversationId as QualifiedId;
     const sender = wireMessage.sender as QualifiedId;
+    const log = this.deps.logger.child({
+      conversationId: convId.id,
+      senderId: sender.id,
+      messageId: wireMessage.id,
+    });
 
     this.deps.messageBuffer.push(convId, {
       messageId: wireMessage.id,
@@ -83,7 +100,47 @@ export class WireEventRouter extends WireEventsHandler {
       timestamp: new Date(),
     });
 
+    try {
+      await this.handleTextMessage(wireMessage, text, convId, sender, log);
+    } catch (err) {
+      log.error("Handler failed", { err: String(err), stack: err instanceof Error ? err.stack : undefined });
+      try {
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          "Something went wrong. Please try again.",
+          { replyToMessageId: wireMessage.id },
+        );
+      } catch (sendErr) {
+        log.error("Failed to send error reply", { err: String(sendErr) });
+      }
+    }
+  }
+
+  private async handleTextMessage(
+    wireMessage: TextMessage,
+    text: string,
+    convId: QualifiedId,
+    sender: QualifiedId,
+    log: Logger,
+  ): Promise<void> {
     const lowered = text.trim().toLowerCase();
+
+    // Check TASK-NNNN status updates BEFORE the generic "task" prefix check so that
+    // "TASK-0001 done" is not accidentally routed to task creation (both start with "task").
+    const taskDoneMatch = text.match(/^(TASK-\d+)\s+(done|in_progress|cancelled|in progress)\s*(.*)$/i);
+    if (taskDoneMatch) {
+      const [, taskId, status, note] = taskDoneMatch;
+      const norm = status!.toLowerCase().replace(/\s+/g, "_") as "done" | "in_progress" | "cancelled";
+      await this.deps.updateTaskStatus.execute({
+        taskId: taskId!,
+        newStatus: norm,
+        conversationId: convId,
+        actorId: sender,
+        completionNote: note?.trim() || undefined,
+        replyToMessageId: wireMessage.id,
+      });
+      return;
+    }
 
     if (lowered.startsWith("task") || lowered.startsWith("task:")) {
       const rest = text.replace(/^task[:\s]*/i, "").trim();
@@ -103,21 +160,6 @@ export class WireEventRouter extends WireEventsHandler {
         rawMessageId: wireMessage.id,
         rawMessage: text,
         description: description || text,
-      });
-      return;
-    }
-
-    const taskDoneMatch = text.match(/^(TASK-\d+)\s+(done|in_progress|cancelled|in progress)\s*(.*)$/i);
-    if (taskDoneMatch) {
-      const [, taskId, status, note] = taskDoneMatch;
-      const norm = status!.toLowerCase().replace(/\s+/g, "_") as "done" | "in_progress" | "cancelled";
-      await this.deps.updateTaskStatus.execute({
-        taskId: taskId!,
-        newStatus: norm,
-        conversationId: convId,
-        actorId: sender,
-        completionNote: note?.trim() || undefined,
-        replyToMessageId: wireMessage.id,
       });
       return;
     }
@@ -171,6 +213,7 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.supersedeDecision.execute({
         conversationId: convId,
         authorId: sender,
+        authorName: "",
         rawMessageId: wireMessage.id,
         rawMessage: text,
         newSummary: supersedeMatch[1].trim(),
@@ -183,6 +226,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (revokeMatch) {
       await this.deps.revokeDecision.execute({
         conversationId: convId,
+        actorId: sender,
         decisionId: revokeMatch[1],
         reason: revokeMatch[2].trim() || undefined,
         replyToMessageId: wireMessage.id,
@@ -273,7 +317,8 @@ export class WireEventRouter extends WireEventsHandler {
       }
     }
 
-    const whatMatch = lowered.match(/^(what'?s?|what is|how do we?|how do i)\s+(.+)$/);
+    // Longer alternatives must come first so "what is" isn't shadowed by "what" (what'?s? matches "what" alone).
+    const whatMatch = lowered.match(/^(what is|how do we|how do i|what'?s?)\s+(.+)$/);
     if (whatMatch) {
       const query = whatMatch[2].trim().replace(/\?+$/, "");
       if (query.length > 0) {
@@ -292,7 +337,7 @@ export class WireEventRouter extends WireEventsHandler {
       const timezone = config?.timezone ?? "UTC";
       const atMatch = rest.match(/at\s+(.+)$/i);
       const inMatch = rest.match(/in\s+(.+?)\s+(.+)$/i);
-      let triggerAt = new Date(Date.now() + 60 * 60 * 1000);
+      let triggerAt: Date | null = null;
       let description = rest;
       if (atMatch) {
         const parsed = this.deps.dateTimeService.parse(atMatch[1].trim(), { timezone });
@@ -306,6 +351,14 @@ export class WireEventRouter extends WireEventsHandler {
           triggerAt = parsed.value;
           description = inMatch[2].trim() || "Reminder";
         }
+      }
+      if (!triggerAt) {
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          "Sorry, I couldn't parse that time. Try: \"remind me at 3pm to call John\" or \"reminder in 2 hours check the build\".",
+          { replyToMessageId: wireMessage.id },
+        );
+        return;
       }
       await this.deps.createReminder.execute({
         conversationId: convId,
@@ -343,10 +396,18 @@ export class WireEventRouter extends WireEventsHandler {
             (c) => c.type === "knowledge" && c.confidence >= IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE,
           );
           if (knowledgeCandidate) {
-            const summary =
-              (knowledgeCandidate.payload as Record<string, unknown>)?.summary as string | undefined ??
-              knowledgeCandidate.summary;
+            const payload = knowledgeCandidate.payload as Record<string, unknown>;
+            const summary = (payload?.summary as string | undefined) ?? knowledgeCandidate.summary;
+            const detail = (payload?.detail as string | undefined) ?? summary;
             const display = summary?.slice(0, 150) ?? knowledgeCandidate.summary;
+            const convKey = `${convId.id}@${convId.domain}`;
+            this.pendingKnowledge.set(convKey, {
+              summary,
+              detail,
+              authorId: sender,
+              rawMessageId: wireMessage.id,
+              rawMessage: text,
+            });
             await this.deps.wireOutbound.sendCompositePrompt(
               convId,
               `Shall I remember that?\n> ${display}`,
@@ -355,8 +416,8 @@ export class WireEventRouter extends WireEventsHandler {
             );
             return;
           }
-        } catch {
-          // LLM failure: skip implicit detection this turn
+        } catch (err) {
+          log.warn("Implicit detection failed", { err: String(err) });
         }
       }
     }
@@ -378,7 +439,9 @@ export class WireEventRouter extends WireEventsHandler {
     conversationId: QualifiedId,
     members: ConversationMember[],
   ): Promise<void> {
-    this.deps.memberCache.setMembers(conversationId as QualifiedId, toCachedMembers(members));
+    // Use addMembers (merge) not setMembers (replace): the SDK join event
+    // delivers only the newly-joined members, not the full conversation roster.
+    this.deps.memberCache.addMembers(conversationId as QualifiedId, toCachedMembers(members));
   }
 
   async onUserLeftConversation(
@@ -386,5 +449,64 @@ export class WireEventRouter extends WireEventsHandler {
     members: QualifiedId[],
   ): Promise<void> {
     this.deps.memberCache.removeMembers(conversationId as QualifiedId, members as QualifiedId[]);
+  }
+
+  /**
+   * Handles interactive button presses from composite prompts.
+   * Handles:
+   *  - "confirm_knowledge" / "dismiss": from implicit detection "Shall I remember that?" prompt.
+   *  - "yes" / "no": from post-decision "Any actions from this?" prompt.
+   * Sends a ButtonActionConfirmationMessage back so the client marks the button as selected.
+   */
+  async onButtonActionReceived(wireMessage: ButtonActionMessage): Promise<void> {
+    const convId = wireMessage.conversationId as QualifiedId;
+    const senderId = wireMessage.sender as QualifiedId;
+    const { buttonId, referenceMessageId } = wireMessage;
+    const convKey = `${convId.id}@${convId.domain}`;
+    const log = this.deps.logger.child({ conversationId: convId.id, senderId: senderId.id, buttonId });
+
+    switch (buttonId) {
+      case "confirm_knowledge": {
+        const pending = this.pendingKnowledge.get(convKey);
+        if (pending) {
+          this.pendingKnowledge.delete(convKey);
+          try {
+            await this.deps.storeKnowledge.execute({
+              conversationId: convId,
+              authorId: pending.authorId,
+              authorName: "",
+              rawMessageId: pending.rawMessageId,
+              rawMessage: pending.rawMessage,
+              summary: pending.summary,
+              detail: pending.detail,
+            });
+          } catch (err) {
+            log.error("Failed to store confirmed knowledge", { err: String(err) });
+          }
+        }
+        break;
+      }
+      case "dismiss":
+        this.pendingKnowledge.delete(convKey);
+        break;
+      case "yes":
+        // "Any actions from this?" — acknowledged. The user should follow up with an explicit "action:" command.
+        await this.deps.wireOutbound.sendPlainText(convId, "Use \"action: <description>\" to log the action.");
+        break;
+      case "no":
+        // Acknowledged; nothing to do.
+        break;
+      default:
+        log.warn("Unhandled button action", { buttonId });
+    }
+
+    // Acknowledge the button press so the sender sees their selection confirmed.
+    try {
+      await this.manager.sendMessage(
+        ButtonActionConfirmationMessage.create({ conversationId: convId, referenceMessageId, buttonId }),
+      );
+    } catch {
+      // manager not available in tests or before SDK initialisation — safe to ignore
+    }
   }
 }

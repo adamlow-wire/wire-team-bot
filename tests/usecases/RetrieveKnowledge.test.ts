@@ -28,36 +28,17 @@ describe("RetrieveKnowledge", () => {
     const knowledgeRepo: KnowledgeRepository = {
       nextId: vi.fn(),
       create: vi.fn(),
-      update: vi.fn().mockImplementation(async (e) => e),
-      findById: vi.fn().mockResolvedValue({
-        id: "KB-0001",
-        retrievalCount: 0,
-        lastRetrieved: null,
-        conversationId: convId,
-        summary: "",
-        detail: "",
-        authorName: "Alice",
-        authorId: convId,
-        rawMessageId: "",
-        rawMessage: "",
-        category: "factual",
-        confidence: "high",
-        relatedIds: [],
-        ttlDays: 90,
-        verifiedBy: [],
-        tags: [],
-        timestamp: new Date(),
-        updatedAt: new Date(),
-        deleted: false,
-        version: 1,
-      }),
+      update: vi.fn(),
+      findById: vi.fn(),
       query: vi.fn(),
+      incrementRetrievalCount: vi.fn().mockResolvedValue(undefined),
     };
     const sent: string[] = [];
     const wireOutbound: WireOutboundPort = {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
     const useCase = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
 
@@ -70,7 +51,7 @@ describe("RetrieveKnowledge", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toContain("KB-0001");
     expect(sent[0]).toContain("500 requests");
-    expect(knowledgeRepo.update).toHaveBeenCalled();
+    expect(knowledgeRepo.incrementRetrievalCount).toHaveBeenCalledWith("KB-0001");
   });
 
   it("sends fallback message when no results", async () => {
@@ -83,18 +64,20 @@ describe("RetrieveKnowledge", () => {
       update: vi.fn(),
       findById: vi.fn(),
       query: vi.fn(),
+      incrementRetrievalCount: vi.fn(),
     };
     const sent: string[] = [];
     const wireOutbound: WireOutboundPort = {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
     const useCase = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
 
     await useCase.execute({ conversationId: convId, query: "nonexistent" });
 
     expect(sent[0]).toContain("don't have anything");
-    expect(knowledgeRepo.update).not.toHaveBeenCalled();
+    expect(knowledgeRepo.incrementRetrievalCount).not.toHaveBeenCalled();
   });
 });

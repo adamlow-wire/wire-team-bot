@@ -5,6 +5,7 @@ import type {
 } from "../../../domain/repositories/ReminderRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import { getPrismaClient } from "./PrismaClient";
+import { nextEntityId } from "./PrismaIdGenerator";
 
 function toQualifiedId(id: string, domain: string): QualifiedId {
   return { id, domain };
@@ -16,8 +17,7 @@ export class PrismaReminderRepository implements ReminderRepository {
   private prisma = getPrismaClient();
 
   async nextId(): Promise<string> {
-    const count = await this.prisma.reminder.count();
-    return `REM-${(count + 1).toString().padStart(4, "0")}`;
+    return nextEntityId("reminder");
   }
 
   async create(reminder: Reminder): Promise<Reminder> {

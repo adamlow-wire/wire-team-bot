@@ -46,12 +46,7 @@ export class RetrieveKnowledge {
     );
 
     for (const h of hits) {
-      const entry = await this.knowledge.findById(h.id);
-      if (entry) {
-        entry.retrievalCount += 1;
-        entry.lastRetrieved = new Date();
-        await this.knowledge.update(entry);
-      }
+      await this.knowledge.incrementRetrievalCount(h.id);
     }
   }
 }

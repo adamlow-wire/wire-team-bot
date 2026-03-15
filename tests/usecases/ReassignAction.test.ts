@@ -49,8 +49,10 @@ describe("ReassignAction", () => {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
-    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       actionId: "ACT-0001",
@@ -87,8 +89,10 @@ describe("ReassignAction", () => {
       sendPlainText: vi.fn().mockImplementation(async (_c, text) => sent.push(text)),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
-    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       actionId: "ACT-0001",
@@ -117,8 +121,10 @@ describe("ReassignAction", () => {
       sendPlainText: vi.fn(),
       sendCompositePrompt: vi.fn(),
       sendReaction: vi.fn(),
+      sendFile: vi.fn(),
     };
-    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound);
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new ReassignAction(actionsRepo, userResolution, wireOutbound, auditLog);
 
     const result = await useCase.execute({
       actionId: "ACT-9999",

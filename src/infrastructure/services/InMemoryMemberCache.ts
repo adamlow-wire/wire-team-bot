@@ -12,6 +12,16 @@ export class InMemoryMemberCache implements ConversationMemberCache {
     this.cache.set(key(conversationId), [...members]);
   }
 
+  addMembers(conversationId: QualifiedId, members: CachedMember[]): void {
+    const k = key(conversationId);
+    const current = this.cache.get(k) ?? [];
+    const byId = new Map(current.map((m) => [key(m.userId), m]));
+    for (const m of members) {
+      byId.set(key(m.userId), m);
+    }
+    this.cache.set(k, [...byId.values()]);
+  }
+
   getMembers(conversationId: QualifiedId): CachedMember[] {
     return this.cache.get(key(conversationId)) ?? [];
   }

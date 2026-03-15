@@ -45,14 +45,17 @@ describe("CreateTaskFromExplicit", () => {
       }),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
       sendReaction: vi.fn().mockResolvedValue(undefined),
+      sendFile: vi.fn().mockResolvedValue(undefined),
     };
 
+    const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
     const useCase = new CreateTaskFromExplicit(
       tasksRepo,
       conversationConfig,
       dateTimeService,
       userResolutionService,
       wireOutbound,
+      auditLog,
     );
 
     const result = await useCase.execute({

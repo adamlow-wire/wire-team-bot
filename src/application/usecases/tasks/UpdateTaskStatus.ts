@@ -1,6 +1,7 @@
 import type { Task, TaskStatus } from "../../../domain/entities/Task";
 import type { TaskRepository } from "../../../domain/repositories/TaskRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface UpdateTaskStatusInput {
@@ -16,6 +17,7 @@ export class UpdateTaskStatus {
   constructor(
     private readonly tasks: TaskRepository,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(input: UpdateTaskStatusInput): Promise<Task | null> {
@@ -32,6 +34,16 @@ export class UpdateTaskStatus {
     };
 
     await this.tasks.update(updated);
+
+    await this.auditLog.append({
+      timestamp: new Date(),
+      actorId: input.actorId,
+      conversationId: input.conversationId,
+      action: "entity_updated",
+      entityType: "Task",
+      entityId: updated.id,
+      details: { newStatus: input.newStatus },
+    });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
