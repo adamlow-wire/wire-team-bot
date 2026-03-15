@@ -45,8 +45,8 @@ export class RevokeDecision {
     });
 
     const msg = input.reason
-      ? `${input.decisionId} revoked. Reason: ${input.reason}`
-      : `${input.decisionId} revoked.`;
+      ? `**${input.decisionId}** revoked. _Reason: ${input.reason}_`
+      : `**${input.decisionId}** revoked.`;
 
     await this.wireOutbound.sendPlainText(input.conversationId, msg, {
       replyToMessageId: input.replyToMessageId,

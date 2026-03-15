@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "chrono-node": "^2.9.0",
     "dotenv": "^16.4.5",
     "reflect-metadata": "^0.1.13",
     "wire-apps-js-sdk": "file:./wire-apps-js-sdk"

@@ -1,7 +1,34 @@
 /**
- * Strongly-typed runtime configuration. Built from environment variables
- * and optional config files. Validated at startup.
+ * Strongly-typed runtime configuration. Built from environment variables.
+ *
+ * Split LLM model strategy
+ * ─────────────────────────
+ * The bot makes two conceptually different kinds of LLM call:
+ *
+ *   passive  – runs on every received message to classify intent, decide
+ *              whether to respond, and detect knowledge worth capturing.
+ *              Should be fast and cheap. Ideal candidate for a locally-hosted
+ *              model (Ollama with Qwen3 8B, Gemma 3 4B, etc.) so that message
+ *              content never leaves the company network.
+ *
+ *   capable  – reserved for operations that benefit from higher reasoning
+ *              quality: complex summarisation, semantic search ranking, future
+ *              multi-step planning, etc. May point at a cloud model (GPT-4o,
+ *              Claude, Gemini) or a larger local model.
+ *
+ * Configure each tier independently via LLM_PASSIVE_* and LLM_CAPABLE_*
+ * environment variables. If the passive variables are omitted, the capable
+ * model is used for both tiers (backwards-compatible default).
  */
+
+export interface LLMTierConfig {
+  provider: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
+
 export interface Config {
   wire: {
     userEmail: string;
@@ -18,14 +45,14 @@ export interface Config {
     logLevel: string;
     messageBufferSize: number;
     storageDir: string;
+    /** Inactivity period in ms before the bot prompts to exit secret mode. Default 1800000 (30 min). */
+    secretModeInactivityMs: number;
   };
-  /** AI/LLM adapter endpoints and keys. Used by Phase 3 implicit detection; plumbing in place for configuration. */
   llm: {
-    provider: string;
-    baseUrl: string;
-    apiKey: string;
-    model: string;
-    enabled: boolean;
+    /** Passive tier: ambient listening, intent classification, capture detection. */
+    passive: LLMTierConfig;
+    /** Capable tier: reserved for higher-quality reasoning tasks. */
+    capable: LLMTierConfig;
   };
 }
 
@@ -42,6 +69,18 @@ function getEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} must be set`);
   return value;
+}
+
+function parseLLMTier(prefix: string, fallback?: LLMTierConfig): LLMTierConfig {
+  const apiKey = process.env[`${prefix}_API_KEY`] ?? fallback?.apiKey ?? "";
+  const baseUrl = process.env[`${prefix}_BASE_URL`] ?? fallback?.baseUrl ?? "https://api.openai.com/v1";
+  const model = process.env[`${prefix}_MODEL`] ?? fallback?.model ?? "gpt-4o-mini";
+  const provider = process.env[`${prefix}_PROVIDER`] ?? fallback?.provider ?? "openai";
+  const enabledEnv = process.env[`${prefix}_ENABLED`];
+  const enabled =
+    enabledEnv !== "false" &&
+    (enabledEnv === "true" || apiKey.length > 0 || baseUrl.includes("localhost") || baseUrl.includes("ollama"));
+  return { provider, baseUrl, apiKey, model, enabled };
 }
 
 export function loadConfig(): Config {
@@ -64,19 +103,18 @@ export function loadConfig(): Config {
     500,
   );
   const storageDir = process.env.STORAGE_DIR ?? "storage";
+  const secretModeInactivityMs = Math.max(60_000, parseInt(process.env.SECRET_MODE_INACTIVITY_MS ?? "1800000", 10));
 
-  const llm = {
-    provider: process.env.LLM_PROVIDER ?? "openai",
-    baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
-    apiKey: process.env.LLM_API_KEY ?? "",
-    model: process.env.LLM_MODEL ?? "gpt-4o-mini",
-    enabled: process.env.LLM_ENABLED !== "false" && (process.env.LLM_API_KEY?.length ?? 0) > 0,
-  };
+  // Capable tier — primary config (also backward-compatible with legacy LLM_* vars)
+  const capable = parseLLMTier("LLM_CAPABLE", parseLLMTier("LLM"));
+
+  // Passive tier — falls back to capable config if LLM_PASSIVE_* not set
+  const passive = parseLLMTier("LLM_PASSIVE", capable);
 
   return {
     wire,
     database,
-    app: { logLevel, messageBufferSize, storageDir },
-    llm,
+    app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
+    llm: { passive, capable },
   };
 }

@@ -6,6 +6,7 @@ import type { UserResolutionService } from "../../../domain/services/UserResolut
 import type { ConversationConfigRepository } from "../../../domain/repositories/ConversationConfigRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
+import type { Logger } from "../../ports/Logger";
 
 export interface CreateActionFromExplicitInput {
   conversationId: QualifiedId;
@@ -27,6 +28,7 @@ export class CreateActionFromExplicit {
     private readonly userResolutionService: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
+    private readonly logger: Logger,
   ) {}
 
   async execute(input: CreateActionFromExplicitInput): Promise<Action> {
@@ -63,6 +65,7 @@ export class CreateActionFromExplicit {
     };
 
     const saved = await this.actions.create(action);
+    this.logger.info("Action created", { actionId: saved.id, conversationId: input.conversationId.id, assigneeId: assigneeId.id });
 
     await this.auditLog.append({
       timestamp: now,
@@ -76,7 +79,7 @@ export class CreateActionFromExplicit {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Created ${saved.id} for ${assigneeName}: ${saved.description}`,
+      `Action **${saved.id}** created for **${assigneeName}**: ${saved.description}`,
       { replyToMessageId: input.rawMessageId },
     );
 

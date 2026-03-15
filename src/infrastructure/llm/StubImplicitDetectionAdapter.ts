@@ -1,5 +1,6 @@
 import type { ImplicitDetectionService, ImplicitDetectionInput, ImplicitCandidate } from "../../domain/services/ImplicitDetectionService";
 import type { LLMConfig } from "./LLMConfigAdapter";
+import type { Logger } from "../../application/ports/Logger";
 
 /**
  * Stub implementation of ImplicitDetectionService. Returns no candidates.
@@ -7,10 +8,10 @@ import type { LLMConfig } from "./LLMConfigAdapter";
  * adapter (e.g. OpenAIImplicitDetectionAdapter) in Phase 3.
  */
 export class StubImplicitDetectionAdapter implements ImplicitDetectionService {
-  constructor(private readonly _config: LLMConfig) {}
+  constructor(private readonly _config: LLMConfig, private readonly logger: Logger) {}
 
-  async detect(_input: ImplicitDetectionInput): Promise<ImplicitCandidate[]> {
-    if (!this._config.enabled) return [];
+  async detect(input: ImplicitDetectionInput): Promise<ImplicitCandidate[]> {
+    this.logger.debug("Implicit detection skipped — LLM disabled (stub)", { conversationId: input.conversationId.id });
     return [];
   }
 }

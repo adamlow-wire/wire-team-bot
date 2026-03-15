@@ -3,6 +3,7 @@ import type { KnowledgeEntry, KnowledgeCategory, KnowledgeConfidence } from "../
 import type { KnowledgeRepository } from "../../../domain/repositories/KnowledgeRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
+import type { Logger } from "../../ports/Logger";
 
 export interface StoreKnowledgeInput {
   conversationId: QualifiedId;
@@ -23,6 +24,7 @@ export class StoreKnowledge {
     private readonly knowledge: KnowledgeRepository,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
+    private readonly logger: Logger,
   ) {}
 
   async execute(input: StoreKnowledgeInput): Promise<KnowledgeEntry> {
@@ -56,6 +58,7 @@ export class StoreKnowledge {
     };
 
     const saved = await this.knowledge.create(entry);
+    this.logger.info("Knowledge stored", { knowledgeId: saved.id, conversationId: input.conversationId.id, summary: saved.summary.slice(0, 80) });
 
     await this.auditLog.append({
       timestamp: now,
@@ -67,10 +70,10 @@ export class StoreKnowledge {
       details: { summary: saved.summary },
     });
 
-    const tagPart = saved.tags.length > 0 ? `. Tagged: ${saved.tags.join(", ")}` : "";
+    const tagPart = saved.tags.length > 0 ? ` — _tags: ${saved.tags.join(", ")}_` : "";
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Stored as ${saved.id}: ${saved.summary}${tagPart}`,
+      `Stored as **${saved.id}**: ${saved.summary}${tagPart}`,
       { replyToMessageId: input.rawMessageId },
     );
     await this.wireOutbound.sendReaction(input.conversationId, input.rawMessageId, "✓");

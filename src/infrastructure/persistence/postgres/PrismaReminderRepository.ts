@@ -53,6 +53,7 @@ export class PrismaReminderRepository implements ReminderRepository {
       where: { id: reminder.id },
       data: {
         status: reminder.status,
+        triggerAt: reminder.triggerAt,
         updatedAt: reminder.updatedAt,
         version: reminder.version,
       },

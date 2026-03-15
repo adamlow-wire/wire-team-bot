@@ -4,6 +4,7 @@ import type {
   ImplicitCandidate,
 } from "../../domain/services/ImplicitDetectionService";
 import type { LLMConfig } from "./LLMConfigAdapter";
+import type { Logger } from "../../application/ports/Logger";
 
 const MIN_CONFIDENCE = 0.5;
 
@@ -12,9 +13,18 @@ function buildPrompt(input: ImplicitDetectionInput): string {
     (m) => `[${m.senderId.id}]: ${m.text}`,
   );
   const transcript = lines.join("\n");
-  return `You are a meeting assistant. Given the last messages in a conversation, detect if someone just stated a fact, decision, task, or action that could be recorded (without explicit "task:" or "decision:" etc.).
+  return `You are a meeting assistant. Given the last messages in a conversation, detect if someone just stated a fact, decision, task, or action worth recording.
 
 Sensitivity: ${input.sensitivity}. Strict = only clear factual statements. Normal = factual + procedural. Aggressive = also soft commitments.
+
+IMPORTANT — do NOT capture any of the following:
+- Commands or requests directed at the bot (e.g. "show reminders", "list tasks", "what can you do", "remind me", "remember this")
+- Questions asked by a user seeking information
+- Acknowledgements, reactions, or chit-chat (e.g. "ok", "thanks", "sounds good", "yes", "no")
+- Bot responses or confirmations
+- Meta-conversation about what the user wants the bot to do
+
+Only capture substantive information FROM the conversation: facts, decisions made, commitments, or planned actions.
 
 Recent messages:
 ---
@@ -24,14 +34,21 @@ ${transcript}
 If there is nothing to capture, return: {"candidates":[]}
 Otherwise return a JSON object with key "candidates", an array of objects. Each object: "type" (one of: "task", "decision", "action", "knowledge"), "confidence" (0-1 number), "summary" (short string), "payload" (object with fields useful for that type, e.g. for knowledge: {"summary":"...","detail":"..."}).
 
-Only include candidates with confidence >= ${MIN_CONFIDENCE}. Prefer "knowledge" for factual/procedural statements. Return only valid JSON, no markdown.`;
+Only include candidates with confidence >= ${MIN_CONFIDENCE}. Return only valid JSON, no markdown.`;
 }
 
 export class OpenAIImplicitDetectionAdapter implements ImplicitDetectionService {
-  constructor(private readonly config: LLMConfig) {}
+  constructor(private readonly config: LLMConfig, private readonly logger: Logger) {}
 
   async detect(input: ImplicitDetectionInput): Promise<ImplicitCandidate[]> {
     if (!this.config.enabled || !this.config.apiKey) return [];
+
+    this.logger.debug("Implicit detection triggered", {
+      conversationId: input.conversationId.id,
+      messageCount: input.recentMessages.length,
+      model: this.config.model,
+      sensitivity: input.sensitivity,
+    });
 
     const url = `${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`;
     const body = {
@@ -69,6 +86,7 @@ export class OpenAIImplicitDetectionAdapter implements ImplicitDetectionService 
       const cleaned = content.replace(/^```json\s*|\s*```$/g, "").trim();
       parsed = JSON.parse(cleaned) as { candidates?: unknown[] };
     } catch {
+      this.logger.warn("Implicit detection — failed to parse LLM response", { preview: content.slice(0, 200) });
       return [];
     }
 
@@ -94,6 +112,13 @@ export class OpenAIImplicitDetectionAdapter implements ImplicitDetectionService 
         payload,
       });
     }
+
+    this.logger.debug("Implicit detection candidates", {
+      conversationId: input.conversationId.id,
+      count: out.length,
+      candidates: out.map((c) => ({ type: c.type, confidence: c.confidence })),
+    });
+
     return out;
   }
 }

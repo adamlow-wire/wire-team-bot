@@ -6,6 +6,7 @@ import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { UserResolutionService } from "../../../domain/services/UserResolutionService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
+import type { Logger } from "../../ports/Logger";
 
 export interface CreateTaskFromExplicitInput {
   conversationId: QualifiedId;
@@ -28,6 +29,7 @@ export class CreateTaskFromExplicit {
     private readonly userResolutionService: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
+    private readonly logger: Logger,
   ) {}
 
   public async execute(input: CreateTaskFromExplicitInput): Promise<Task> {
@@ -67,6 +69,7 @@ export class CreateTaskFromExplicit {
     };
 
     const saved = await this.tasks.create(task);
+    this.logger.info("Task created", { taskId: saved.id, conversationId: input.conversationId.id, assigneeId: assigneeId.id });
 
     await this.auditLog.append({
       timestamp: now,
@@ -80,7 +83,7 @@ export class CreateTaskFromExplicit {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Created task ${saved.id} for ${assigneeName}: ${saved.description}`,
+      `Task **${saved.id}** created for **${assigneeName}**: ${saved.description}`,
       { replyToMessageId: input.rawMessageId },
     );
 

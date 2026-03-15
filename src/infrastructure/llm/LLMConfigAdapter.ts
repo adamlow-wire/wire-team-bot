@@ -1,17 +1,22 @@
-import type { Config } from "../../app/config";
+import type { Config, LLMTierConfig } from "../../app/config";
 
 /**
- * Exposes LLM configuration for adapters. Allows wiring API endpoints and keys
- * without the domain depending on Config.
+ * Exposes LLM tier configuration for adapters, keeping infrastructure
+ * isolated from the top-level Config shape.
  */
-export interface LLMConfig {
-  provider: string;
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-  enabled: boolean;
+export type LLMConfig = LLMTierConfig;
+
+/** Config for the passive (ambient listening) model tier. */
+export function getPassiveLLMConfig(config: Config): LLMConfig {
+  return { ...config.llm.passive };
 }
 
+/** Config for the capable (higher-quality reasoning) model tier. */
+export function getCapableLLMConfig(config: Config): LLMConfig {
+  return { ...config.llm.capable };
+}
+
+/** @deprecated Use getPassiveLLMConfig or getCapableLLMConfig. */
 export function getLLMConfig(config: Config): LLMConfig {
-  return { ...config.llm };
+  return getCapableLLMConfig(config);
 }

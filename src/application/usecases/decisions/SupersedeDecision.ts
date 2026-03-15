@@ -85,7 +85,7 @@ export class SupersedeDecision {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Logged ${newId} (supersedes ${input.supersedesDecisionId}): ${input.newSummary}`,
+      `Decision **${newId}** logged _(supersedes ${input.supersedesDecisionId})_: ${input.newSummary}`,
       { replyToMessageId: input.replyToMessageId },
     );
 

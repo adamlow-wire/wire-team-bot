@@ -5,6 +5,7 @@ import type {
   CompositePromptOptions,
   CompositeButton,
 } from "../../application/ports/WireOutboundPort";
+import type { Logger } from "../../application/ports/Logger";
 import { TextMessage, CompositeMessage, ReactionMessage } from "wire-apps-js-sdk";
 import type { WireApplicationManager } from "wire-apps-js-sdk";
 
@@ -28,7 +29,7 @@ async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8A
 /**
  * Implements WireOutboundPort using wire-apps-js-sdk.
  */
-export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOutboundPort {
+export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger: Logger): WireOutboundPort {
   return {
     async sendPlainText(
       conversationId: QualifiedId,
@@ -37,6 +38,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
+      logger.debug("sendPlainText", { conversationId: conversationId.id, preview: text.slice(0, 80) });
       await h.manager.sendMessage(TextMessage.create({ conversationId, text }));
     },
 
@@ -48,6 +50,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
+      logger.debug("sendCompositePrompt", { conversationId: conversationId.id, preview: text.slice(0, 80), buttons: buttons.map((b) => b.id) });
       const items = [
         { text: { content: text } },
         ...buttons.map((b) => ({ button: { id: b.id, text: b.label } })),
@@ -62,6 +65,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
+      logger.debug("sendReaction", { conversationId: conversationId.id, messageId, emoji });
       await h.manager.sendMessage(
         ReactionMessage.create({ conversationId, emoji, targetMessageId: messageId }),
       );
@@ -76,6 +80,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef): WireOu
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
+      logger.debug("sendFile", { conversationId: conversationId.id, name, mimeType });
       const data = await streamToUint8Array(fileStream);
       await h.manager.sendAsset(conversationId, { data, name, mimeType });
     },

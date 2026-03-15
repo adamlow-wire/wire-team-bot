@@ -1,29 +1,29 @@
-import type { Action } from "../../../domain/entities/Action";
-import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
+import type { Task } from "../../../domain/entities/Task";
+import type { TaskRepository } from "../../../domain/repositories/TaskRepository";
 import type { UserResolutionService } from "../../../domain/services/UserResolutionService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
-export interface ReassignActionInput {
-  actionId: string;
+export interface ReassignTaskInput {
+  taskId: string;
   conversationId: QualifiedId;
   newAssigneeReference: string;
   actorId: QualifiedId;
   replyToMessageId?: string;
 }
 
-export class ReassignAction {
+export class ReassignTask {
   constructor(
-    private readonly actions: ActionRepository,
+    private readonly tasks: TaskRepository,
     private readonly userResolution: UserResolutionService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
   ) {}
 
-  async execute(input: ReassignActionInput): Promise<Action | null> {
-    const action = await this.actions.findById(input.actionId);
-    if (!action || action.conversationId.id !== input.conversationId.id) {
+  async execute(input: ReassignTaskInput): Promise<Task | null> {
+    const task = await this.tasks.findById(input.taskId);
+    if (!task || task.conversationId.id !== input.conversationId.id) {
       return null;
     }
 
@@ -43,30 +43,30 @@ export class ReassignAction {
       return null;
     }
 
-    const previousAssigneeName = action.assigneeName;
-    const updated: Action = {
-      ...action,
+    const previousAssigneeName = task.assigneeName;
+    const updated: Task = {
+      ...task,
       assigneeId: resolved.userId,
       assigneeName: input.newAssigneeReference,
       updatedAt: new Date(),
-      version: action.version + 1,
+      version: task.version + 1,
     };
 
-    await this.actions.update(updated);
+    await this.tasks.update(updated);
 
     await this.auditLog.append({
       timestamp: new Date(),
       actorId: input.actorId,
       conversationId: input.conversationId,
       action: "entity_updated",
-      entityType: "Action",
-      entityId: action.id,
+      entityType: "Task",
+      entityId: task.id,
       details: { reassignedTo: input.newAssigneeReference },
     });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `**${action.id}** reassigned from **${previousAssigneeName}** to **${input.newAssigneeReference}**.`,
+      `**${task.id}** reassigned from **${previousAssigneeName}** to **${input.newAssigneeReference}**.`,
       { replyToMessageId: input.replyToMessageId },
     );
 

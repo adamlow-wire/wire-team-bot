@@ -27,7 +27,7 @@ export class ListDecisions {
         ? ["No recent decisions in this conversation."]
         : list.map(
             (d) =>
-              `• ${d.id}: ${d.summary} (${d.timestamp.toISOString().slice(0, 10)})`,
+              `- **${d.id}** — ${d.summary} _(${d.timestamp.toISOString().slice(0, 10)})_`,
           );
 
     await this.wireOutbound.sendPlainText(input.conversationId, lines.join("\n"), {

@@ -10,6 +10,8 @@ export interface ConversationConfig {
   implicitDetectionEnabled?: boolean;
   /** Sensitivity for implicit detection: strict (fewer prompts), normal, aggressive. */
   sensitivity?: ImplicitSensitivity;
+  /** When true the bot is in secret mode: it does not process or record anything. */
+  secretMode?: boolean;
   // Raw JSON blob matching section 9 config, kept flexible in domain.
   raw: unknown;
 }

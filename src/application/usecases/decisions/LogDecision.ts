@@ -4,6 +4,7 @@ import type { DecisionRepository } from "../../../domain/repositories/DecisionRe
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { BufferedMessage } from "../../services/ConversationMessageBuffer";
+import type { Logger } from "../../ports/Logger";
 
 export interface LogDecisionInput {
   conversationId: QualifiedId;
@@ -21,6 +22,7 @@ export class LogDecision {
     private readonly decisions: DecisionRepository,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
+    private readonly logger: Logger,
   ) {}
 
   async execute(input: LogDecisionInput): Promise<Decision> {
@@ -56,6 +58,7 @@ export class LogDecision {
     };
 
     const saved = await this.decisions.create(decision);
+    this.logger.info("Decision logged", { decisionId: saved.id, conversationId: input.conversationId.id });
 
     await this.auditLog.append({
       timestamp: now,
@@ -69,7 +72,7 @@ export class LogDecision {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Logged ${saved.id}: ${saved.summary}`,
+      `Decision **${saved.id}** logged: ${saved.summary}`,
       { replyToMessageId: input.rawMessageId },
     );
 

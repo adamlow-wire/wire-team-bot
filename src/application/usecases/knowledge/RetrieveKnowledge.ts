@@ -27,17 +27,12 @@ export class RetrieveKnowledge {
     });
 
     if (hits.length === 0) {
-      await this.wireOutbound.sendPlainText(
-        input.conversationId,
-        "I don't have anything on that. If someone answers, I can capture it.",
-        { replyToMessageId: input.replyToMessageId },
-      );
       return;
     }
 
     const lines = hits.map(
       (h) =>
-        `• ${h.id}: ${h.summary} (${h.confidence}, updated ${h.updatedAt.toISOString().slice(0, 10)})\n  ${h.detail.slice(0, 200)}${h.detail.length > 200 ? "…" : ""}`,
+        `**${h.id}** — ${h.summary} _(${h.confidence}, ${h.updatedAt.toISOString().slice(0, 10)})_\n${h.detail.slice(0, 200)}${h.detail.length > 200 ? "…" : ""}`,
     );
     await this.wireOutbound.sendPlainText(
       input.conversationId,

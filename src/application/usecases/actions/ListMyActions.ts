@@ -39,7 +39,7 @@ export class ListMyActions {
         ? ["No open actions for you in this conversation."]
         : byDeadline.map(
             (a) =>
-              `• ${a.id} [${a.status}]: ${a.description}${a.deadline ? ` (due ${a.deadline.toISOString().slice(0, 10)})` : ""}`,
+              `- **${a.id}** \`${a.status}\` — ${a.description}${a.deadline ? ` _(due ${a.deadline.toISOString().slice(0, 10)})_` : ""}`,
           );
 
     await this.wireOutbound.sendPlainText(input.conversationId, lines.join("\n"), {

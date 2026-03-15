@@ -34,17 +34,29 @@ import { ListMyActions } from "../application/usecases/actions/ListMyActions";
 import { ListTeamActions } from "../application/usecases/actions/ListTeamActions";
 import { ReassignAction } from "../application/usecases/actions/ReassignAction";
 import { CreateReminder } from "../application/usecases/reminders/CreateReminder";
+import { ListMyReminders } from "../application/usecases/reminders/ListMyReminders";
 import { OverdueNudgeService } from "../application/services/OverdueNudgeService";
 import { WeeklyDigestService } from "../application/services/WeeklyDigestService";
 import { FireReminder } from "../application/usecases/reminders/FireReminder";
 import type { ScheduledJob } from "../application/ports/SchedulerPort";
 import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaClient";
-import { getLLMConfig } from "../infrastructure/llm/LLMConfigAdapter";
-import { StubImplicitDetectionAdapter } from "../infrastructure/llm/StubImplicitDetectionAdapter";
-import { OpenAIImplicitDetectionAdapter } from "../infrastructure/llm/OpenAIImplicitDetectionAdapter";
+import { getPassiveLLMConfig } from "../infrastructure/llm/LLMConfigAdapter";
 import { StoreKnowledge } from "../application/usecases/knowledge/StoreKnowledge";
 import { RetrieveKnowledge } from "../application/usecases/knowledge/RetrieveKnowledge";
+import { DeleteKnowledge } from "../application/usecases/knowledge/DeleteKnowledge";
+import { UpdateKnowledge } from "../application/usecases/knowledge/UpdateKnowledge";
 import { CheckKnowledgeStaleness } from "../application/usecases/knowledge/CheckKnowledgeStaleness";
+import { UpdateTask } from "../application/usecases/tasks/UpdateTask";
+import { ReassignTask } from "../application/usecases/tasks/ReassignTask";
+import { UpdateTaskDeadline } from "../application/usecases/tasks/UpdateTaskDeadline";
+import { ListTeamTasks } from "../application/usecases/tasks/ListTeamTasks";
+import { UpdateAction } from "../application/usecases/actions/UpdateAction";
+import { UpdateActionDeadline } from "../application/usecases/actions/UpdateActionDeadline";
+import { ListOverdueActions } from "../application/usecases/actions/ListOverdueActions";
+import { CancelReminder } from "../application/usecases/reminders/CancelReminder";
+import { SnoozeReminder } from "../application/usecases/reminders/SnoozeReminder";
+import { OpenAIConversationIntelligenceAdapter } from "../infrastructure/llm/OpenAIConversationIntelligenceAdapter";
+import { StubConversationIntelligenceAdapter } from "../infrastructure/llm/StubConversationIntelligenceAdapter";
 
 export interface Container {
   getWireClient(): Promise<WireAppSdk>;
@@ -54,7 +66,7 @@ export interface Container {
 export function createContainer(config: Config, logger: Logger): Container {
   const handlerRef: HandlerManagerRef = { current: null };
 
-  const wireOutbound = createWireOutboundAdapter(handlerRef);
+  const wireOutbound = createWireOutboundAdapter(handlerRef, logger);
 
   const tasksRepo = new PrismaTaskRepository();
   const decisionsRepo = new PrismaDecisionRepository();
@@ -69,14 +81,16 @@ export function createContainer(config: Config, logger: Logger): Container {
   const memberCache = new InMemoryMemberCache();
   const userResolutionService = new MemberCacheUserResolutionService(memberCache);
   const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
-  const scheduler = new InProcessScheduler();
+  const scheduler = new InProcessScheduler(logger);
 
-  const llmConfig = getLLMConfig(config);
-  const implicitDetection = llmConfig.enabled
-    ? new OpenAIImplicitDetectionAdapter(llmConfig)
-    : new StubImplicitDetectionAdapter(llmConfig);
-  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
+  const passiveLlmConfig = getPassiveLLMConfig(config);
+  const conversationIntelligence = passiveLlmConfig.enabled
+    ? new OpenAIConversationIntelligenceAdapter(passiveLlmConfig, logger)
+    : new StubConversationIntelligenceAdapter(logger);
+  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
+  const deleteKnowledge = new DeleteKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
+  const updateKnowledge = new UpdateKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const checkKnowledgeStaleness = new CheckKnowledgeStaleness(knowledgeRepo, wireOutbound);
 
   const createTaskFromExplicit = new CreateTaskFromExplicit(
@@ -86,10 +100,15 @@ export function createContainer(config: Config, logger: Logger): Container {
     userResolutionService,
     wireOutbound,
     auditLogRepo,
+    logger,
   );
   const updateTaskStatus = new UpdateTaskStatus(tasksRepo, wireOutbound, auditLogRepo);
+  const updateTask = new UpdateTask(tasksRepo, conversationConfigRepo, dateTimeService, userResolutionService, wireOutbound, auditLogRepo);
+  const reassignTask = new ReassignTask(tasksRepo, userResolutionService, wireOutbound, auditLogRepo);
+  const updateTaskDeadline = new UpdateTaskDeadline(tasksRepo, dateTimeService, wireOutbound, auditLogRepo);
   const listMyTasks = new ListMyTasks(tasksRepo, wireOutbound);
-  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo);
+  const listTeamTasks = new ListTeamTasks(tasksRepo, wireOutbound);
+  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger);
   const searchDecisions = new SearchDecisions(decisionsRepo, wireOutbound);
   const listDecisions = new ListDecisions(decisionsRepo, wireOutbound);
   const supersedeDecision = new SupersedeDecision(decisionsRepo, wireOutbound, auditLogRepo);
@@ -101,10 +120,14 @@ export function createContainer(config: Config, logger: Logger): Container {
     userResolutionService,
     wireOutbound,
     auditLogRepo,
+    logger,
   );
   const updateActionStatus = new UpdateActionStatus(actionsRepo, wireOutbound, auditLogRepo);
+  const updateAction = new UpdateAction(actionsRepo, conversationConfigRepo, dateTimeService, userResolutionService, wireOutbound, auditLogRepo);
+  const updateActionDeadline = new UpdateActionDeadline(actionsRepo, dateTimeService, wireOutbound, auditLogRepo);
   const listMyActions = new ListMyActions(actionsRepo, wireOutbound);
   const listTeamActions = new ListTeamActions(actionsRepo, wireOutbound);
+  const listOverdueActions = new ListOverdueActions(actionsRepo, wireOutbound);
   const reassignAction = new ReassignAction(actionsRepo, userResolutionService, wireOutbound, auditLogRepo);
   const fireReminder = new FireReminder(remindersRepo, wireOutbound, auditLogRepo, systemActorId);
   const overdueNudgeService = new OverdueNudgeService(actionsRepo, wireOutbound);
@@ -114,12 +137,16 @@ export function createContainer(config: Config, logger: Logger): Container {
     decisionsRepo,
     wireOutbound,
   );
+  const cancelReminder = new CancelReminder(remindersRepo, scheduler, wireOutbound, auditLogRepo);
+  const snoozeReminder = new SnoozeReminder(remindersRepo, dateTimeService, scheduler, wireOutbound, auditLogRepo);
+  const listMyReminders = new ListMyReminders(remindersRepo, wireOutbound);
   const createReminder = new CreateReminder(
     remindersRepo,
     dateTimeService,
     wireOutbound,
     scheduler,
     auditLogRepo,
+    logger,
   );
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -158,6 +185,10 @@ export function createContainer(config: Config, logger: Logger): Container {
           payload: {},
         });
       });
+    }
+    if (job.type === "secret_inactivity") {
+      const convId = (job.payload as { convId: { id: string; domain: string } }).convId;
+      void router.handleSecretModeInactivityCheck(convId);
     }
   });
 
@@ -205,7 +236,11 @@ export function createContainer(config: Config, logger: Logger): Container {
     logger,
     createTaskFromExplicit,
     updateTaskStatus,
+    updateTask,
+    reassignTask,
+    updateTaskDeadline,
     listMyTasks,
+    listTeamTasks,
     logDecision,
     searchDecisions,
     listDecisions,
@@ -213,17 +248,27 @@ export function createContainer(config: Config, logger: Logger): Container {
     revokeDecision,
     createActionFromExplicit,
     updateActionStatus,
+    updateAction,
+    reassignAction,
+    updateActionDeadline,
     listMyActions,
     listTeamActions,
-    reassignAction,
+    listOverdueActions,
     createReminder,
+    listMyReminders,
+    cancelReminder,
+    snoozeReminder,
     storeKnowledge,
     retrieveKnowledge,
-    implicitDetection,
+    deleteKnowledge,
+    updateKnowledge,
+    conversationIntelligence,
     wireOutbound,
     messageBuffer,
     dateTimeService,
     memberCache,
+    scheduler,
+    secretModeInactivityMs: config.app.secretModeInactivityMs,
     conversationConfig: conversationConfigRepo,
   });
   handlerRef.current = router as HandlerManagerRef["current"];
