@@ -213,26 +213,6 @@ export function createContainer(config: Config, logger: Logger): Container {
     payload: {},
   });
 
-  // Rehydrate pending reminders that survived a restart. Fire immediately any
-  // that are already overdue; schedule future ones normally.
-  void remindersRepo
-    .query({ statusIn: ["pending"] })
-    .then((pending) => {
-      for (const r of pending) {
-        scheduler.schedule({
-          id: `rem-${r.id}`,
-          type: "reminder",
-          runAt: r.triggerAt,
-          payload: { reminderId: r.id },
-        });
-      }
-      if (pending.length > 0) {
-        logger.info("Rehydrated pending reminders from DB", { count: pending.length });
-      }
-    })
-    .catch((err: unknown) => {
-      logger.error("Failed to rehydrate pending reminders", { err: String(err) });
-    });
 
   const router = new WireEventRouter({
     logger,
@@ -286,7 +266,30 @@ export function createContainer(config: Config, logger: Logger): Container {
         if (!fs.existsSync(storageDir)) {
           fs.mkdirSync(storageDir, { recursive: true });
         }
-        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db"));
+        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db")).then((sdk) => {
+          // Rehydrate pending reminders only after the Wire SDK is fully initialised.
+          // Scheduling before this point causes overdue reminders to fire before the
+          // crypto client is ready, crashing with "Cannot read properties of undefined".
+          void remindersRepo
+            .query({ statusIn: ["pending"] })
+            .then((pending) => {
+              for (const r of pending) {
+                scheduler.schedule({
+                  id: `rem-${r.id}`,
+                  type: "reminder",
+                  runAt: r.triggerAt,
+                  payload: { reminderId: r.id },
+                });
+              }
+              if (pending.length > 0) {
+                logger.info("Rehydrated pending reminders from DB", { count: pending.length });
+              }
+            })
+            .catch((err: unknown) => {
+              logger.error("Failed to rehydrate pending reminders", { err: String(err) });
+            });
+          return sdk;
+        });
       }
       return sdkPromise;
     },
