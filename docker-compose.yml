@@ -18,6 +18,11 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+    volumes:
+      # Wire SDK crypto store — must persist across restarts.
+      # Losing this means the bot loses all E2EE conversation state and
+      # cannot encrypt/decrypt messages until it re-joins each conversation.
+      - sdk-data:/app/storage
     restart: unless-stopped
     # No inbound ports exposed — the bot connects outbound to Wire only.
 
@@ -56,8 +61,8 @@ services:
     # No ports exposed to the host — only reachable by other containers.
     # Uncomment the lines below if you want to query Ollama directly from
     # the host during development:
-    # ports:
-    #   - "127.0.0.1:11434:11434"
+    ports:
+      - "127.0.0.1:11434:11434"
 
     # GPU support (NVIDIA). Uncomment if your host has a CUDA-capable GPU:
     # deploy:
@@ -71,3 +76,4 @@ services:
 volumes:
   db-data:
   ollama-data:
+  sdk-data:
