@@ -102,7 +102,7 @@ export class OpenAIConversationIntelligenceAdapter implements ConversationIntell
   constructor(private readonly config: LLMConfig, private readonly logger: Logger) {}
 
   async analyze(input: ConversationIntelligenceInput): Promise<ConversationIntelligenceResult> {
-    if (!this.config.enabled || !this.config.apiKey) {
+    if (!this.config.enabled) {
       return { intent: "none", payload: {}, confidence: 1.0, shouldRespond: false };
     }
 
@@ -139,16 +139,34 @@ export class OpenAIConversationIntelligenceAdapter implements ConversationIntell
       ],
       max_tokens: 400,
       temperature: 0,
+      // Disable Qwen3/Ollama chain-of-thought "thinking" mode — not needed for
+      // intent classification and adds significant latency on CPU-only inference.
+      think: false,
     };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        this.logger.warn("Conversation intelligence — LLM request timed out after 30s");
+        return FALLBACK;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!res.ok) {
       const err = await res.text();

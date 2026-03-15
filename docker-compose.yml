@@ -10,7 +10,7 @@ services:
       # Points at the local Ollama instance by default so no message content
       # leaves the company network. Override in .env to use a cloud model.
       LLM_PASSIVE_BASE_URL: http://ollama:11434/v1
-      LLM_PASSIVE_MODEL: ${LLM_PASSIVE_MODEL:-qwen3:8b}
+      LLM_PASSIVE_MODEL: ${LLM_PASSIVE_MODEL:-gemma3:4b}
       LLM_PASSIVE_PROVIDER: ollama
       LLM_PASSIVE_ENABLED: "true"
     depends_on:
@@ -55,7 +55,7 @@ services:
     entrypoint: >
       sh -c "ollama serve &
              sleep 5 &&
-             ollama pull ${LLM_PASSIVE_MODEL:-qwen3:8b} &&
+             ollama pull ${LLM_PASSIVE_MODEL:-gemma3:4b} &&
              wait"
     restart: unless-stopped
     # No ports exposed to the host — only reachable by other containers.

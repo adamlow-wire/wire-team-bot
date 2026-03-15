@@ -38,7 +38,7 @@ The bot distinguishes two tiers of LLM usage:
 
 | Tier | Purpose | Recommended model |
 |---|---|---|
-| **Passive** | Runs on every message: intent classification, `shouldRespond` decision, passive knowledge capture detection. Must be fast and low-cost. | Local — Qwen3 8B or Gemma 3 4B via Ollama |
+| **Passive** | Runs on every message: intent classification, `shouldRespond` decision, passive knowledge capture detection. Must be fast and low-cost. | Local — Gemma 3 4B via Ollama (default); Qwen3 8B also works |
 | **Capable** | Reserved for tasks that benefit from stronger reasoning: complex summarisation, semantic ranking, future multi-step planning. | Cloud — GPT-4o, Claude 3.5 Sonnet, or a larger local model |
 
 Both tiers speak the OpenAI-compatible `/v1/chat/completions` API, so Ollama, vLLM, LM Studio, and any OpenAI-compatible endpoint work out of the box.
@@ -70,12 +70,12 @@ cp .env.example .env
 docker compose up -d
 ```
 
-On first start, Ollama will pull the passive model (`qwen3:8b` by default — ~5 GB). This happens once; the model is persisted in the `ollama-data` volume.
+On first start, Ollama will pull the passive model (`gemma3:4b` by default — ~2.5 GB). This happens once; the model is persisted in the `ollama-data` volume.
 
 To use a different model:
 
 ```bash
-LLM_PASSIVE_MODEL=gemma3:4b docker compose up -d
+LLM_PASSIVE_MODEL=qwen3:8b docker compose up -d
 ```
 
 ### 3. Add the bot to a Wire conversation
@@ -113,7 +113,7 @@ The passive model runs on every received message. Use a local model to keep data
 |---|---|---|
 | `LLM_PASSIVE_PROVIDER` | `ollama` | Provider name (informational). |
 | `LLM_PASSIVE_BASE_URL` | `http://ollama:11434/v1` | Base URL of the OpenAI-compatible API endpoint. |
-| `LLM_PASSIVE_MODEL` | `qwen3:8b` | Model identifier as understood by the provider (e.g. `gemma3:4b`, `qwen3:8b`). |
+| `LLM_PASSIVE_MODEL` | `gemma3:4b` | Model identifier as understood by the provider (e.g. `gemma3:4b`, `qwen3:8b`). |
 | `LLM_PASSIVE_API_KEY` | *(empty)* | API key. Not required for local Ollama. |
 | `LLM_PASSIVE_ENABLED` | `true` | Set to `false` to disable LLM features entirely and use command-only mode. |
 
