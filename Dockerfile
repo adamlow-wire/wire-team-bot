@@ -12,6 +12,11 @@ COPY prisma ./prisma
 # Full install — devDependencies required for sdk:setup (pbjs) and tsc.
 RUN npm ci
 
+# npm hoists @wireapp/core-crypto to the root node_modules, but the SDK's
+# fix-core-crypto-main script only patches wire-apps-js-sdk/node_modules/.
+# Run it again from the project root so it targets the hoisted copy.
+RUN node wire-apps-js-sdk/scripts/fix-core-crypto-main.js
+
 # Generate the Prisma client from the schema before compiling TypeScript.
 # Without this the @prisma/client types (InputJsonValue etc.) don't exist.
 RUN npx prisma generate
