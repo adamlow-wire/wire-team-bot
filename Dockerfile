@@ -7,9 +7,14 @@ WORKDIR /app
 
 COPY package.json package-lock.json tsconfig.json ./
 COPY wire-apps-js-sdk ./wire-apps-js-sdk
+COPY prisma ./prisma
 
 # Full install — devDependencies required for sdk:setup (pbjs) and tsc.
 RUN npm ci
+
+# Generate the Prisma client from the schema before compiling TypeScript.
+# Without this the @prisma/client types (InputJsonValue etc.) don't exist.
+RUN npx prisma generate
 
 COPY src ./src
 RUN npm run build
