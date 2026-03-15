@@ -29,9 +29,19 @@ export class PrismaSearchAdapter implements SearchService {
       (entry) => {
         let score = 0.5;
         if (input.query && input.query.length > 0) {
-          const q = input.query.toLowerCase();
-          if (entry.summary.toLowerCase().includes(q)) score += 0.3;
-          if (entry.detail.toLowerCase().includes(q)) score += 0.2;
+          const terms = input.query
+            .split(/\s+/)
+            .map((t) => t.replace(/[?!.,;:'"]/g, "").toLowerCase())
+            .filter((t) => t.length > 2);
+          if (terms.length > 0) {
+            const summaryLower = entry.summary.toLowerCase();
+            const detailLower = entry.detail.toLowerCase();
+            const summaryHits = terms.filter((t) => summaryLower.includes(t)).length;
+            const detailHits = terms.filter((t) => detailLower.includes(t)).length;
+            // Score proportionally: full term overlap in summary = +0.3, detail = +0.2
+            score += (summaryHits / terms.length) * 0.3;
+            score += (detailHits / terms.length) * 0.2;
+          }
         }
         const recency = (Date.now() - entry.updatedAt.getTime()) / (30 * 24 * 60 * 60 * 1000);
         score += Math.max(0, 0.2 - recency * 0.1);

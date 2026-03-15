@@ -1,36 +1,52 @@
-import type { Task, TaskStatus } from "../../../domain/entities/Task";
+import type { Task } from "../../../domain/entities/Task";
 import type { TaskRepository } from "../../../domain/repositories/TaskRepository";
+import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
-export interface UpdateTaskStatusInput {
+export interface UpdateTaskDeadlineInput {
   taskId: string;
-  newStatus: TaskStatus;
   conversationId: QualifiedId;
   actorId: QualifiedId;
-  completionNote?: string;
+  deadlineText: string;
+  timezone: string;
   replyToMessageId?: string;
 }
 
-export class UpdateTaskStatus {
+export class UpdateTaskDeadline {
   constructor(
     private readonly tasks: TaskRepository,
+    private readonly dateTimeService: DateTimeService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
   ) {}
 
-  async execute(input: UpdateTaskStatusInput): Promise<Task | null> {
+  async execute(input: UpdateTaskDeadlineInput): Promise<Task | null> {
     const task = await this.tasks.findById(input.taskId);
-    if (!task || task.conversationId.id !== input.conversationId.id) return null;
+    if (!task || task.conversationId.id !== input.conversationId.id) {
+      return null;
+    }
 
+    const parsed = this.dateTimeService.parse(input.deadlineText, {
+      timezone: input.timezone,
+    });
+
+    if (!parsed) {
+      await this.wireOutbound.sendPlainText(
+        input.conversationId,
+        `Could not parse date/time: "${input.deadlineText}". Please try again with a clearer expression.`,
+        { replyToMessageId: input.replyToMessageId },
+      );
+      return null;
+    }
+
+    const newDeadline = parsed.value;
     const updated: Task = {
       ...task,
-      status: input.newStatus,
+      deadline: newDeadline,
       updatedAt: new Date(),
       version: task.version + 1,
-      completionNote:
-        input.newStatus === "done" ? (input.completionNote ?? task.completionNote ?? null) : task.completionNote ?? null,
     };
 
     await this.tasks.update(updated);
@@ -41,13 +57,13 @@ export class UpdateTaskStatus {
       conversationId: input.conversationId,
       action: "entity_updated",
       entityType: "Task",
-      entityId: updated.id,
-      details: { newStatus: input.newStatus },
+      entityId: task.id,
+      details: { deadline: newDeadline },
     });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `**${updated.id}** marked as \`${input.newStatus}\`.`,
+      `**${task.id}** deadline set to **${newDeadline.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}**.`,
       { replyToMessageId: input.replyToMessageId },
     );
 

@@ -6,13 +6,20 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://wirebot:wirebot@db:5432/wire_team_bot
+      # Passive LLM — ambient listening, intent classification, capture detection.
+      # Points at the local Ollama instance by default so no message content
+      # leaves the company network. Override in .env to use a cloud model.
+      LLM_PASSIVE_BASE_URL: http://ollama:11434/v1
+      LLM_PASSIVE_MODEL: ${LLM_PASSIVE_MODEL:-qwen3:8b}
+      LLM_PASSIVE_PROVIDER: ollama
+      LLM_PASSIVE_ENABLED: "true"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     restart: unless-stopped
-    # For Phase 0.5 we only need logs; no ports exposed.
-    # If you want to debug interactively, you can add:
-    # tty: true
-    # stdin_open: true
+    # No inbound ports exposed — the bot connects outbound to Wire only.
 
   db:
     image: postgres:16-alpine
@@ -23,10 +30,44 @@ services:
       POSTGRES_PASSWORD: wirebot
     volumes:
       - db-data:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wirebot -d wire_team_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+    # Bind to localhost only — not reachable from outside the host.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: wire-team-bot-ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    # Pull the passive model on first start. Change the model name to
+    # match LLM_PASSIVE_MODEL if you prefer a different one (e.g. gemma3:4b).
+    entrypoint: >
+      sh -c "ollama serve &
+             sleep 5 &&
+             ollama pull ${LLM_PASSIVE_MODEL:-qwen3:8b} &&
+             wait"
+    restart: unless-stopped
+    # No ports exposed to the host — only reachable by other containers.
+    # Uncomment the lines below if you want to query Ollama directly from
+    # the host during development:
+    # ports:
+    #   - "127.0.0.1:11434:11434"
+
+    # GPU support (NVIDIA). Uncomment if your host has a CUDA-capable GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
 volumes:
   db-data:
-
+  ollama-data:

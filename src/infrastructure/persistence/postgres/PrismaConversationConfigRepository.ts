@@ -24,6 +24,7 @@ export class PrismaConversationConfigRepository implements ConversationConfigRep
       conversationId: { id: row.conversationId, domain: row.conversationDom },
       timezone: row.timezone,
       locale: row.locale,
+      secretMode: row.secretMode,
       implicitDetectionEnabled: raw.implicitDetectionEnabled as boolean | undefined,
       sensitivity: raw.sensitivity as ImplicitSensitivity | undefined,
       raw: row.raw ?? undefined,
@@ -43,11 +44,13 @@ export class PrismaConversationConfigRepository implements ConversationConfigRep
         conversationDom: config.conversationId.domain,
         timezone: config.timezone,
         locale: config.locale,
+        secretMode: config.secretMode ?? false,
         raw: config.raw as object | null ?? undefined,
       },
       update: {
         timezone: config.timezone,
         locale: config.locale,
+        secretMode: config.secretMode ?? false,
         raw: config.raw as object | null ?? undefined,
       },
     });

@@ -37,7 +37,7 @@ export class FireReminder {
     });
 
     const convId = reminder.conversationId;
-    const text = `Reminder: ${reminder.description}`;
+    const text = `**Reminder:** ${reminder.description}`;
     await this.wireOutbound.sendPlainText(convId, text);
   }
 }

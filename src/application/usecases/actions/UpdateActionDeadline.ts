@@ -1,37 +1,52 @@
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
+import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
-export type ActionStatusUpdate = "open" | "in_progress" | "done" | "cancelled" | "overdue";
-
-export interface UpdateActionStatusInput {
+export interface UpdateActionDeadlineInput {
   actionId: string;
-  newStatus: ActionStatusUpdate;
   conversationId: QualifiedId;
   actorId: QualifiedId;
-  completionNote?: string;
+  deadlineText: string;
+  timezone: string;
   replyToMessageId?: string;
 }
 
-export class UpdateActionStatus {
+export class UpdateActionDeadline {
   constructor(
     private readonly actions: ActionRepository,
+    private readonly dateTimeService: DateTimeService,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
   ) {}
 
-  async execute(input: UpdateActionStatusInput): Promise<Action | null> {
+  async execute(input: UpdateActionDeadlineInput): Promise<Action | null> {
     const action = await this.actions.findById(input.actionId);
-    if (!action || action.conversationId.id !== input.conversationId.id) return null;
+    if (!action || action.conversationId.id !== input.conversationId.id) {
+      return null;
+    }
 
+    const parsed = this.dateTimeService.parse(input.deadlineText, {
+      timezone: input.timezone,
+    });
+
+    if (!parsed) {
+      await this.wireOutbound.sendPlainText(
+        input.conversationId,
+        `Could not parse date/time: "${input.deadlineText}". Please try again with a clearer expression.`,
+        { replyToMessageId: input.replyToMessageId },
+      );
+      return null;
+    }
+
+    const newDeadline = parsed.value;
     const updated: Action = {
       ...action,
-      status: input.newStatus,
+      deadline: newDeadline,
       updatedAt: new Date(),
       version: action.version + 1,
-      completionNote: input.newStatus === "done" ? (input.completionNote ?? null) : action.completionNote,
     };
 
     await this.actions.update(updated);
@@ -42,13 +57,13 @@ export class UpdateActionStatus {
       conversationId: input.conversationId,
       action: "entity_updated",
       entityType: "Action",
-      entityId: updated.id,
-      details: { newStatus: input.newStatus },
+      entityId: action.id,
+      details: { deadline: newDeadline },
     });
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `**${updated.id}** marked as \`${input.newStatus}\`.`,
+      `**${action.id}** deadline set to **${newDeadline.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}**.`,
       { replyToMessageId: input.replyToMessageId },
     );
 

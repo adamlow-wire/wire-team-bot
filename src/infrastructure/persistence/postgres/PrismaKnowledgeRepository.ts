@@ -109,10 +109,17 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
       where.authorDom = criteria.authorId.domain;
     }
     if (criteria.searchText) {
-      where.OR = [
-        { summary: { contains: criteria.searchText, mode: "insensitive" } },
-        { detail: { contains: criteria.searchText, mode: "insensitive" } },
-      ];
+      // Split into individual tokens so "how many users does schwarz have" matches
+      // entries containing "schwarz" or "users" rather than requiring the whole phrase.
+      const terms = criteria.searchText
+        .split(/\s+/)
+        .map((t) => t.replace(/[?!.,;:'"]/g, ""))
+        .filter((t) => t.length > 2);
+      const searchClauses = (terms.length > 0 ? terms : [criteria.searchText]).flatMap((term) => [
+        { summary: { contains: term, mode: "insensitive" as const } },
+        { detail: { contains: term, mode: "insensitive" as const } },
+      ]);
+      where.OR = searchClauses;
     }
     if (criteria.tagsAll && criteria.tagsAll.length > 0) {
       where.tags = { hasEvery: criteria.tagsAll };

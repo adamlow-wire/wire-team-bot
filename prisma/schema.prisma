@@ -139,6 +139,7 @@ model ConversationConfig {
   conversationDom  String
   timezone         String   @default("UTC")
   locale           String   @default("en")
+  secretMode       Boolean  @default(false)
   raw              Json?
   updatedAt        DateTime @updatedAt
 

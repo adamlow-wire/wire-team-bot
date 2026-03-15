@@ -5,6 +5,7 @@ import type { DateTimeService } from "../../../domain/services/DateTimeService";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { SchedulerPort, ScheduledJob } from "../../ports/SchedulerPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
+import type { Logger } from "../../ports/Logger";
 
 export interface CreateReminderInput {
   conversationId: QualifiedId;
@@ -24,6 +25,7 @@ export class CreateReminder {
     private readonly wireOutbound: WireOutboundPort,
     private readonly scheduler: SchedulerPort,
     private readonly auditLog: AuditLogRepository,
+    private readonly logger: Logger,
   ) {}
 
   async execute(input: CreateReminderInput): Promise<Reminder> {
@@ -52,6 +54,7 @@ export class CreateReminder {
     };
 
     const saved = await this.reminders.create(reminder);
+    this.logger.info("Reminder created", { reminderId: saved.id, conversationId: input.conversationId.id, triggerAt: saved.triggerAt.toISOString() });
 
     const job: ScheduledJob = {
       id: `rem-${saved.id}`,
@@ -73,7 +76,7 @@ export class CreateReminder {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Reminder ${saved.id} set for ${saved.triggerAt.toISOString()}: ${saved.description}`,
+      `Reminder **${saved.id}** set for **${saved.triggerAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}**: ${saved.description}`,
       { replyToMessageId: input.rawMessageId },
     );
 

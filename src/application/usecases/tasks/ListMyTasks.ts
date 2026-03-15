@@ -26,7 +26,7 @@ export class ListMyTasks {
     const lines =
       list.length === 0
         ? ["No open tasks for you in this conversation."]
-        : list.map((t) => `• ${t.id} [${t.status}]: ${t.description}${t.deadline ? ` (due ${t.deadline.toISOString().slice(0, 10)})` : ""}`);
+        : list.map((t) => `- **${t.id}** \`${t.status}\` — ${t.description}${t.deadline ? ` _(due ${t.deadline.toISOString().slice(0, 10)})_` : ""}`);
 
     await this.wireOutbound.sendPlainText(input.conversationId, lines.join("\n"), {
       replyToMessageId: input.replyToMessageId,
