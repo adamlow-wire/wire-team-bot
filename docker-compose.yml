@@ -9,10 +9,10 @@ services:
       # Passive LLM — ambient listening, intent classification, capture detection.
       # Points at the local Ollama instance by default so no message content
       # leaves the company network. Override in .env to use a cloud model.
-      LLM_PASSIVE_BASE_URL: http://ollama:11434/v1
+      LLM_PASSIVE_BASE_URL: ${LLM_PASSIVE_BASE_URL:-http://ollama:11434/v1}
       LLM_PASSIVE_MODEL: ${LLM_PASSIVE_MODEL:-gemma3:4b}
-      LLM_PASSIVE_PROVIDER: ollama
-      LLM_PASSIVE_ENABLED: "true"
+      LLM_PASSIVE_PROVIDER: ${LLM_PASSIVE_PROVIDER:-ollama}
+      LLM_PASSIVE_ENABLED: ${LLM_PASSIVE_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy
