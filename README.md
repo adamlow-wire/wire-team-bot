@@ -154,7 +154,7 @@ Currently reserved for future higher-quality reasoning tasks. Falls back to the 
 - List/search: `list decisions` | `decisions about pricing`
 - Revoke: `revoke DEC-0001`
 
-**Actions** — `action: John to follow up on contract` or `John should call Schwarz`
+**Actions** — `action: John to follow up on contract` or `John should call the client`
 - Update: `ACT-0001 done` | `cancelled`
 - Reassign: `assign ACT-0001 to Mark`
 - Deadline: `ACT-0001 due Friday`
@@ -163,7 +163,7 @@ Currently reserved for future higher-quality reasoning tasks. Falls back to the 
 **Reminders** — `remind me at 3pm to call John`
 - List: `show reminders` | Cancel: `cancel REM-0001` | Snooze: `snooze REM-0001 1 hour`
 
-**Knowledge** — `remember that Schwarz have 10k users` | say a fact then `remember this`
+**Knowledge** — `remember that we have 10k users` | say a fact then `remember this`
 - Retrieve: `what is our rate limit?`
 - Update: `update KB-0001 new text` | Forget: `forget KB-0001`
 
