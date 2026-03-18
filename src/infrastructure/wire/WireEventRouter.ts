@@ -29,6 +29,7 @@ import type { StoreKnowledge } from "../../application/usecases/knowledge/StoreK
 import type { RetrieveKnowledge } from "../../application/usecases/knowledge/RetrieveKnowledge";
 import type { DeleteKnowledge } from "../../application/usecases/knowledge/DeleteKnowledge";
 import type { UpdateKnowledge } from "../../application/usecases/knowledge/UpdateKnowledge";
+import type { AnswerQuestion } from "../../application/usecases/general/AnswerQuestion";
 import type { ConversationMessageBuffer } from "../../application/services/ConversationMessageBuffer";
 import type { DateTimeService } from "../../domain/services/DateTimeService";
 import type { ConversationMemberCache, CachedMember } from "../../domain/services/ConversationMemberCache";
@@ -117,6 +118,8 @@ export interface WireEventRouterDeps {
   retrieveKnowledge: RetrieveKnowledge;
   deleteKnowledge: DeleteKnowledge;
   updateKnowledge: UpdateKnowledge;
+  // General
+  answerQuestion: AnswerQuestion;
   // Infrastructure
   botUserId: QualifiedId;
   conversationIntelligence: ConversationIntelligenceService;
@@ -721,6 +724,19 @@ export class WireEventRouter extends WireEventsHandler {
         await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
         break;
       // ── Meta ──────────────────────────────────────────────────────────────
+      case "general_question": {
+        const recentContext = this.deps.messageBuffer
+          .getLastN(convId, CONTEXT_WINDOW)
+          .slice(0, -1)
+          .map((m) => m.text);
+        await this.deps.answerQuestion.execute({
+          question: rawText,
+          conversationContext: recentContext,
+          conversationId: convId,
+          replyToMessageId: wireMessage.id,
+        });
+        break;
+      }
       case "help":
         await this.deps.wireOutbound.sendPlainText(convId, HELP_TEXT, { replyToMessageId: wireMessage.id });
         break;

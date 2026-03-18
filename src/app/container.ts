@@ -57,6 +57,8 @@ import { CancelReminder } from "../application/usecases/reminders/CancelReminder
 import { SnoozeReminder } from "../application/usecases/reminders/SnoozeReminder";
 import { OpenAIConversationIntelligenceAdapter } from "../infrastructure/llm/OpenAIConversationIntelligenceAdapter";
 import { StubConversationIntelligenceAdapter } from "../infrastructure/llm/StubConversationIntelligenceAdapter";
+import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralAnswerAdapter";
+import { AnswerQuestion } from "../application/usecases/general/AnswerQuestion";
 
 export interface Container {
   getWireClient(): Promise<WireAppSdk>;
@@ -89,6 +91,8 @@ export function createContainer(config: Config, logger: Logger): Container {
   const conversationIntelligence = intelligenceLlmConfig.enabled
     ? new OpenAIConversationIntelligenceAdapter(intelligenceLlmConfig, logger)
     : new StubConversationIntelligenceAdapter(logger);
+  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(capableLlmConfig, logger);
+  const answerQuestion = new AnswerQuestion(generalAnswerAdapter, wireOutbound);
   const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
   const deleteKnowledge = new DeleteKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
@@ -245,6 +249,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     retrieveKnowledge,
     deleteKnowledge,
     updateKnowledge,
+    answerQuestion,
     conversationIntelligence,
     wireOutbound,
     messageBuffer,

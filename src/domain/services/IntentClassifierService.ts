@@ -25,6 +25,7 @@ export type IntentType =
   | "help"
   | "secret_mode_on"
   | "secret_mode_off"
+  | "general_question"
   | "none";
 
 export interface IntentPayload {

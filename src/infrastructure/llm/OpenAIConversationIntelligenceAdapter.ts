@@ -31,7 +31,8 @@ INTENTS:
 - help: User is asking what the bot does or how to use it (e.g. "what can you do?", "help", "how do I use this?", "what are you?")
 - secret_mode_on: User wants the bot to stop listening (e.g. "secret mode", "go quiet", "stop listening", "this is sensitive", "private conversation", "pause")
 - secret_mode_off: User wants the bot to resume (e.g. "resume", "come back", "you can listen again", "start listening", "unpause")
-- none: General conversation not directed at the bot — reactions, acknowledgements, chit-chat
+- general_question: User is asking a general question not covered by other intents (e.g. "what time is it?", "what facts do you know?", "can you summarise the discussion?", "who should I talk to about X?"). Use this when the message is a question directed at the bot that doesn't fit a more specific intent.
+- none: General conversation not directed at the bot — reactions, acknowledgements, chit-chat, statements
 
 PAYLOAD FIELDS (include only relevant ones, omit null/undefined):
 - description: task or action description text (for create intents only)
@@ -47,8 +48,8 @@ PAYLOAD FIELDS (include only relevant ones, omit null/undefined):
 - newAssignee: for reassign_action — the new assignee name or @mention
 
 SHOULD RESPOND rules:
-- true: when intent is not "none", OR when asking the user a clarifying question
-- false: when the message is conversational (yes/no/thanks/acknowledgement), a statement answering someone else's question, chit-chat, or a follow-up answer to a previous question
+- true: when intent is not "none", including general_question, OR when asking the user a clarifying question
+- false: when intent is "none" — conversational (yes/no/thanks/acknowledgement), a statement answering someone else's question, chit-chat, or a follow-up answer to a previous question
 
 CAPTURE rules (passive recording of information from the conversation):
 Sensitivity levels:
@@ -88,6 +89,7 @@ const VALID_INTENTS: IntentType[] = [
   "help",
   "secret_mode_on",
   "secret_mode_off",
+  "general_question",
   "none",
 ];
 
