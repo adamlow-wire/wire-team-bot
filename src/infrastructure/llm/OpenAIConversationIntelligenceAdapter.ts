@@ -48,8 +48,8 @@ PAYLOAD FIELDS (include only relevant ones, omit null/undefined):
 - newAssignee: for reassign_action — the new assignee name or @mention
 
 SHOULD RESPOND rules:
-- true: when intent is not "none", including general_question, OR when asking the user a clarifying question
-- false: when intent is "none" — conversational (yes/no/thanks/acknowledgement), a statement answering someone else's question, chit-chat, or a follow-up answer to a previous question
+- true: ONLY when the message is an explicit command directed at the bot — clear bot syntax like "TASK-0001 done", "list my tasks", "remind me at 3pm", "help", "secret mode", "remember that X", "forget KB-0001". The message must be unambiguously intended for the bot.
+- false: for everything else, including general questions between humans, statements, decisions, or actions overheard in conversation — even if an intent is detected. Passive capture (capture field) happens silently without the bot responding. general_question is always false here; @mention handling is done separately by the caller.
 
 CAPTURE rules (passive recording of information from the conversation):
 Sensitivity levels:
