@@ -397,7 +397,7 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
     if (lowered === "my reminders" || lowered === "show reminders" || lowered === "list reminders" || lowered === "reminders") {
-      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
+      await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
     if (lowered === "list decisions" || lowered === "decisions" || lowered === "decisions list") {
@@ -721,7 +721,7 @@ export class WireEventRouter extends WireEventsHandler {
         await this.deps.listOverdueActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
         break;
       case "list_reminders":
-        await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
+        await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
         break;
       // ── Meta ──────────────────────────────────────────────────────────────
       case "general_question": {

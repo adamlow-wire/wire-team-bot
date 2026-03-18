@@ -27,6 +27,11 @@ export class RetrieveKnowledge {
     });
 
     if (hits.length === 0) {
+      await this.wireOutbound.sendPlainText(
+        input.conversationId,
+        "I don't have any knowledge stored in this conversation yet.",
+        { replyToMessageId: input.replyToMessageId },
+      );
       return;
     }
 

@@ -4,7 +4,7 @@ import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 
 export interface ListMyRemindersInput {
   conversationId: QualifiedId;
-  targetId: QualifiedId;
+  targetId?: QualifiedId;
   replyToMessageId?: string;
 }
 
