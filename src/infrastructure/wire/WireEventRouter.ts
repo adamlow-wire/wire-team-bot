@@ -118,6 +118,7 @@ export interface WireEventRouterDeps {
   deleteKnowledge: DeleteKnowledge;
   updateKnowledge: UpdateKnowledge;
   // Infrastructure
+  botUserId: QualifiedId;
   conversationIntelligence: ConversationIntelligenceService;
   wireOutbound: WireOutboundPort;
   messageBuffer: ConversationMessageBuffer;
@@ -425,11 +426,18 @@ export class WireEventRouter extends WireEventsHandler {
       intelligence = { intent: "none", payload: {}, confidence: 0, shouldRespond: false };
     }
 
+    // If the bot was explicitly @mentioned, always respond regardless of LLM decision.
+    const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+    if (botMentioned && !intelligence.shouldRespond) {
+      intelligence = { ...intelligence, shouldRespond: true };
+    }
+
     log.debug("Intelligence result", {
       intent: intelligence.intent,
       confidence: intelligence.confidence,
       shouldRespond: intelligence.shouldRespond,
       hasCapture: !!intelligence.capture,
+      botMentioned,
     });
 
     // Phase 3: shouldRespond gates the whole response path
@@ -461,10 +469,15 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    // No actionable intent but shouldRespond — try capture if available
+    // No actionable intent but shouldRespond — try capture if available, then fall back to help
     if (intelligence.capture && intelligence.capture.confidence >= IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE
         && config?.implicitDetectionEnabled !== false) {
       await this.presentCapture(intelligence.capture, wireMessage, convId, sender, convKey, log);
+      return;
+    }
+
+    if (botMentioned) {
+      await this.deps.wireOutbound.sendPlainText(convId, HELP_TEXT, { replyToMessageId: wireMessage.id });
     }
   }
 

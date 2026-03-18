@@ -216,6 +216,7 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   const router = new WireEventRouter({
     logger,
+    botUserId: systemActorId,
     createTaskFromExplicit,
     updateTaskStatus,
     updateTask,
