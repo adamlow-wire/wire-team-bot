@@ -444,7 +444,7 @@ export class WireEventRouter extends WireEventsHandler {
     });
 
     // Phase 3: shouldRespond gates the whole response path
-    if (!intelligence.shouldRespond && intelligence.intent === "none") {
+    if (!intelligence.shouldRespond) {
       // Even if bot won't reply, a capture candidate may still be presented
       if (intelligence.capture && intelligence.capture.confidence >= IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE
           && config?.implicitDetectionEnabled !== false) {
