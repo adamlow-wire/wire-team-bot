@@ -57,11 +57,14 @@ Sensitivity levels:
 - normal: factual statements + procedural knowledge
 - aggressive: also soft commitments and implied decisions
 
-NEVER capture:
+NEVER capture — omit "capture" entirely for:
+- QUESTIONS of any kind. A message asking for information is NOT a fact. If the message ends with "?" or is asking "how many", "what is", "who is", "where is", "when is", "can you", etc. — do NOT capture.
+  BAD example: "How many staff members are there at Wire?" → do NOT capture (it's a question, not a fact)
+  GOOD example: "Wire has 300 staff members" → capture as knowledge
 - Bot commands ("show reminders", "list tasks", "what can you do")
-- Questions, acknowledgements, chit-chat
+- Acknowledgements and chit-chat ("ok", "thanks", "sounds good")
 - Bot responses
-Only capture substantive information: facts, decisions made, commitments, planned actions.
+Only capture STATEMENTS that assert facts, decisions made, commitments, or planned actions.
 
 Omit the "capture" field entirely when there is nothing to capture. When capturing, include at most one candidate (the most valuable one).
 
@@ -99,6 +102,18 @@ const FALLBACK: ConversationIntelligenceResult = {
   confidence: 0,
   shouldRespond: false,
 };
+
+/**
+ * Returns true when a message is clearly a question and should never be
+ * treated as a capturable knowledge item. Catches explicit "?" endings and
+ * common English question openers that small models tend to misclassify.
+ */
+function isQuestion(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.endsWith("?")) return true;
+  const lower = trimmed.toLowerCase();
+  return /^(how|what|who|where|when|why|which|can you|could you|do you|does|is there|are there|have you|did you)\b/.test(lower);
+}
 
 export class OpenAIConversationIntelligenceAdapter implements ConversationIntelligenceService {
   constructor(private readonly config: LLMConfig, private readonly logger: Logger) {}
@@ -234,6 +249,13 @@ export class OpenAIConversationIntelligenceAdapter implements ConversationIntell
               : {},
         };
       }
+    }
+
+    // Hard guard: never treat a question as a capture candidate regardless of
+    // what the LLM returned. Small models frequently ignore the prompt rule.
+    if (capture !== undefined && isQuestion(input.currentMessage)) {
+      this.logger.debug("Capture stripped — message is a question", { summary: capture.summary });
+      capture = undefined;
     }
 
     const result: ConversationIntelligenceResult = {
