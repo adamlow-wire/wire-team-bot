@@ -138,8 +138,18 @@ interface PendingKnowledgeConfirmation {
   rawMessage: string;
 }
 
+interface PendingCaptureConfirmation {
+  type: "action" | "task" | "decision";
+  summary: string;
+  detail: string;
+  authorId: QualifiedId;
+  rawMessageId: string;
+  rawMessage: string;
+}
+
 export class WireEventRouter extends WireEventsHandler {
   private readonly pendingKnowledge = new Map<string, PendingKnowledgeConfirmation>();
+  private readonly pendingCaptures = new Map<string, PendingCaptureConfirmation>();
   private readonly secretModeConvs = new Set<string>();
   private readonly lastActivityByConv = new Map<string, number>();
   private readonly knownConvs = new Set<string>();
@@ -486,23 +496,42 @@ export class WireEventRouter extends WireEventsHandler {
     convKey: string,
     log: Logger,
   ): Promise<void> {
-    if (capture.type !== "knowledge") return; // only knowledge capture is currently interactive
-    log.debug("Presenting knowledge capture prompt", { confidence: capture.confidence });
     const display = capture.summary.slice(0, 150);
-    this.pendingKnowledge.set(convKey, {
-      summary: capture.summary,
-      detail: capture.detail || capture.summary,
-      authorId: sender,
-      rawMessageId: wireMessage.id,
-      rawMessage: wireMessage.text ?? "",
-    });
     this.markActioned(convKey, wireMessage.id);
-    await this.deps.wireOutbound.sendCompositePrompt(
-      convId,
-      `Shall I remember that?\n> ${display}`,
-      [{ id: "confirm_knowledge", label: "Confirm" }, { id: "dismiss", label: "Dismiss" }],
-      { replyToMessageId: wireMessage.id },
-    );
+
+    if (capture.type === "knowledge") {
+      log.debug("Presenting knowledge capture prompt", { confidence: capture.confidence });
+      this.pendingKnowledge.set(convKey, {
+        summary: capture.summary,
+        detail: capture.detail || capture.summary,
+        authorId: sender,
+        rawMessageId: wireMessage.id,
+        rawMessage: wireMessage.text ?? "",
+      });
+      await this.deps.wireOutbound.sendCompositePrompt(
+        convId,
+        `Shall I remember that?\n> ${display}`,
+        [{ id: "confirm_knowledge", label: "Confirm" }, { id: "dismiss", label: "Dismiss" }],
+        { replyToMessageId: wireMessage.id },
+      );
+    } else if (capture.type === "action" || capture.type === "task" || capture.type === "decision") {
+      const label = capture.type === "action" ? "an action" : capture.type === "task" ? "a task" : "a decision";
+      log.debug(`Presenting ${capture.type} capture prompt`, { confidence: capture.confidence });
+      this.pendingCaptures.set(convKey, {
+        type: capture.type,
+        summary: capture.summary,
+        detail: capture.detail || capture.summary,
+        authorId: sender,
+        rawMessageId: wireMessage.id,
+        rawMessage: wireMessage.text ?? "",
+      });
+      await this.deps.wireOutbound.sendCompositePrompt(
+        convId,
+        `Shall I log this as ${label}?\n> ${display}`,
+        [{ id: "confirm_capture", label: "Yes, log it" }, { id: "dismiss", label: "Dismiss" }],
+        { replyToMessageId: wireMessage.id },
+      );
+    }
   }
 
   private async routeIntent(
@@ -844,8 +873,40 @@ export class WireEventRouter extends WireEventsHandler {
         }
         break;
       }
+      case "confirm_capture": {
+        const pending = this.pendingCaptures.get(convKey);
+        if (pending) {
+          this.pendingCaptures.delete(convKey);
+          this.markActioned(convKey, pending.rawMessageId);
+          try {
+            if (pending.type === "action") {
+              await this.deps.createActionFromExplicit.execute({
+                conversationId: convId, creatorId: senderId, authorName: "",
+                rawMessageId: pending.rawMessageId, rawMessage: pending.rawMessage,
+                description: pending.detail,
+              });
+            } else if (pending.type === "task") {
+              await this.deps.createTaskFromExplicit.execute({
+                conversationId: convId, authorId: senderId, authorName: "",
+                rawMessageId: pending.rawMessageId, rawMessage: pending.rawMessage,
+                description: pending.detail,
+              });
+            } else if (pending.type === "decision") {
+              await this.deps.logDecision.execute({
+                conversationId: convId, authorId: senderId, authorName: "",
+                rawMessageId: pending.rawMessageId, rawMessage: pending.rawMessage,
+                summary: pending.summary, contextMessages: [], participantIds: [senderId],
+              });
+            }
+          } catch (err) {
+            log.error("Failed to store confirmed capture", { type: pending.type, err: String(err) });
+          }
+        }
+        break;
+      }
       case "dismiss":
         this.pendingKnowledge.delete(convKey);
+        this.pendingCaptures.delete(convKey);
         this.markActioned(convKey, wireMessage.referenceMessageId ?? "");
         break;
       case "yes":
