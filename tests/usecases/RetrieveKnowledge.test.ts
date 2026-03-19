@@ -30,8 +30,12 @@ describe("RetrieveKnowledge", () => {
       create: vi.fn(),
       update: vi.fn(),
       findById: vi.fn(),
+      findByIds: vi.fn().mockResolvedValue([]),
       query: vi.fn(),
       incrementRetrievalCount: vi.fn().mockResolvedValue(undefined),
+      updateEmbedding: vi.fn().mockResolvedValue(undefined),
+      findMissingEmbeddings: vi.fn().mockResolvedValue([]),
+      findByEmbedding: vi.fn().mockResolvedValue([]),
     };
     const sent: string[] = [];
     const wireOutbound: WireOutboundPort = {
@@ -63,8 +67,12 @@ describe("RetrieveKnowledge", () => {
       create: vi.fn(),
       update: vi.fn(),
       findById: vi.fn(),
+      findByIds: vi.fn().mockResolvedValue([]),
       query: vi.fn(),
       incrementRetrievalCount: vi.fn(),
+      updateEmbedding: vi.fn().mockResolvedValue(undefined),
+      findMissingEmbeddings: vi.fn().mockResolvedValue([]),
+      findByEmbedding: vi.fn().mockResolvedValue([]),
     };
     const sent: string[] = [];
     const wireOutbound: WireOutboundPort = {
@@ -77,7 +85,7 @@ describe("RetrieveKnowledge", () => {
 
     await useCase.execute({ conversationId: convId, query: "nonexistent" });
 
-    expect(sent[0]).toContain("don't have anything");
+    expect(sent[0]).toContain("I don't have any knowledge stored");
     expect(knowledgeRepo.incrementRetrievalCount).not.toHaveBeenCalled();
   });
 });

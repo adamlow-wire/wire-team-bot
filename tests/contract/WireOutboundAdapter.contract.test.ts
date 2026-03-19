@@ -9,6 +9,8 @@ import { createWireOutboundAdapter } from "../../src/infrastructure/wire/WireOut
 import type { HandlerManagerRef } from "../../src/infrastructure/wire/WireOutboundAdapter";
 import type { QualifiedId } from "../../src/domain/ids/QualifiedId";
 
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn().mockReturnThis() };
+
 const convId: QualifiedId = { id: "conv-1", domain: "wire.com" };
 
 function makeRef(
@@ -21,7 +23,7 @@ function makeRef(
 describe("WireOutboundAdapter contract", () => {
   it("sendPlainText calls manager.sendMessage with a TextMessage", async () => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
-    const adapter = createWireOutboundAdapter(makeRef(sendMessage));
+    const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
     await adapter.sendPlainText(convId, "Hello world");
     expect(sendMessage).toHaveBeenCalledOnce();
     const arg = sendMessage.mock.calls[0]![0] as { text?: string };
@@ -30,7 +32,7 @@ describe("WireOutboundAdapter contract", () => {
 
   it("sendCompositePrompt sends a CompositeMessage with text item and button items", async () => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
-    const adapter = createWireOutboundAdapter(makeRef(sendMessage));
+    const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
     await adapter.sendCompositePrompt(convId, "Any actions?", [
       { id: "yes", label: "Yes" },
       { id: "no", label: "No" },
@@ -48,7 +50,7 @@ describe("WireOutboundAdapter contract", () => {
 
   it("sendReaction calls manager.sendMessage with a ReactionMessage", async () => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
-    const adapter = createWireOutboundAdapter(makeRef(sendMessage));
+    const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
     await adapter.sendReaction(convId, "msg-1", "✓");
     expect(sendMessage).toHaveBeenCalledOnce();
     const arg = sendMessage.mock.calls[0]![0] as { type?: string; emoji?: string; targetMessageId?: string };
@@ -59,7 +61,7 @@ describe("WireOutboundAdapter contract", () => {
 
   it("sendFile calls manager.sendAsset with Uint8Array data", async () => {
     const sendAsset = vi.fn().mockResolvedValue("asset-id");
-    const adapter = createWireOutboundAdapter(makeRef(undefined, sendAsset));
+    const adapter = createWireOutboundAdapter(makeRef(undefined, sendAsset), mockLogger);
     const { Readable } = await import("stream");
     const stream = Readable.from([Buffer.from("hello")]);
     await adapter.sendFile(convId, stream, "report.pdf", "application/pdf");
@@ -73,7 +75,7 @@ describe("WireOutboundAdapter contract", () => {
 
   it("sendPlainText is a no-op when the manager is not yet set", async () => {
     const ref: HandlerManagerRef = { current: null };
-    const adapter = createWireOutboundAdapter(ref);
+    const adapter = createWireOutboundAdapter(ref, mockLogger);
     // Should resolve without throwing
     await expect(adapter.sendPlainText(convId, "hi")).resolves.toBeUndefined();
   });
