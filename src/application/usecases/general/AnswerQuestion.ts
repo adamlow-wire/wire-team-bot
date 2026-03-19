@@ -1,6 +1,8 @@
-import type { GeneralAnswerService } from "../../ports/GeneralAnswerPort";
+import type { GeneralAnswerService, KnowledgeContext } from "../../ports/GeneralAnswerPort";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
+import type { SearchService } from "../../../domain/services/SearchService";
+import type { KnowledgeRepository } from "../../../domain/repositories/KnowledgeRepository";
 
 export interface AnswerQuestionInput {
   question: string;
@@ -13,12 +15,37 @@ export class AnswerQuestion {
   constructor(
     private readonly generalAnswer: GeneralAnswerService,
     private readonly wireOutbound: WireOutboundPort,
+    private readonly searchService: SearchService,
+    private readonly knowledgeRepo: KnowledgeRepository,
   ) {}
 
   async execute(input: AnswerQuestionInput): Promise<void> {
-    const answer = await this.generalAnswer.answer(input.question, input.conversationContext);
+    const hits = await this.searchService.searchKnowledge({
+      query: input.question,
+      conversationIds: [input.conversationId],
+      limit: 5,
+    });
+
+    const knowledgeContext: KnowledgeContext[] = hits.map((h) => ({
+      id: h.id,
+      summary: h.summary,
+      detail: h.detail,
+      confidence: h.confidence,
+      updatedAt: h.updatedAt,
+    }));
+
+    const answer = await this.generalAnswer.answer(
+      input.question,
+      input.conversationContext,
+      knowledgeContext,
+    );
+
     await this.wireOutbound.sendPlainText(input.conversationId, answer, {
       replyToMessageId: input.replyToMessageId,
     });
+
+    for (const h of hits) {
+      await this.knowledgeRepo.incrementRetrievalCount(h.id);
+    }
   }
 }

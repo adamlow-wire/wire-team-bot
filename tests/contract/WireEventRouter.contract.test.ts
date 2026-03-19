@@ -53,6 +53,8 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
     retrieveKnowledge: { execute: vi.fn().mockResolvedValue(undefined) },
     deleteKnowledge: { execute: vi.fn().mockResolvedValue(null) },
     updateKnowledge: { execute: vi.fn().mockResolvedValue(null) },
+    // General
+    answerQuestion: { execute: vi.fn().mockResolvedValue(undefined) },
     // Intelligence (default: no intent, bot stays silent)
     conversationIntelligence: {
       analyze: vi.fn().mockResolvedValue({ intent: "none", payload: {}, confidence: 0, shouldRespond: false }),
@@ -265,7 +267,7 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     );
   });
 
-  it("retrieve_knowledge intent → retrieveKnowledge", async () => {
+  it("retrieve_knowledge intent → answerQuestion (unified RAG path)", async () => {
     const deps = makeDeps({
       conversationIntelligence: {
         analyze: vi.fn().mockResolvedValue({ intent: "retrieve_knowledge", confidence: 0.9, shouldRespond: true, payload: { query: "the rate limit" } }),
@@ -273,8 +275,8 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     });
     const router = new WireEventRouter(deps);
     await router.onTextMessageReceived(makeMessage("what is the rate limit?"));
-    expect(deps.retrieveKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ query: "the rate limit" }),
+    expect(deps.answerQuestion.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ question: "the rate limit" }),
     );
   });
 

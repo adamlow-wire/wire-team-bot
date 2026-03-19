@@ -40,7 +40,9 @@ import { WeeklyDigestService } from "../application/services/WeeklyDigestService
 import { FireReminder } from "../application/usecases/reminders/FireReminder";
 import type { ScheduledJob } from "../application/ports/SchedulerPort";
 import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaClient";
-import { getPassiveLLMConfig, getCapableLLMConfig } from "../infrastructure/llm/LLMConfigAdapter";
+import { getPassiveLLMConfig, getCapableLLMConfig, getEmbeddingConfig } from "../infrastructure/llm/LLMConfigAdapter";
+import { OpenAIEmbeddingAdapter } from "../infrastructure/llm/OpenAIEmbeddingAdapter";
+import { BackfillEmbeddings } from "../application/usecases/knowledge/BackfillEmbeddings";
 import { StoreKnowledge } from "../application/usecases/knowledge/StoreKnowledge";
 import { RetrieveKnowledge } from "../application/usecases/knowledge/RetrieveKnowledge";
 import { DeleteKnowledge } from "../application/usecases/knowledge/DeleteKnowledge";
@@ -77,7 +79,6 @@ export function createContainer(config: Config, logger: Logger): Container {
   const knowledgeRepo = new PrismaKnowledgeRepository();
   const conversationConfigRepo = new PrismaConversationConfigRepository();
   const auditLogRepo = new PrismaAuditLogRepository();
-  const searchService = new PrismaSearchAdapter(knowledgeRepo);
   const systemActorId = { id: config.wire.userId, domain: config.wire.userDomain };
   const dateTimeService = new SystemDateTimeService();
   const memberCache = new InMemoryMemberCache();
@@ -87,17 +88,23 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   const passiveLlmConfig = getPassiveLLMConfig(config);
   const capableLlmConfig = getCapableLLMConfig(config);
+  const embeddingConfig = getEmbeddingConfig(config);
   const intelligenceLlmConfig = passiveLlmConfig.enabled ? passiveLlmConfig : capableLlmConfig;
   const conversationIntelligence = intelligenceLlmConfig.enabled
     ? new OpenAIConversationIntelligenceAdapter(intelligenceLlmConfig, logger)
     : new StubConversationIntelligenceAdapter(logger);
+  const embeddingAdapter = embeddingConfig.enabled ? new OpenAIEmbeddingAdapter(embeddingConfig, logger) : undefined;
+  const searchService = new PrismaSearchAdapter(knowledgeRepo, embeddingAdapter);
   const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(capableLlmConfig, logger);
-  const answerQuestion = new AnswerQuestion(generalAnswerAdapter, wireOutbound);
-  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger);
+  const answerQuestion = new AnswerQuestion(generalAnswerAdapter, wireOutbound, searchService, knowledgeRepo);
+  const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger, embeddingAdapter);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
   const deleteKnowledge = new DeleteKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const updateKnowledge = new UpdateKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const checkKnowledgeStaleness = new CheckKnowledgeStaleness(knowledgeRepo, wireOutbound);
+  const backfillEmbeddings = embeddingAdapter
+    ? new BackfillEmbeddings(knowledgeRepo, embeddingAdapter, logger)
+    : null;
 
   const createTaskFromExplicit = new CreateTaskFromExplicit(
     tasksRepo,
@@ -196,6 +203,9 @@ export function createContainer(config: Config, logger: Logger): Container {
       const convId = (job.payload as { convId: { id: string; domain: string } }).convId;
       void router.handleSecretModeInactivityCheck(convId);
     }
+    if (job.type === "embedding_backfill" && backfillEmbeddings) {
+      void backfillEmbeddings.run();
+    }
   });
 
   scheduler.schedule({
@@ -216,6 +226,16 @@ export function createContainer(config: Config, logger: Logger): Container {
     runAt: new Date(Date.now() + ONE_DAY_MS),
     payload: {},
   });
+
+  // Run embedding backfill shortly after startup to embed any pre-existing entries.
+  if (backfillEmbeddings) {
+    scheduler.schedule({
+      id: "embedding_backfill",
+      type: "embedding_backfill",
+      runAt: new Date(Date.now() + 5_000),
+      payload: {},
+    });
+  }
 
 
   const router = new WireEventRouter({

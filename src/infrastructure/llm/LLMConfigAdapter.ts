@@ -1,10 +1,11 @@
-import type { Config, LLMTierConfig } from "../../app/config";
+import type { Config, LLMTierConfig, EmbeddingConfig } from "../../app/config";
 
 /**
  * Exposes LLM tier configuration for adapters, keeping infrastructure
  * isolated from the top-level Config shape.
  */
 export type LLMConfig = LLMTierConfig;
+export type { EmbeddingConfig };
 
 /** Config for the passive (ambient listening) model tier. */
 export function getPassiveLLMConfig(config: Config): LLMConfig {
@@ -19,4 +20,9 @@ export function getCapableLLMConfig(config: Config): LLMConfig {
 /** @deprecated Use getPassiveLLMConfig or getCapableLLMConfig. */
 export function getLLMConfig(config: Config): LLMConfig {
   return getCapableLLMConfig(config);
+}
+
+/** Config for the embedding model (shares base URL / API key with the capable tier). */
+export function getEmbeddingConfig(config: Config): EmbeddingConfig {
+  return { ...config.embedding };
 }
