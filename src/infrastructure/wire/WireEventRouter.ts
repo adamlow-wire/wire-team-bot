@@ -44,8 +44,6 @@ import type { ActionStatus } from "../../domain/entities/Action";
 const CONTEXT_WINDOW = 10;
 const IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE = 0.7;
 const INTENT_CONFIDENCE_THRESHOLD = 0.75;
-// Retrieval has more false positives so require higher confidence
-const RETRIEVE_KNOWLEDGE_CONFIDENCE_THRESHOLD = 0.88;
 
 const HELP_TEXT = `**Here's what I can do:**
 
@@ -453,11 +451,7 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    const effectiveThreshold = intelligence.intent === "retrieve_knowledge"
-      ? RETRIEVE_KNOWLEDGE_CONFIDENCE_THRESHOLD
-      : INTENT_CONFIDENCE_THRESHOLD;
-
-    if (intelligence.confidence >= effectiveThreshold && intelligence.intent !== "none") {
+    if (intelligence.confidence >= INTENT_CONFIDENCE_THRESHOLD && intelligence.intent !== "none") {
       await this.routeIntent(intelligence, wireMessage, convId, sender, convKey, previousMessageText, log);
       // Mark creating intents as actioned to prevent passive re-capture
       const creatingIntents = new Set([
@@ -676,9 +670,19 @@ export class WireEventRouter extends WireEventsHandler {
         break;
       }
       case "retrieve_knowledge": {
-        const query = p.query ?? rawText;
-        if (query.length > 0) {
-          await this.deps.retrieveKnowledge.execute({ conversationId: convId, query, replyToMessageId: wireMessage.id });
+        // Unified RAG path: search KB and synthesise via LLM (same as general_question)
+        const question = p.query ?? rawText;
+        if (question.length > 0) {
+          const recentContext = this.deps.messageBuffer
+            .getLastN(convId, CONTEXT_WINDOW)
+            .slice(0, -1)
+            .map((m) => m.text);
+          await this.deps.answerQuestion.execute({
+            question,
+            conversationContext: recentContext,
+            conversationId: convId,
+            replyToMessageId: wireMessage.id,
+          });
         }
         break;
       }

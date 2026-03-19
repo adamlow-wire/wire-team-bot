@@ -22,7 +22,7 @@ INTENTS:
 - reassign_action: User wants to reassign an EXISTING action (ACT-NNNN) to someone else (e.g. "assign ACT-0001 to Mark", "ACT-0002 reassign to Sarah", "give ACT-0003 to John"). Extract entityId (the ACT-NNNN) and newAssignee (the person's name or @mention).
 - create_reminder: User wants a reminder at a future time (e.g. "remind me at 3pm to call John", "reminder in 2 hours check the build")
 - store_knowledge: User wants to store/remember/note a fact (e.g. "remember that Schwarz have 10k users", "note: rate limit is 100/min", "remember this", "store that")
-- retrieve_knowledge: User is asking a QUESTION seeking information the bot may have stored (e.g. "what is our rate limit?", "how do we handle auth?", "what's the onboarding process?", "do we have a decision on X?"). Do NOT use this for statements, answers, or confirmations — "Yes we did", "We decided X", "The meeting is on Friday" are NOT retrieve_knowledge.
+- retrieve_knowledge: User is asking a question that may be answered from team knowledge stored by the bot — facts, procedures, contacts, configurations, past decisions (e.g. "what is our rate limit?", "how do we handle auth?", "who is the Schwarz contact?", "what's the onboarding process?"). Prefer this over general_question for any information-seeking question. Do NOT use for statements, answers, or confirmations — "Yes we did", "We decided X", "The meeting is on Friday" are NOT retrieve_knowledge.
 - list_my_tasks: User wants to see their own tasks (e.g. "my tasks", "what am I working on?", "show my tasks")
 - list_decisions: User wants to see or search decisions (e.g. "list decisions", "what decisions were made about migration?", "decisions about pricing")
 - list_my_actions: User wants to see their own actions (e.g. "my actions", "what do I need to do?", "show actions")
@@ -31,7 +31,7 @@ INTENTS:
 - help: User is asking what the bot does or how to use it (e.g. "what can you do?", "help", "how do I use this?", "what are you?")
 - secret_mode_on: User wants the bot to stop listening (e.g. "secret mode", "go quiet", "stop listening", "this is sensitive", "private conversation", "pause")
 - secret_mode_off: User wants the bot to resume (e.g. "resume", "come back", "you can listen again", "start listening", "unpause")
-- general_question: User is asking a general question not covered by other intents (e.g. "what time is it?", "what facts do you know?", "can you summarise the discussion?", "who should I talk to about X?"). Use this when the message is a question directed at the bot that doesn't fit a more specific intent.
+- general_question: User is asking a general question unlikely to be in the team knowledge base — about the bot itself, current time, summaries of the current discussion, or open-ended questions not fitting any other intent (e.g. "what can you do?", "can you summarise the discussion?", "what time is it?"). For team knowledge questions, prefer retrieve_knowledge.
 - none: General conversation not directed at the bot — reactions, acknowledgements, chit-chat, statements
 
 PAYLOAD FIELDS (include only relevant ones, omit null/undefined):

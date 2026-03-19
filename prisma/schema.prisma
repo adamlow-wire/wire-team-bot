@@ -132,6 +132,10 @@ model KnowledgeEntry {
   updatedAt       DateTime
   deleted         Boolean  @default(false)
   version         Int      @default(1)
+  // Populated asynchronously after create/update via OpenAIEmbeddingAdapter.
+  // Dimension must match LLM_EMBEDDING_DIMS (default 1536 for text-embedding-3-small).
+  // If using a different model (e.g. nomic-embed-text at 768), update the migration SQL.
+  embedding       Unsupported("vector(1536)")?
 }
 
 model ConversationConfig {
