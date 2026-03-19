@@ -16,8 +16,8 @@ services:
       # Embedding model — used for semantic (vector) search in the knowledge base.
       # Defaults to Ollama nomic-embed-text (1536-dim). Set LLM_EMBEDDING_ENABLED=false
       # to disable semantic search and fall back to keyword-only retrieval.
-      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-nomic-embed-text}
-      LLM_EMBEDDING_DIMS: ${LLM_EMBEDDING_DIMS:-1536}
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-bge-m3:567m}
+      LLM_EMBEDDING_DIMS: ${LLM_EMBEDDING_DIMS:-1024}
       LLM_EMBEDDING_ENABLED: ${LLM_EMBEDDING_ENABLED:-true}
     depends_on:
       db:

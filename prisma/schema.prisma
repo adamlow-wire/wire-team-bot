@@ -133,9 +133,10 @@ model KnowledgeEntry {
   deleted         Boolean  @default(false)
   version         Int      @default(1)
   // Populated asynchronously after create/update via OpenAIEmbeddingAdapter.
-  // Dimension must match LLM_EMBEDDING_DIMS (default 1536 for text-embedding-3-small).
-  // If using a different model (e.g. nomic-embed-text at 768), update the migration SQL.
-  embedding       Unsupported("vector(1536)")?
+  // Dimension must match LLM_EMBEDDING_DIMS (default 1024 for bge-m3).
+  // If you switch models, update LLM_EMBEDDING_DIMS and add a migration to
+  // ALTER COLUMN embedding TYPE vector(<new_dims>).
+  embedding       Unsupported("vector(1024)")?
 }
 
 model ConversationConfig {
