@@ -4,6 +4,8 @@ import type { KnowledgeRepository } from "../../src/domain/repositories/Knowledg
 import type { WireOutboundPort } from "../../src/application/ports/WireOutboundPort";
 import type { QualifiedId } from "../../src/domain/ids/QualifiedId";
 
+const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn().mockReturnThis() };
+
 describe("StoreKnowledge", () => {
   const convId: QualifiedId = { id: "conv-1", domain: "wire.com" };
   const authorId: QualifiedId = { id: "user-1", domain: "wire.com" };
@@ -14,7 +16,12 @@ describe("StoreKnowledge", () => {
       create: vi.fn().mockImplementation(async (e) => e),
       update: vi.fn(),
       findById: vi.fn(),
+      findByIds: vi.fn().mockResolvedValue([]),
       query: vi.fn(),
+      incrementRetrievalCount: vi.fn().mockResolvedValue(undefined),
+      updateEmbedding: vi.fn().mockResolvedValue(undefined),
+      findMissingEmbeddings: vi.fn().mockResolvedValue([]),
+      findByEmbedding: vi.fn().mockResolvedValue([]),
     };
     const sent: { text: string }[] = [];
     const wireOutbound: WireOutboundPort = {
@@ -24,7 +31,7 @@ describe("StoreKnowledge", () => {
       sendFile: vi.fn().mockResolvedValue(undefined),
     };
     const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
-    const useCase = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLog);
+    const useCase = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLog, mockLogger);
 
     const result = await useCase.execute({
       conversationId: convId,
