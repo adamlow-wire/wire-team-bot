@@ -4,6 +4,7 @@ import type { KnowledgeRepository } from "../../../domain/repositories/Knowledge
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { Logger } from "../../ports/Logger";
+import type { EmbeddingService } from "../../ports/EmbeddingPort";
 
 export interface StoreKnowledgeInput {
   conversationId: QualifiedId;
@@ -25,6 +26,7 @@ export class StoreKnowledge {
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
     private readonly logger: Logger,
+    private readonly embeddingService?: EmbeddingService,
   ) {}
 
   async execute(input: StoreKnowledgeInput): Promise<KnowledgeEntry> {
@@ -59,6 +61,17 @@ export class StoreKnowledge {
 
     const saved = await this.knowledge.create(entry);
     this.logger.info("Knowledge stored", { knowledgeId: saved.id, conversationId: input.conversationId.id, summary: saved.summary.slice(0, 80) });
+
+    // Fire-and-forget: generate and persist the embedding asynchronously so the
+    // store acknowledgement is sent to the user without waiting for the LLM call.
+    if (this.embeddingService) {
+      const embText = `${saved.summary}. ${saved.detail}`;
+      void this.embeddingService.embed(embText).then((embedding) => {
+        if (embedding) return this.knowledge.updateEmbedding(saved.id, embedding);
+      }).catch((err: unknown) => {
+        this.logger.warn("Failed to generate embedding for knowledge entry", { id: saved.id, err: String(err) });
+      });
+    }
 
     await this.auditLog.append({
       timestamp: now,

@@ -91,11 +91,72 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
     return this.fromRow(row);
   }
 
+  async findByIds(ids: string[]): Promise<KnowledgeEntry[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.knowledgeEntry.findMany({
+      where: { id: { in: ids }, deleted: false },
+    });
+    return rows.map((r) => this.fromRow(r));
+  }
+
   async incrementRetrievalCount(id: string): Promise<void> {
     await this.prisma.knowledgeEntry.update({
       where: { id },
       data: { retrievalCount: { increment: 1 }, lastRetrieved: new Date() },
     });
+  }
+
+  async updateEmbedding(id: string, embedding: number[]): Promise<void> {
+    const vectorLiteral = `[${embedding.map((n) => n.toFixed(8)).join(",")}]`;
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE "KnowledgeEntry" SET embedding = $1::vector WHERE id = $2`,
+      vectorLiteral,
+      id,
+    );
+  }
+
+  async findMissingEmbeddings(limit: number): Promise<Array<{ id: string; summary: string; detail: string }>> {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ id: string; summary: string; detail: string }>>`
+        SELECT id, summary, detail
+        FROM "KnowledgeEntry"
+        WHERE deleted = false AND embedding IS NULL
+        ORDER BY timestamp ASC
+        LIMIT ${limit}
+      `;
+      return rows;
+    } catch {
+      // pgvector not installed — return empty so backfill is a no-op
+      return [];
+    }
+  }
+
+  async findByEmbedding(
+    embedding: number[],
+    conversationIds: QualifiedId[],
+    limit: number,
+  ): Promise<Array<{ id: string; score: number }>> {
+    if (conversationIds.length === 0) return [];
+    try {
+      const vectorLiteral = `[${embedding.map((n) => n.toFixed(8)).join(",")}]`;
+      const convIdValues = conversationIds.map((c) => c.id);
+      const rows = await this.prisma.$queryRawUnsafe<Array<{ id: string; score: number }>>(
+        `SELECT id, (1 - (embedding <=> $1::vector))::float AS score
+         FROM "KnowledgeEntry"
+         WHERE deleted = false
+           AND "conversationId" = ANY($2::text[])
+           AND embedding IS NOT NULL
+         ORDER BY embedding <=> $1::vector
+         LIMIT $3`,
+        vectorLiteral,
+        convIdValues,
+        limit,
+      );
+      return rows.map((r) => ({ id: r.id, score: Number(r.score) }));
+    } catch {
+      // pgvector not installed or column missing — degrade gracefully
+      return [];
+    }
   }
 
   async query(criteria: KnowledgeQuery): Promise<KnowledgeEntry[]> {

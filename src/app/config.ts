@@ -29,6 +29,17 @@ export interface LLMTierConfig {
   enabled: boolean;
 }
 
+export interface EmbeddingConfig {
+  /** OpenAI-compatible model name (e.g. text-embedding-3-small, nomic-embed-text). */
+  model: string;
+  /** Vector dimensions — must match the model output (e.g. 1536 for text-embedding-3-small, 768 for nomic-embed-text). */
+  dims: number;
+  /** Re-uses the capable tier base URL and API key. */
+  baseUrl: string;
+  apiKey: string;
+  enabled: boolean;
+}
+
 export interface Config {
   wire: {
     userEmail: string;
@@ -54,6 +65,7 @@ export interface Config {
     /** Capable tier: reserved for higher-quality reasoning tasks. */
     capable: LLMTierConfig;
   };
+  embedding: EmbeddingConfig;
 }
 
 const REQUIRED_WIRE = [
@@ -111,10 +123,29 @@ export function loadConfig(): Config {
   // Passive tier — falls back to capable config if LLM_PASSIVE_* not set
   const passive = parseLLMTier("LLM_PASSIVE", capable);
 
+  // Embedding — shares base URL and API key with the capable tier by default.
+  // Set LLM_EMBEDDING_MODEL and LLM_EMBEDDING_DIMS if your embedding model differs
+  // from the capable LLM (e.g. text-embedding-3-small vs a chat model).
+  const embeddingModel = process.env.LLM_EMBEDDING_MODEL ?? "text-embedding-3-small";
+  const embeddingDims = Math.max(1, parseInt(process.env.LLM_EMBEDDING_DIMS ?? "1536", 10));
+  const embeddingEnabledEnv = process.env.LLM_EMBEDDING_ENABLED;
+  const embeddingEnabled =
+    embeddingEnabledEnv !== "false" &&
+    (embeddingEnabledEnv === "true" || capable.enabled);
+
+  const embedding: EmbeddingConfig = {
+    model: embeddingModel,
+    dims: embeddingDims,
+    baseUrl: capable.baseUrl,
+    apiKey: capable.apiKey,
+    enabled: embeddingEnabled,
+  };
+
   return {
     wire,
     database,
     app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
     llm: { passive, capable },
+    embedding,
   };
 }
