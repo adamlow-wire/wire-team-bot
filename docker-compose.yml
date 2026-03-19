@@ -13,6 +13,12 @@ services:
       LLM_PASSIVE_MODEL: ${LLM_PASSIVE_MODEL:-gemma3:4b}
       LLM_PASSIVE_PROVIDER: ${LLM_PASSIVE_PROVIDER:-ollama}
       LLM_PASSIVE_ENABLED: ${LLM_PASSIVE_ENABLED:-true}
+      # Embedding model — used for semantic (vector) search in the knowledge base.
+      # Defaults to Ollama nomic-embed-text (1536-dim). Set LLM_EMBEDDING_ENABLED=false
+      # to disable semantic search and fall back to keyword-only retrieval.
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-nomic-embed-text}
+      LLM_EMBEDDING_DIMS: ${LLM_EMBEDDING_DIMS:-1536}
+      LLM_EMBEDDING_ENABLED: ${LLM_EMBEDDING_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -27,7 +33,7 @@ services:
     # No inbound ports exposed — the bot connects outbound to Wire only.
 
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: wire-team-bot-db
     environment:
       POSTGRES_DB: wire_team_bot

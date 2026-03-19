@@ -49,6 +49,7 @@ describe("CreateTaskFromExplicit", () => {
     };
 
     const auditLog = { append: vi.fn().mockResolvedValue(undefined) };
+    const mockLogger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn().mockReturnThis() };
     const useCase = new CreateTaskFromExplicit(
       tasksRepo,
       conversationConfig,
@@ -56,6 +57,7 @@ describe("CreateTaskFromExplicit", () => {
       userResolutionService,
       wireOutbound,
       auditLog,
+      mockLogger,
     );
 
     const result = await useCase.execute({

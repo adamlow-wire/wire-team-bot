@@ -11,6 +11,21 @@ import type { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./PrismaClient";
 import { nextEntityId } from "./PrismaIdGenerator";
 
+/**
+ * Returns true when the error indicates that pgvector is not installed or the
+ * embedding column has not yet been migrated. In those cases callers should
+ * degrade gracefully instead of propagating the error.
+ */
+function isPgvectorMissingError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('type "vector" does not exist') ||
+    msg.includes("could not open extension control file") ||
+    msg.includes("column \"embedding\" does not exist") ||
+    msg.includes("operator does not exist") && msg.includes("vector")
+  );
+}
+
 function verifiedByToJson(arr: KnowledgeVerifiedBy[]): Prisma.InputJsonValue {
   return arr.map((v) => ({
     userId: { id: v.userId.id, domain: v.userId.domain },
@@ -125,9 +140,12 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
         LIMIT ${limit}
       `;
       return rows;
-    } catch {
-      // pgvector not installed — return empty so backfill is a no-op
-      return [];
+    } catch (err) {
+      if (isPgvectorMissingError(err)) {
+        console.warn("[KnowledgeRepository] pgvector extension not available — embedding backfill disabled. Run the migration or install pgvector to enable semantic search.");
+        return [];
+      }
+      throw err;
     }
   }
 
@@ -153,9 +171,12 @@ export class PrismaKnowledgeRepository implements KnowledgeRepository {
         limit,
       );
       return rows.map((r) => ({ id: r.id, score: Number(r.score) }));
-    } catch {
-      // pgvector not installed or column missing — degrade gracefully
-      return [];
+    } catch (err) {
+      if (isPgvectorMissingError(err)) {
+        console.warn("[KnowledgeRepository] pgvector extension not available — semantic search disabled. Falling back to keyword-only search.");
+        return [];
+      }
+      throw err;
     }
   }
 
