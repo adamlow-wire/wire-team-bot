@@ -45,6 +45,7 @@ import { OpenAIEmbeddingAdapter } from "../infrastructure/llm/OpenAIEmbeddingAda
 import { BackfillEmbeddings } from "../application/usecases/knowledge/BackfillEmbeddings";
 import { StoreKnowledge } from "../application/usecases/knowledge/StoreKnowledge";
 import { RetrieveKnowledge } from "../application/usecases/knowledge/RetrieveKnowledge";
+import { ListKnowledge } from "../application/usecases/knowledge/ListKnowledge";
 import { DeleteKnowledge } from "../application/usecases/knowledge/DeleteKnowledge";
 import { UpdateKnowledge } from "../application/usecases/knowledge/UpdateKnowledge";
 import { CheckKnowledgeStaleness } from "../application/usecases/knowledge/CheckKnowledgeStaleness";
@@ -99,6 +100,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const answerQuestion = new AnswerQuestion(generalAnswerAdapter, wireOutbound, searchService, knowledgeRepo);
   const storeKnowledge = new StoreKnowledge(knowledgeRepo, wireOutbound, auditLogRepo, logger, embeddingAdapter);
   const retrieveKnowledge = new RetrieveKnowledge(searchService, knowledgeRepo, wireOutbound);
+  const listKnowledge = new ListKnowledge(knowledgeRepo, wireOutbound);
   const deleteKnowledge = new DeleteKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const updateKnowledge = new UpdateKnowledge(knowledgeRepo, wireOutbound, auditLogRepo);
   const checkKnowledgeStaleness = new CheckKnowledgeStaleness(knowledgeRepo, wireOutbound);
@@ -267,6 +269,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     snoozeReminder,
     storeKnowledge,
     retrieveKnowledge,
+    listKnowledge,
     deleteKnowledge,
     updateKnowledge,
     answerQuestion,

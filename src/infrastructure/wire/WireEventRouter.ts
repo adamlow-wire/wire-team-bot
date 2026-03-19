@@ -27,6 +27,7 @@ import type { CancelReminder } from "../../application/usecases/reminders/Cancel
 import type { SnoozeReminder } from "../../application/usecases/reminders/SnoozeReminder";
 import type { StoreKnowledge } from "../../application/usecases/knowledge/StoreKnowledge";
 import type { RetrieveKnowledge } from "../../application/usecases/knowledge/RetrieveKnowledge";
+import type { ListKnowledge } from "../../application/usecases/knowledge/ListKnowledge";
 import type { DeleteKnowledge } from "../../application/usecases/knowledge/DeleteKnowledge";
 import type { UpdateKnowledge } from "../../application/usecases/knowledge/UpdateKnowledge";
 import type { AnswerQuestion } from "../../application/usecases/general/AnswerQuestion";
@@ -67,7 +68,7 @@ const HELP_TEXT = `**Here's what I can do:**
   List: _"show reminders"_ | Cancel: _"cancel REM-0001"_ | Snooze: _"snooze REM-0001 1 hour"_
 
 **Knowledge** — _"remember that Schwarz have 10k users"_ | say a fact then _"remember this"_
-  Retrieve: _"what is our rate limit?"_ | _"how do we handle auth?"_
+  List: _"knowledge"_ | Retrieve: _"what is our rate limit?"_ | _"how do we handle auth?"_
   Update: _"update KB-0001 new summary text"_ | Forget: _"forget KB-0001"_
 
 I also detect things worth recording automatically from your conversation.
@@ -114,6 +115,7 @@ export interface WireEventRouterDeps {
   // Knowledge
   storeKnowledge: StoreKnowledge;
   retrieveKnowledge: RetrieveKnowledge;
+  listKnowledge: ListKnowledge;
   deleteKnowledge: DeleteKnowledge;
   updateKnowledge: UpdateKnowledge;
   // General
@@ -410,6 +412,10 @@ export class WireEventRouter extends WireEventsHandler {
     }
     if (lowered === "list decisions" || lowered === "decisions" || lowered === "decisions list") {
       await this.deps.listDecisions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
+      return;
+    }
+    if (lowered === "knowledge" || lowered === "list knowledge" || lowered === "my knowledge" || lowered === "show knowledge") {
+      await this.deps.listKnowledge.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
 
