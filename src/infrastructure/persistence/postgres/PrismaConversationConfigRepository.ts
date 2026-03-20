@@ -27,6 +27,7 @@ export class PrismaConversationConfigRepository implements ConversationConfigRep
       secretMode: row.secretMode,
       implicitDetectionEnabled: raw.implicitDetectionEnabled as boolean | undefined,
       sensitivity: raw.sensitivity as ImplicitSensitivity | undefined,
+      purpose: raw.purpose as string | undefined,
       raw: row.raw ?? undefined,
     };
   }
@@ -45,13 +46,21 @@ export class PrismaConversationConfigRepository implements ConversationConfigRep
         timezone: config.timezone,
         locale: config.locale,
         secretMode: config.secretMode ?? false,
-        raw: config.raw as object | null ?? undefined,
+        raw: {
+          implicitDetectionEnabled: config.implicitDetectionEnabled,
+          sensitivity: config.sensitivity,
+          purpose: config.purpose,
+        } as object,
       },
       update: {
         timezone: config.timezone,
         locale: config.locale,
         secretMode: config.secretMode ?? false,
-        raw: config.raw as object | null ?? undefined,
+        raw: {
+          implicitDetectionEnabled: config.implicitDetectionEnabled,
+          sensitivity: config.sensitivity,
+          purpose: config.purpose,
+        } as object,
       },
     });
     return config;

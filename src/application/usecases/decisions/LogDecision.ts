@@ -5,6 +5,7 @@ import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { BufferedMessage } from "../../services/ConversationMessageBuffer";
 import type { Logger } from "../../ports/Logger";
+import type { StoreKnowledge } from "../knowledge/StoreKnowledge";
 
 export interface LogDecisionInput {
   conversationId: QualifiedId;
@@ -23,6 +24,7 @@ export class LogDecision {
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
     private readonly logger: Logger,
+    private readonly storeKnowledge?: StoreKnowledge,
   ) {}
 
   async execute(input: LogDecisionInput): Promise<Decision> {
@@ -82,6 +84,26 @@ export class LogDecision {
       [{ id: "yes", label: "Yes" }, { id: "no", label: "No" }],
       { replyToMessageId: input.rawMessageId },
     );
+
+    // Mirror the decision into the knowledge base so it is discoverable
+    // via semantic search ("what did we decide about X?").
+    if (this.storeKnowledge) {
+      void this.storeKnowledge.execute({
+        conversationId: input.conversationId,
+        authorId: input.authorId,
+        authorName: input.authorName,
+        rawMessageId: input.rawMessageId,
+        rawMessage: input.rawMessage,
+        summary: `[${saved.id}] ${saved.summary}`,
+        detail: input.rawMessage,
+        category: "procedural",
+        confidence: "high",
+        ttlDays: null,
+        silent: true,
+      }).catch((err: unknown) => {
+        this.logger.warn("Failed to mirror decision to KB", { decisionId: saved.id, err: String(err) });
+      });
+    }
 
     return saved;
   }

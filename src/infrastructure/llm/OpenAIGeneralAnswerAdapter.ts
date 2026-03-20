@@ -1,24 +1,42 @@
-import type { GeneralAnswerService, KnowledgeContext } from "../../application/ports/GeneralAnswerPort";
+import type { GeneralAnswerService, KnowledgeContext, ConversationMemberContext } from "../../application/ports/GeneralAnswerPort";
 import type { LLMConfig } from "./LLMConfigAdapter";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are a helpful team collaboration assistant embedded in Wire, a secure messaging platform. \
-Answer questions concisely and helpfully. Keep answers brief and to the point. Use markdown formatting where it aids clarity.
+const BASE_SYSTEM_PROMPT = `You are Jeeves, a discreet and highly capable team assistant embedded in Wire, a secure messaging platform. You speak with the measured, understated confidence of a skilled British butler — helpful, precise, and never flustered. Use concise, clear English. Avoid hollow affirmations ("Certainly!", "Of course!", "Great question!"). Never repeat the question back. Get directly to the point.
 
-When knowledge base entries are provided below, use them as your primary source of truth. \
-Cite the entry ID (e.g. KB-0001) inline when drawing on a specific entry. \
-If the knowledge base entries do not fully cover the question, say so clearly and supplement with general knowledge where appropriate. \
-If no knowledge base entries are provided, answer from general knowledge and make clear you don't have specific team knowledge on this topic.`;
+You assist the team with:
+- Tasks, actions, decisions, and reminders — detected automatically from conversation or recorded explicitly
+- Answering questions using the team's stored knowledge base, citing entry IDs (e.g. KB-0001) inline
+- Secret mode: when activated, you stop listening entirely and nothing is sent to any AI service
+
+When knowledge base entries are provided below, treat them as your primary source of truth. Cite the entry ID inline when drawing on a specific entry. If the entries do not fully cover the question, say so and supplement with general knowledge where appropriate. If no entries are provided, answer from general knowledge and acknowledge you have no specific team knowledge on the topic.
+
+Use markdown where it genuinely aids clarity. Keep answers appropriately brief.`;
 
 export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
   constructor(private readonly config: LLMConfig, private readonly logger: Logger) {}
 
-  async answer(question: string, conversationContext: string[], knowledgeContext: KnowledgeContext[]): Promise<string> {
+  async answer(
+    question: string,
+    conversationContext: string[],
+    knowledgeContext: KnowledgeContext[],
+    members?: ConversationMemberContext[],
+    conversationPurpose?: string,
+  ): Promise<string> {
     if (!this.config.enabled) {
-      return "I'm not able to answer general questions right now — no capable LLM is configured.";
+      return "I'm afraid I'm unable to answer general questions at present — no capable model is configured.";
     }
 
     const url = `${this.config.baseUrl}/chat/completions`;
+
+    const purposeBlock = conversationPurpose
+      ? `## This channel\n${conversationPurpose}\n\n`
+      : "";
+
+    const memberBlock =
+      members && members.length > 0
+        ? `## Conversation members\n${members.map((m) => m.name ? `- ${m.name} (${m.id})` : `- ${m.id}`).join("\n")}\n\n`
+        : "";
 
     const kbBlock =
       knowledgeContext.length > 0
@@ -38,8 +56,8 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
     const body = {
       model: this.config.model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `${kbBlock}${contextBlock}${question}` },
+        { role: "system", content: BASE_SYSTEM_PROMPT },
+        { role: "user", content: `${purposeBlock}${memberBlock}${kbBlock}${contextBlock}${question}` },
       ],
       max_tokens: 800,
       temperature: 0.7,
@@ -59,7 +77,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
     } catch (err) {
       if ((err as Error).name === "AbortError") {
         this.logger.warn("General answer LLM request timed out");
-        return "I wasn't able to respond in time — the request timed out.";
+        return "I'm afraid I wasn't able to respond in time — the request timed out.";
       }
       throw err;
     } finally {
@@ -69,7 +87,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       this.logger.warn("General answer LLM request failed", { status: res.status, err: errText });
-      return "I wasn't able to generate a response right now.";
+      return "I wasn't able to generate a response just now.";
     }
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };

@@ -28,6 +28,7 @@ import type { SnoozeReminder } from "../../application/usecases/reminders/Snooze
 import type { StoreKnowledge } from "../../application/usecases/knowledge/StoreKnowledge";
 import type { RetrieveKnowledge } from "../../application/usecases/knowledge/RetrieveKnowledge";
 import type { ListKnowledge } from "../../application/usecases/knowledge/ListKnowledge";
+import { PendingActionBuffer } from "../../application/services/PendingActionBuffer";
 import type { DeleteKnowledge } from "../../application/usecases/knowledge/DeleteKnowledge";
 import type { UpdateKnowledge } from "../../application/usecases/knowledge/UpdateKnowledge";
 import type { AnswerQuestion } from "../../application/usecases/general/AnswerQuestion";
@@ -45,35 +46,6 @@ import type { ActionStatus } from "../../domain/entities/Action";
 const CONTEXT_WINDOW = 10;
 const IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE = 0.7;
 const INTENT_CONFIDENCE_THRESHOLD = 0.75;
-
-const HELP_TEXT = `**Here's what I can do:**
-
-**Tasks** — _"task: write the spec"_ or _"we need to write the migration doc"_
-  Update: \`TASK-0001 done\` | \`cancelled\` | \`in_progress\`
-  Reassign: _"TASK-0001 reassign to Mark"_
-  Deadline: _"TASK-0001 due Friday"_
-  List mine: _"my tasks"_ | List team: _"team tasks"_
-
-**Decisions** — _"decision: we're going with Postgres"_ or _"we've decided to use option A"_
-  List/search: _"list decisions"_ | _"decisions about pricing"_
-  Revoke: \`revoke DEC-0001\`
-
-**Actions** — _"action: John to follow up on contract"_ or _"John should call Schwarz"_
-  Update: \`ACT-0001 done\` | \`cancelled\`
-  Reassign: _"assign ACT-0001 to Mark"_
-  Deadline: _"ACT-0001 due Friday"_
-  List mine: _"my actions"_ | Team: _"team actions"_ | Overdue: _"overdue actions"_
-
-**Reminders** — _"remind me at 3pm to call John"_ | _"reminder in 2 hours check the build"_
-  List: _"show reminders"_ | Cancel: _"cancel REM-0001"_ | Snooze: _"snooze REM-0001 1 hour"_
-
-**Knowledge** — _"remember that Schwarz have 10k users"_ | say a fact then _"remember this"_
-  List: _"knowledge"_ | Retrieve: _"what is our rate limit?"_ | _"how do we handle auth?"_
-  Update: _"update KB-0001 new summary text"_ | Forget: _"forget KB-0001"_
-
-I also detect things worth recording automatically from your conversation.
-
-Type _"secret mode"_ to pause me. Type _"resume"_ to start listening again.`;
 
 function toCachedMembers(members: ConversationMember[]): CachedMember[] {
   return members.map((m) => ({
@@ -156,6 +128,8 @@ export class WireEventRouter extends WireEventsHandler {
   private readonly lastActivityByConv = new Map<string, number>();
   private readonly knownConvs = new Set<string>();
   private readonly actionedMessageIds = new Map<string, Set<string>>();
+  private readonly awaitingPurpose = new Set<string>();
+  private readonly pendingActionBuffer = new PendingActionBuffer();
 
   constructor(private readonly deps: WireEventRouterDeps) {
     super();
@@ -214,6 +188,15 @@ export class WireEventRouter extends WireEventsHandler {
     log: Logger,
   ): Promise<void> {
     const lowered = text.trim().toLowerCase();
+
+    // Resolve conversation members for LLM context injection
+    const members = this.deps.memberCache.getMembers(convId).map((m) => ({
+      id: m.userId.id,
+      name: m.name,
+    }));
+
+    // Tick the action buffer — every message advances the maturity countdown
+    this.pendingActionBuffer.tick(convId, text);
 
     // ── Secret mode ───────────────────────────────────────────────────────────
     if (this.secretModeConvs.has(convKey)) {
@@ -419,6 +402,58 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
+    // ── Awaiting channel purpose ───────────────────────────────────────────────
+    // If we asked for the channel purpose after joining, capture the next substantive message.
+    if (this.awaitingPurpose.has(convKey)) {
+      const trimmed = text.trim();
+      if (trimmed.length >= 10) {
+        this.awaitingPurpose.delete(convKey);
+        const existing = await this.deps.conversationConfig.get(convId);
+        await this.deps.conversationConfig.upsert({
+          conversationId: convId,
+          timezone: existing?.timezone ?? "UTC",
+          locale: existing?.locale ?? "en",
+          secretMode: existing?.secretMode ?? false,
+          implicitDetectionEnabled: existing?.implicitDetectionEnabled,
+          sensitivity: existing?.sensitivity,
+          purpose: trimmed,
+          raw: existing?.raw ?? null,
+        });
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          "Thank you — I'll bear that in mind.",
+          { replyToMessageId: wireMessage.id },
+        );
+        return;
+      }
+    }
+
+    // ── Matured action processing ──────────────────────────────────────────────
+    // Actions buffered from ambient speech are promoted to real action items once
+    // enough messages have passed without resolution signals.
+    const maturedActions = this.pendingActionBuffer.popMatured(convId);
+    for (const action of maturedActions) {
+      void (async () => {
+        try {
+          await this.deps.createActionFromExplicit.execute({
+            conversationId: convId, creatorId: action.authorId, authorName: "",
+            rawMessageId: action.rawMessageId, rawMessage: action.rawMessage,
+            description: action.description,
+            assigneeReference: action.assigneeReference,
+            deadlineText: action.deadlineText,
+          });
+          if (!action.assigneeReference && !action.deadlineText) {
+            await this.deps.wireOutbound.sendPlainText(
+              convId,
+              `I noted an action from the conversation — _"${action.description.slice(0, 120)}"_. Would anyone like to take ownership, or shall I set a deadline?`,
+            );
+          }
+        } catch (err: unknown) {
+          log.warn("Failed to store matured action", { err: String(err) });
+        }
+      })();
+    }
+
     // ── Single-pass intelligence: intent + capture + shouldRespond ────────────
     const recentAll = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW);
     const previousMessageText = recentAll.length >= 2 ? recentAll[recentAll.length - 2].text : undefined;
@@ -437,6 +472,8 @@ export class WireEventRouter extends WireEventsHandler {
         recentMessages: recentFiltered.map((m) => ({ senderId: m.senderId, text: m.text, messageId: m.messageId })),
         sensitivity,
         conversationId: convId,
+        members,
+        conversationPurpose: config?.purpose,
       });
     } catch (err) {
       log.warn("Conversation intelligence failed", { err: String(err) });
@@ -468,7 +505,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     if (intelligence.confidence >= INTENT_CONFIDENCE_THRESHOLD && intelligence.intent !== "none") {
-      await this.routeIntent(intelligence, wireMessage, convId, sender, convKey, previousMessageText, log);
+      await this.routeIntent(intelligence, wireMessage, convId, sender, convKey, previousMessageText, log, members, config?.purpose);
       // Mark creating intents as actioned to prevent passive re-capture
       const creatingIntents = new Set([
         "create_task", "update_task", "update_task_status", "create_decision", "supersede_decision",
@@ -490,7 +527,18 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     if (botMentioned) {
-      await this.deps.wireOutbound.sendPlainText(convId, HELP_TEXT, { replyToMessageId: wireMessage.id });
+      const recentContext = this.deps.messageBuffer
+        .getLastN(convId, CONTEXT_WINDOW)
+        .slice(0, -1)
+        .map((m) => m.text);
+      await this.deps.answerQuestion.execute({
+        question: text,
+        conversationContext: recentContext,
+        conversationId: convId,
+        replyToMessageId: wireMessage.id,
+        members,
+        conversationPurpose: config?.purpose,
+      });
     }
   }
 
@@ -506,22 +554,31 @@ export class WireEventRouter extends WireEventsHandler {
     this.markActioned(convKey, wireMessage.id);
 
     if (capture.type === "knowledge") {
-      log.debug("Presenting knowledge capture prompt", { confidence: capture.confidence });
-      this.pendingKnowledge.set(convKey, {
-        summary: capture.summary,
-        detail: capture.detail || capture.summary,
-        authorId: sender,
-        rawMessageId: wireMessage.id,
-        rawMessage: wireMessage.text ?? "",
+      // Facts are stored silently — no confirmation prompt needed.
+      log.debug("Silently storing knowledge capture", { confidence: capture.confidence });
+      void this.deps.storeKnowledge.execute({
+        conversationId: convId, authorId: sender, authorName: "",
+        rawMessageId: wireMessage.id, rawMessage: wireMessage.text ?? "",
+        summary: capture.summary, detail: capture.detail || capture.summary,
+        silent: true,
+      }).catch((err: unknown) => {
+        log.warn("Failed to silently store knowledge capture", { err: String(err) });
       });
-      await this.deps.wireOutbound.sendCompositePrompt(
-        convId,
-        `Shall I remember that?\n> ${display}`,
-        [{ id: "confirm_knowledge", label: "Confirm" }, { id: "dismiss", label: "Dismiss" }],
-        { replyToMessageId: wireMessage.id },
-      );
-    } else if (capture.type === "action" || capture.type === "task" || capture.type === "decision") {
-      const label = capture.type === "action" ? "an action" : capture.type === "task" ? "a task" : "a decision";
+    } else if (capture.type === "action") {
+      // Actions detected in ambient speech are buffered — we watch the conversation
+      // for a few messages before committing, giving the team time to resolve it naturally.
+      log.debug("Buffering action capture for delayed observation", { confidence: capture.confidence });
+      this.pendingActionBuffer.add(convId, {
+        description: capture.detail || capture.summary,
+        authorId: sender,
+        rawMessage: wireMessage.text ?? "",
+        rawMessageId: wireMessage.id,
+        capturedAt: new Date(),
+        assigneeReference: typeof capture.payload.assignee === "string" ? capture.payload.assignee : undefined,
+        deadlineText: typeof capture.payload.deadline === "string" ? capture.payload.deadline : undefined,
+      });
+    } else if (capture.type === "task" || capture.type === "decision") {
+      const label = capture.type === "task" ? "a task" : "a decision";
       log.debug(`Presenting ${capture.type} capture prompt`, { confidence: capture.confidence });
       this.pendingCaptures.set(convKey, {
         type: capture.type,
@@ -548,6 +605,8 @@ export class WireEventRouter extends WireEventsHandler {
     convKey: string,
     previousMessageText: string | undefined,
     log: Logger,
+    members: Array<{ id: string; name?: string }>,
+    conversationPurpose: string | undefined,
   ): Promise<void> {
     const p = result.payload;
     const rawText = wireMessage.text ?? "";
@@ -717,6 +776,8 @@ export class WireEventRouter extends WireEventsHandler {
             conversationContext: recentContext,
             conversationId: convId,
             replyToMessageId: wireMessage.id,
+            members,
+            conversationPurpose,
           });
         }
         break;
@@ -773,12 +834,26 @@ export class WireEventRouter extends WireEventsHandler {
           conversationContext: recentContext,
           conversationId: convId,
           replyToMessageId: wireMessage.id,
+          members,
+          conversationPurpose,
         });
         break;
       }
-      case "help":
-        await this.deps.wireOutbound.sendPlainText(convId, HELP_TEXT, { replyToMessageId: wireMessage.id });
+      case "help": {
+        const recentContext = this.deps.messageBuffer
+          .getLastN(convId, CONTEXT_WINDOW)
+          .slice(0, -1)
+          .map((m) => m.text);
+        await this.deps.answerQuestion.execute({
+          question: rawText,
+          conversationContext: recentContext,
+          conversationId: convId,
+          replyToMessageId: wireMessage.id,
+          members,
+          conversationPurpose,
+        });
         break;
+      }
       case "secret_mode_on":
         await this.enterSecretMode(convId, convKey, wireMessage.id, sender, log);
         break;
@@ -797,7 +872,7 @@ export class WireEventRouter extends WireEventsHandler {
     await this.deps.conversationConfig.upsert({
       conversationId: convId, timezone: existing?.timezone ?? "UTC", locale: existing?.locale ?? "en",
       secretMode: true, implicitDetectionEnabled: existing?.implicitDetectionEnabled,
-      sensitivity: existing?.sensitivity, raw: existing?.raw ?? null,
+      sensitivity: existing?.sensitivity, purpose: existing?.purpose, raw: existing?.raw ?? null,
     });
     this.scheduleInactivityCheck(convId, convKey);
     await this.deps.wireOutbound.sendPlainText(convId,
@@ -815,7 +890,7 @@ export class WireEventRouter extends WireEventsHandler {
     await this.deps.conversationConfig.upsert({
       conversationId: convId, timezone: existing?.timezone ?? "UTC", locale: existing?.locale ?? "en",
       secretMode: false, implicitDetectionEnabled: existing?.implicitDetectionEnabled,
-      sensitivity: existing?.sensitivity, raw: existing?.raw ?? null,
+      sensitivity: existing?.sensitivity, purpose: existing?.purpose, raw: existing?.raw ?? null,
     });
     await this.deps.wireOutbound.sendPlainText(convId, "I'm listening again.", { replyToMessageId });
   }
@@ -935,11 +1010,27 @@ export class WireEventRouter extends WireEventsHandler {
 
   async onAppAddedToConversation(conversation: Conversation, members: ConversationMember[]): Promise<void> {
     const convId = { id: conversation.id, domain: conversation.domain } as QualifiedId;
+    const convKey = `${convId.id}@${convId.domain}`;
     this.deps.memberCache.setMembers(convId, toCachedMembers(members));
+
+    // Ask for channel purpose if we don't already have it stored.
+    try {
+      const config = await this.deps.conversationConfig.get(convId);
+      if (!config?.purpose) {
+        this.awaitingPurpose.add(convKey);
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
+        );
+      }
+    } catch {
+      // Non-fatal — proceed without purpose
+    }
   }
 
   async onConversationDeleted(conversationId: QualifiedId): Promise<void> {
     this.deps.memberCache.clearConversation(conversationId as QualifiedId);
+    this.pendingActionBuffer.clearConversation(conversationId as QualifiedId);
   }
 
   async onUserJoinedConversation(conversationId: QualifiedId, members: ConversationMember[]): Promise<void> {

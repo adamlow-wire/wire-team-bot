@@ -375,18 +375,15 @@ describe("WireEventRouter contract: button action handling", () => {
     });
     const router = new WireEventRouter(deps);
 
-    // Trigger capture to register a pending entry
+    // Knowledge captures are now stored silently — no confirmation prompt
     await router.onTextMessageReceived(makeMessage("we decided retries are capped at 3"));
-    expect(deps.wireOutbound.sendCompositePrompt).toHaveBeenCalled();
-
-    // Confirm the candidate
-    await router.onButtonActionReceived(makeButtonAction("confirm_knowledge"));
+    expect(deps.wireOutbound.sendCompositePrompt).not.toHaveBeenCalled();
     expect(deps.storeKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: "Retries are capped at 3" }),
+      expect.objectContaining({ summary: "Retries are capped at 3", silent: true }),
     );
   });
 
-  it("dismiss clears the pending knowledge entry without storing", async () => {
+  it("dismiss button does not affect knowledge — knowledge is stored silently on detection", async () => {
     const deps = makeDeps({
       conversationIntelligence: {
         analyze: vi.fn().mockResolvedValue({
@@ -400,9 +397,10 @@ describe("WireEventRouter contract: button action handling", () => {
     const router = new WireEventRouter(deps);
 
     await router.onTextMessageReceived(makeMessage("retries capped"));
-    await router.onButtonActionReceived(makeButtonAction("dismiss"));
-
-    expect(deps.storeKnowledge.execute).not.toHaveBeenCalled();
+    // Knowledge was stored immediately; dismiss has nothing to clear
+    expect(deps.storeKnowledge.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: "Retries capped", silent: true }),
+    );
   });
 
   it("'yes' button sends guidance message", async () => {

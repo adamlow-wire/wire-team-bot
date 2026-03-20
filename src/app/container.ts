@@ -123,7 +123,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const updateTaskDeadline = new UpdateTaskDeadline(tasksRepo, dateTimeService, wireOutbound, auditLogRepo);
   const listMyTasks = new ListMyTasks(tasksRepo, wireOutbound);
   const listTeamTasks = new ListTeamTasks(tasksRepo, wireOutbound);
-  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger);
+  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger, storeKnowledge);
   const searchDecisions = new SearchDecisions(decisionsRepo, wireOutbound);
   const listDecisions = new ListDecisions(decisionsRepo, wireOutbound);
   const supersedeDecision = new SupersedeDecision(decisionsRepo, wireOutbound, auditLogRepo);

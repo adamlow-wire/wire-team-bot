@@ -12,6 +12,8 @@ export interface ConversationConfig {
   sensitivity?: ImplicitSensitivity;
   /** When true the bot is in secret mode: it does not process or record anything. */
   secretMode?: boolean;
+  /** What this channel/conversation is used for — injected into every LLM prompt. */
+  purpose?: string;
   // Raw JSON blob matching section 9 config, kept flexible in domain.
   raw: unknown;
 }
