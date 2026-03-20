@@ -1,4 +1,4 @@
-import type { GeneralAnswerService, KnowledgeContext } from "../../ports/GeneralAnswerPort";
+import type { GeneralAnswerService, KnowledgeContext, ConversationMemberContext } from "../../ports/GeneralAnswerPort";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { SearchService } from "../../../domain/services/SearchService";
@@ -9,6 +9,8 @@ export interface AnswerQuestionInput {
   conversationContext: string[];
   conversationId: QualifiedId;
   replyToMessageId: string;
+  members?: ConversationMemberContext[];
+  conversationPurpose?: string;
 }
 
 export class AnswerQuestion {
@@ -38,6 +40,8 @@ export class AnswerQuestion {
       input.question,
       input.conversationContext,
       knowledgeContext,
+      input.members,
+      input.conversationPurpose,
     );
 
     await this.wireOutbound.sendPlainText(input.conversationId, answer, {

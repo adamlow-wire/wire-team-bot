@@ -6,6 +6,17 @@ export interface KnowledgeContext {
   updatedAt: Date;
 }
 
+export interface ConversationMemberContext {
+  id: string;
+  name?: string;
+}
+
 export interface GeneralAnswerService {
-  answer(question: string, conversationContext: string[], knowledgeContext: KnowledgeContext[]): Promise<string>;
+  answer(
+    question: string,
+    conversationContext: string[],
+    knowledgeContext: KnowledgeContext[],
+    members?: ConversationMemberContext[],
+    conversationPurpose?: string,
+  ): Promise<string>;
 }

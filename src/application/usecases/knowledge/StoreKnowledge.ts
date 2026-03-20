@@ -18,6 +18,8 @@ export interface StoreKnowledgeInput {
   confidence?: KnowledgeConfidence;
   tags?: string[];
   ttlDays?: number | null;
+  /** When true, skip outbound confirmation messages — used for internal mirroring (e.g. decisions). */
+  silent?: boolean;
 }
 
 export class StoreKnowledge {
@@ -83,13 +85,15 @@ export class StoreKnowledge {
       details: { summary: saved.summary },
     });
 
-    const tagPart = saved.tags.length > 0 ? ` — _tags: ${saved.tags.join(", ")}_` : "";
-    await this.wireOutbound.sendPlainText(
-      input.conversationId,
-      `Stored as **${saved.id}**: ${saved.summary}${tagPart}`,
-      { replyToMessageId: input.rawMessageId },
-    );
-    await this.wireOutbound.sendReaction(input.conversationId, input.rawMessageId, "✓");
+    if (!input.silent) {
+      const tagPart = saved.tags.length > 0 ? ` — _tags: ${saved.tags.join(", ")}_` : "";
+      await this.wireOutbound.sendPlainText(
+        input.conversationId,
+        `Stored as **${saved.id}**: ${saved.summary}${tagPart}`,
+        { replyToMessageId: input.rawMessageId },
+      );
+      await this.wireOutbound.sendReaction(input.conversationId, input.rawMessageId, "✓");
+    }
 
     return saved;
   }

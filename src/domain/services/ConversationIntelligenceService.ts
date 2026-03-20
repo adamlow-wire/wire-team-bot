@@ -23,6 +23,10 @@ export interface ConversationIntelligenceInput {
   recentMessages: { senderId: { id: string; domain: string }; text: string; messageId: string }[];
   sensitivity: "strict" | "normal" | "aggressive";
   conversationId: { id: string; domain: string };
+  /** Members present in this conversation. Names may be absent if the SDK does not provide them. */
+  members?: Array<{ id: string; name?: string }>;
+  /** What this channel/conversation is for, set during onboarding. */
+  conversationPurpose?: string;
 }
 
 export interface ConversationIntelligenceService {
