@@ -48,19 +48,30 @@ The spec recommends Drizzle ORM. The existing codebase uses Prisma throughout. M
 ORMs would require rewriting every repository, all migrations, and all test fixtures for no user-
 facing gain. **Decision: keep Prisma.** Mark Drizzle as post-MVP technical debt if desired.
 
-### 3.2 Queue: BullMQ + Redis (new) alongside InProcessScheduler (keep)
+### 3.2 Queue: In-Memory Async Queue (no Redis at MVP)
 
-The spec requires BullMQ with Redis for the processing queue (job TTL 60s for transient
-message jobs). The existing `InProcessScheduler` handles scheduled jobs (daily summary,
-staleness check, etc.) well and is kept. BullMQ is added specifically for the Tier 1→Tier 2
-processing pipeline where jobs must be transient and time-bounded.
+The spec recommends BullMQ + Redis for the processing queue (TTL 60s). **We are not
+adding Redis at MVP.** Reasons:
 
-**Redis is a new dependency**: add to `docker-compose.yml` alongside Postgres.
+- The 60s TTL exists to prevent message content lingering in Redis. With no Redis, content
+  only ever lives in Node.js process memory during processing — strictly better for
+  extract-and-forget.
+- Processing surviving a restart is explicitly undesirable (the sliding window is designed to be
+  lost on restart).
+- BullMQ is only necessary for horizontal scaling (multiple bot instances) or volumes that
+  exceed single-process capacity — neither applies at MVP.
+
+**Replacement**: a lightweight `InMemoryProcessingQueue` (concurrency-limited async worker
+pool, max 5 concurrent extractions) handles all Tier 1→Tier 2→Tier 3 jobs. Message content
+is GC'd naturally when the processing function returns.
 
 ```
-InProcessScheduler  → daily_summary, weekly_summary, staleness_check (durable)
-BullMQ (Redis)      → classify, extract (transient, 60s TTL, fire-and-forget)
+InProcessScheduler         → daily_summary, weekly_summary, staleness_check (durable)
+InMemoryProcessingQueue    → classify, extract, embed (transient, in-process)
 ```
+
+**Redis / BullMQ**: deferred to the horizontal-scaling milestone. When added, only the
+`InMemoryProcessingQueue` is replaced; everything else is unchanged.
 
 ### 3.3 Embedding Dimensions
 
@@ -462,8 +473,8 @@ JEEVES_CONTRADICTION_THRESHOLD=0.78   # Cosine similarity for contradiction dete
 # Embedding
 JEEVES_EMBED_DIMS=1024                 # Adjust to 1536 if qwen3-embedding:4b confirms that
 
-# Redis (BullMQ)
-REDIS_URL=redis://redis:6379
+# Redis / BullMQ — deferred to horizontal-scaling milestone
+# REDIS_URL=redis://redis:6379
 
 # Existing vars kept for backwards compat (aliased in LLMConfigAdapter)
 LLM_PASSIVE_BASE_URL=  # -> JEEVES_LLM_BASE_URL
@@ -548,8 +559,7 @@ interface RetrievalScope {
 
 | File | Role |
 |---|---|
-| `infrastructure/queue/BullMQProcessor.ts` | BullMQ worker: dequeues message jobs, runs Tier1→Tier2→Tier3 |
-| `infrastructure/queue/MessageQueue.ts` | BullMQ queue interface (enqueue, TTL 60s) |
+| `infrastructure/queue/InMemoryProcessingQueue.ts` | Concurrency-limited async worker pool (max 5); replaces BullMQ at MVP |
 | `infrastructure/llm/OpenAIClassifierAdapter.ts` | Tier 1 (refactor from ConversationIntelligenceAdapter) |
 | `infrastructure/llm/OpenAIExtractionAdapter.ts` | Tier 2 — uses sliding window + channel context |
 | `infrastructure/llm/OpenAISummarisationAdapter.ts` | Daily/weekly/on-demand summaries |
@@ -652,12 +662,12 @@ Entity graph + topic tagging already supports this. Not in MVP scope.
 ```
 WireEventRouter          — thin Wire SDK event handler
     │
-    ├─► onTextMessage    → check channel state → if ACTIVE: enqueue to BullMQ; if @mention: CommandRouter
+    ├─► onTextMessage    → check channel state → if ACTIVE: enqueue to InMemoryProcessingQueue; if @mention: CommandRouter
     ├─► onButtonAction   → CommandRouter (existing button handling)
     ├─► onMemberJoined   → update memberCache; if 0 members → ask for channel purpose
     └─► onConversationDeleted → clear SlidingWindow for channel
 
-BullMQProcessor (worker)
+InMemoryProcessingQueue (worker)
     │
     ├─► SlidingWindowBuffer.push(message)
     ├─► Tier1ClassifyStep  → ClassifierPort
@@ -707,8 +717,8 @@ Exit criteria: pause/resume/secure commands work. Messages in paused/secure chan
 verifiably discarded. Channel context persists across restarts. Zero raw message content in DB.
 
 Tasks:
-1. Add Redis to `docker-compose.yml`; add `bullmq` dependency
-2. Implement `SlidingWindowBuffer` (in-memory ring buffer, max 30 msgs, flush on secure)
+1. Implement `SlidingWindowBuffer` (in-memory ring buffer, max 30 msgs, flush on secure)
+2. Implement `InMemoryProcessingQueue` (concurrency-limited async pool, max 5 workers)
 3. Prisma migrations: create `channel_config`; migrate from `ConversationConfig`; drop `ConversationConfig`
 4. Prisma migration: add `organisation_id` to all tables; backfill; drop `rawMessage` columns; add `source_ref` nullable
 5. Prisma migration: create `entities`, `entity_relationships`, `embeddings`, `conversation_signals`, `summaries`
@@ -727,7 +737,7 @@ Exit criteria: decisions and actions extracted with >0.7 precision. Entity graph
 message content in DB (verified by audit query: `SELECT count(*) FROM decisions WHERE source_ref IS NULL`).
 
 Tasks:
-1. Implement `BullMQProcessor` and `MessageQueue`
+1. Wire `InMemoryProcessingQueue` into message handler (already implemented in Phase 1)
 2. Implement `OpenAIClassifierAdapter` (Tier 1; returns `categories[]`, `is_high_signal`, `entities[]`)
 3. Implement `OpenAIExtractionAdapter` (Tier 2; sliding window context injection; NEVER verbatim)
 4. Wire `SlidingWindowBuffer` into message flow; flush on SECURE
@@ -820,7 +830,7 @@ Tasks:
 | Risk | Mitigation |
 |---|---|
 | ORM stays Prisma while spec says Drizzle | Documented as intentional decision; schema is the contract, not the ORM |
-| Redis is new operational dependency | Add healthcheck to docker-compose; BullMQ falls back gracefully on connection loss |
+| Redis deferred — InMemoryProcessingQueue has no durability | Acceptable: processing is intentionally transient. If the process restarts, the sliding window is lost anyway (desired). Add Redis when horizontal scaling is needed. |
 | `qwen3-embedding:4b` dims unknown | Confirm dims before Phase 2 migration; `JEEVES_EMBED_DIMS` env var makes it configurable |
 | Tier 2 extraction too slow for real-time | BullMQ queue decouples it from message receipt; users see no lag; extraction is async |
 | Entity dedup false merges at 0.92 | Same-type filter narrows candidates; `aliases` array provides additional name-based matching |
