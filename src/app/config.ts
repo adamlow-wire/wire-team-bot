@@ -40,6 +40,41 @@ export interface EmbeddingConfig {
   enabled: boolean;
 }
 
+/**
+ * Per-slot model config for the v2.0 seven-slot LLM architecture.
+ * Each slot has a primary model and a fallback; all share one provider endpoint.
+ */
+export interface JeevesModelSlot {
+  model: string;
+  fallback: string;
+}
+
+export interface JeevesLLMConfig {
+  /** Shared provider endpoint for all model slots. */
+  baseUrl: string;
+  apiKey: string;
+  timeoutMs: number;
+  /** Cosine similarity above which query escalates to complexSynthesis model. */
+  complexityThreshold: number;
+  /** Minimum LLM extraction confidence to persist a result. */
+  extractConfidenceMin: number;
+  /** Cosine similarity threshold for entity deduplication. */
+  entityDedupThreshold: number;
+  /** Cosine similarity threshold for decision contradiction detection. */
+  contradictionThreshold: number;
+  /** Vector dimensions for embedding model output. */
+  embedDims: number;
+  slots: {
+    classify: JeevesModelSlot;
+    extract: JeevesModelSlot;
+    embed: JeevesModelSlot;
+    summarise: JeevesModelSlot;
+    queryAnalyse: JeevesModelSlot;
+    respond: JeevesModelSlot;
+    complexSynthesis: JeevesModelSlot;
+  };
+}
+
 export interface Config {
   wire: {
     userEmail: string;
@@ -64,6 +99,8 @@ export interface Config {
     passive: LLMTierConfig;
     /** Capable tier: reserved for higher-quality reasoning tasks. */
     capable: LLMTierConfig;
+    /** v2.0 seven-slot config (JEEVES_* env vars). Coexists with legacy tiers during Phase 1. */
+    jeeves: JeevesLLMConfig;
   };
   embedding: EmbeddingConfig;
 }
@@ -93,6 +130,52 @@ function parseLLMTier(prefix: string, fallback?: LLMTierConfig): LLMTierConfig {
     enabledEnv !== "false" &&
     (enabledEnv === "true" || apiKey.length > 0 || baseUrl.includes("localhost") || baseUrl.includes("ollama"));
   return { provider, baseUrl, apiKey, model, enabled };
+}
+
+function envStr(name: string, defaultVal: string): string {
+  return process.env[name] ?? defaultVal;
+}
+
+function envFloat(name: string, defaultVal: number): number {
+  const raw = process.env[name];
+  if (!raw) return defaultVal;
+  const n = parseFloat(raw);
+  return isNaN(n) ? defaultVal : n;
+}
+
+function envInt(name: string, defaultVal: number): number {
+  const raw = process.env[name];
+  if (!raw) return defaultVal;
+  const n = parseInt(raw, 10);
+  return isNaN(n) ? defaultVal : n;
+}
+
+function loadJeevesConfig(capable: LLMTierConfig): JeevesLLMConfig {
+  const baseUrl = envStr("JEEVES_LLM_BASE_URL", capable.baseUrl);
+  const apiKey = envStr("JEEVES_LLM_API_KEY", capable.apiKey);
+  const slot = (modelEnv: string, fallbackEnv: string, defaultModel: string, defaultFallback: string): JeevesModelSlot => ({
+    model: envStr(modelEnv, defaultModel),
+    fallback: envStr(fallbackEnv, defaultFallback),
+  });
+  return {
+    baseUrl,
+    apiKey,
+    timeoutMs: envInt("JEEVES_LLM_TIMEOUT_MS", 60_000),
+    complexityThreshold: envFloat("JEEVES_COMPLEXITY_THRESHOLD", 0.7),
+    extractConfidenceMin: envFloat("JEEVES_EXTRACT_CONFIDENCE_MIN", 0.6),
+    entityDedupThreshold: envFloat("JEEVES_ENTITY_DEDUP_THRESHOLD", 0.92),
+    contradictionThreshold: envFloat("JEEVES_CONTRADICTION_THRESHOLD", 0.78),
+    embedDims: envInt("JEEVES_EMBED_DIMS", 1024),
+    slots: {
+      classify:        slot("JEEVES_MODEL_CLASSIFY",       "JEEVES_FALLBACK_CLASSIFY",       "qwen3-2507:4b",        "qwen3:0.6b"),
+      extract:         slot("JEEVES_MODEL_EXTRACT",        "JEEVES_FALLBACK_EXTRACT",        "qwen3-2507:30b-a3b",   "qwen3:14b"),
+      embed:           slot("JEEVES_MODEL_EMBED",          "JEEVES_FALLBACK_EMBED",          "qwen3-embedding:4b",   "bge-m3:567m"),
+      summarise:       slot("JEEVES_MODEL_SUMMARISE",      "JEEVES_FALLBACK_SUMMARISE",      "qwen3-2507:30b-a3b",   "qwen3:14b"),
+      queryAnalyse:    slot("JEEVES_MODEL_QUERY_ANALYSE",  "JEEVES_FALLBACK_QUERY_ANALYSE",  "granite4-tiny-h:7b",   "qwen3-2507:4b"),
+      respond:         slot("JEEVES_MODEL_RESPOND",        "JEEVES_FALLBACK_RESPOND",        "qwen3-2507:30b-a3b",   "qwen3:14b"),
+      complexSynthesis:slot("JEEVES_MODEL_COMPLEX",        "JEEVES_FALLBACK_COMPLEX",        "qwen3-next:80b",       "qwen3-2507:30b-a3b"),
+    },
+  };
 }
 
 export function loadConfig(): Config {
@@ -141,11 +224,13 @@ export function loadConfig(): Config {
     enabled: embeddingEnabled,
   };
 
+  const jeeves = loadJeevesConfig(capable);
+
   return {
     wire,
     database,
     app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
-    llm: { passive, capable },
+    llm: { passive, capable, jeeves },
     embedding,
   };
 }
