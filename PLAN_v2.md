@@ -33,10 +33,18 @@ similarity, entity-graph traversal, and rolling summaries.
 |---|---|---|
 | 1 | Entity deduplication | Pre-insert pgvector similarity ≥ 0.92 within same org + entity type. Match → update existing; no match → insert. |
 | 2 | Entity visibility | Cross-conversation within org. Wire domain = orgId at MVP. 1:1 DM = personal scope (user's entities across org). |
-| 3 | rawMessage retention | Drop existing rawMessage content in Phase 1 migration. No re-processing of historical data. |
+| 3 | rawMessage retention | Drop existing rawMessage content in Phase 1 migration. Populate `source_ref` from `rawMessageId` before dropping. |
 | 4 | Contradiction threshold | Two-step: similarity ≥ 0.78 → classify model asks "does B contradict A?". Configurable via `JEEVES_CONTRADICTION_THRESHOLD` (default 0.78). Suppress if both decisions < 30 min old. |
 | 5 | Summaries | Daily at 08:00 per channel timezone, weekly Monday 08:00. No hourly scheduled summaries. "Catch me up" = on-demand (last 24 h or since user's last message). |
-| 6 | ORM | **Keep Prisma** for now. Spec recommends Drizzle but migration from Prisma is high-cost and low-value at this stage. Drizzle migration is a post-MVP item. |
+| 6 | ORM | **Keep Prisma**. Spec recommends Drizzle but migration is high-cost, low-value at this stage. Post-MVP item. |
+| 7 | Tasks vs Actions | **Task entity is retired.** Tasks and actions are the same concept. Existing `Task` use-cases and DB table are removed. Existing task records migrated to `actions` or dropped (dev data). |
+| 8 | Button action UX | **Remove specific implementations** (confirm_task, confirm_decision, confirm_action, confirm_knowledge). **Retain the infrastructure** — `CompositeMessage` + button sending + `onButtonActionReceived` handler pattern — for future use cases like reassignment confirmation. |
+| 9 | Phase 1 scope | Split into **Phase 1a** (schema additions + channel state machine, no drops) and **Phase 1b** (schema drops, Task retirement, KnowledgeEntry removal, test updates). Existing tests must pass at end of 1a. |
+| 10 | `channel_id` convention | `"{conversationId}@{conversationDom}"` — matches Wire SDK `QualifiedId`. New tables use this single field. Existing tables keep split fields; a `toChannelId(q: QualifiedId)` helper converts at boundaries. |
+| 11 | Personal mode detection | `members.filter(m => m.userId.id !== botUserId.id).length === 1`. Bot IS included in the Wire member list. Updated on `onUserJoinedConversation` / `onUserLeftConversation` events. |
+| 12 | Embedding dims | Configurable via `JEEVES_EMBED_DIMS`. On startup, if embedding enabled, make one test embed call and assert vector length matches config. If mismatch: log error, disable embedding, continue. Default 1024 (bge-m3 fallback). **Confirmed dims for qwen3-embedding:4b must be set before running Phase 2 migration.** |
+| 13 | Queue size cap | `InMemoryProcessingQueue` max depth 500 messages (sentences-short, negligible memory). On overflow: drop oldest unprocessed job, emit a warning log. |
+| 14 | Extraction pipeline errors | If Tier 2 extraction fails (timeout, malformed JSON): log error, write a `ConversationSignal` with `signal_type: 'discussion'`, confidence 0.3, as a fallback record. Never crash the pipeline. |
 
 ---
 
@@ -100,8 +108,10 @@ migration to change dimension if `qwen3-embedding:4b` confirms 1536.**
 | `WireEventRouter` | Heavily refactor | Split into pipeline + command router |
 | `OpenAIEmbeddingAdapter` | Keep | Retarget to `qwen3-embedding:4b` |
 | `InProcessScheduler` | Keep | Add daily_summary, weekly_summary, staleness_check |
+| `OverdueNudgeService` | Remove in Phase 1b | Replaced by staleness detection scheduled job (Phase 4, §12.1). Query logic reused. |
+| `WeeklyDigestService` | Remove in Phase 1b | Replaced by `GenerateSummary` use-case + weekly scheduler (Phase 4). Logic reused. |
 | `ConversationMessageBuffer` | Replace | Becomes the spec's `SlidingWindow` ring buffer |
-| `PendingActionBuffer` | Remove | Replaced by Tier 2 extraction + BullMQ pipeline |
+| `PendingActionBuffer` | Remove | Replaced by `InMemoryProcessingQueue` + Tier 2 extraction |
 | `InMemoryMemberCache` | Keep | Still needed for member injection + access scoping |
 | `WireOutboundAdapter` | Keep | No changes |
 | Existing use-case classes (tasks, reminders) | Keep, adapt | Source ref changes |
@@ -158,7 +168,7 @@ new tables use `channel_id`.
 Every message in ACTIVE channel
     │
     ▼
-[BullMQ job, TTL 60s]
+[InMemoryProcessingQueue job]
     │
     ▼
 Tier 1: Classify  ── qwen3-2507:4b ──►  {categories[], confidence, entities[], is_high_signal}
@@ -425,16 +435,47 @@ Keep `rawMessageId` → rename to first entry in `source_ref.wire_msg_ids`.
 
 ### 6.10 Migration Order
 
-1. Add Redis to docker-compose
-2. Add `organisation_id` (nullable) to all existing tables; backfill from `conversationDom`
-3. Create new `channel_config` table; migrate data from `ConversationConfig`; drop `ConversationConfig`
-4. Drop `rawMessage` columns; add `source_ref JSONB` (nullable initially)
-5. Add `rationale`, `decided_by`, `decided_at`, `confidence`, `extraction_model` to decisions
-6. Add `staleness_at`, `last_status_check`, `confidence`, `related_decision` to actions
+Phase 1a migrations (additive — no drops):
+1. Add `organisation_id TEXT` (nullable) to all existing tables; backfill from `conversationDom`
+2. Add `source_ref JSONB` (nullable) to existing tables; populate from `rawMessageId`
+3. Add `decided_at TIMESTAMPTZ` to `Decision`; backfill from `timestamp`
+4. Add `rationale`, `decided_by TEXT[]`, `confidence REAL`, `extraction_model TEXT` to `Decision`
+5. Add `staleness_at`, `last_status_check`, `confidence`, `related_decision` to `Action`
+6. Create `channel_config`; migrate data from `ConversationConfig` (keep `ConversationConfig` for now)
 7. Create `entities`, `entity_relationships`, `embeddings`, `conversation_signals`, `summaries`
-8. Drop `KnowledgeEntry` (after confirming no foreign key dependencies)
-9. Make `organisation_id` NOT NULL across all tables
-10. Add HNSW index on `embeddings.embedding`
+
+Phase 1b migrations (drops — run after all use-cases removed):
+8. Drop `rawMessage` columns from all tables
+9. Migrate `Task` records → `actions`; drop `Task` table
+10. Drop `ConversationConfig` table
+11. Drop `KnowledgeEntry` table
+12. Make `organisation_id` NOT NULL across all tables
+13. Add HNSW index on `embeddings.embedding`
+
+### 6.11 Migration Data Notes
+
+**`source_ref` backfill** (Phase 1a migration):
+```sql
+-- Populate source_ref from rawMessageId on all tables that have it
+UPDATE decisions
+SET source_ref = jsonb_build_object(
+  'wire_msg_ids', jsonb_build_array("rawMessageId"),
+  'timestamp_range', jsonb_build_object('start', timestamp, 'end', timestamp)
+)
+WHERE source_ref IS NULL AND "rawMessageId" IS NOT NULL;
+-- Repeat for actions, tasks (before task drop)
+```
+
+**`decided_at` backfill** (Phase 1a migration on `Decision`):
+```sql
+ALTER TABLE "Decision" ADD COLUMN IF NOT EXISTS decided_at TIMESTAMPTZ;
+UPDATE "Decision" SET decided_at = timestamp WHERE decided_at IS NULL;
+```
+
+**`channel_name` storage**: On `onAppAddedToConversation(conversation, members)`, upsert a
+`channel_config` row with `channel_name = conversation.name`, `joined_at = now()`. On
+`onUserJoinedConversation` / `onUserLeftConversation`, update the `memberCache` in memory and
+re-compute the `personal_mode` flag (is_1_to_1) and store it on `channel_config`.
 
 ---
 
@@ -711,25 +752,58 @@ CommandRouter
 
 ## 15. Implementation Phases (Spec §10 Aligned)
 
-### Phase 1 — Foundation: Listener + Channel Controls (Weeks 1–2)
+### Phase 1a — Foundation: Schema Additions + Channel State Machine (Weeks 1–2)
 
-Exit criteria: pause/resume/secure commands work. Messages in paused/secure channels
-verifiably discarded. Channel context persists across restarts. Zero raw message content in DB.
+Exit criteria: pause/resume/secure commands work in Jeeves voice. All existing tests still
+pass. **No schema drops yet** — `ConversationConfig`, `rawMessage` columns, `KnowledgeEntry`,
+and `Task` table all still present at end of 1a.
 
 Tasks:
-1. Implement `SlidingWindowBuffer` (in-memory ring buffer, max 30 msgs, flush on secure)
-2. Implement `InMemoryProcessingQueue` (concurrency-limited async pool, max 5 workers)
-3. Prisma migrations: create `channel_config`; migrate from `ConversationConfig`; drop `ConversationConfig`
-4. Prisma migration: add `organisation_id` to all tables; backfill; drop `rawMessage` columns; add `source_ref` nullable
-5. Prisma migration: create `entities`, `entity_relationships`, `embeddings`, `conversation_signals`, `summaries`
-6. Prisma migration: drop `KnowledgeEntry`
-7. Implement `PrismaChannelConfigRepository` (state machine, context, secure_ranges, joined_at)
-8. Refactor `WireEventRouter`: check channel state before any processing
-9. Implement pause/resume/secure commands with correct Jeeves-voice responses
-10. Implement `SetContextCommand` (purpose, type, tags, stakeholders, related)
-11. Implement `LLMClientFactory` with fallback chain support
-12. Extend `LLMConfigAdapter` for `JEEVES_*` env vars (keep `LLM_PASSIVE_*` / `LLM_CAPABLE_*` as aliases)
-13. All existing tests still pass
+1. Implement `SlidingWindowBuffer` (in-memory ring buffer, max 30 msgs, flush on SECURE)
+2. Implement `InMemoryProcessingQueue` (concurrency-limited async pool, max 5 concurrent, max depth 500, drop-oldest on overflow)
+3. Prisma migration: add `organisation_id TEXT` (nullable) to all existing tables; backfill from `conversationDom`
+4. Prisma migration: add `source_ref JSONB` (nullable) to existing tables; populate from `rawMessageId`; keep `rawMessageId` for now
+5. Prisma migration: add `decided_at TIMESTAMPTZ` to `Decision`; backfill from `timestamp` column
+6. Prisma migration: add `rationale`, `decided_by TEXT[]`, `confidence REAL` to `Decision`
+7. Prisma migration: add `staleness_at`, `last_status_check`, `confidence`, `related_decision` to `Action`
+8. Prisma migration: create new tables `channel_config`, `entities`, `entity_relationships`, `embeddings`, `conversation_signals`, `summaries`
+9. Prisma migration: migrate data from `ConversationConfig` → `channel_config` (including `channel_name` from `onAppAddedToConversation` events going forward); do NOT drop `ConversationConfig` yet
+10. Implement `PrismaChannelConfigRepository` (state machine, context, secure_ranges, joined_at, timezone)
+11. Handle `onAppAddedToConversation`: persist `channel_name` and `joined_at` in `channel_config`
+12. Handle `onUserJoinedConversation` / `onUserLeftConversation`: update `memberCache`; re-evaluate personal mode flag
+13. Refactor `WireEventRouter`: check `channel_config.state` before any processing
+14. Implement pause/resume/secure commands with correct Jeeves-voice responses; flush `SlidingWindowBuffer` on SECURE
+15. Implement `SetContextCommand` (purpose, type, tags, stakeholders, related)
+16. Implement `LLMClientFactory` with per-slot model config and fallback chain support
+17. Extend `LLMConfigAdapter` for `JEEVES_*` env vars; keep `LLM_PASSIVE_*` / `LLM_CAPABLE_*` as read-only aliases
+18. All existing tests still pass
+
+Gate: `ConversationConfig` still exists; existing test suite green.
+
+### Phase 1b — Schema Drops + Task Retirement + KnowledgeEntry Removal (Weeks 2–3)
+
+Exit criteria: no references to `rawMessage`, `Task`/`KnowledgeEntry` tables in application
+code. All tests updated and passing.
+
+Tasks:
+1. Prisma migration: drop `rawMessage` columns from all tables (source_ref already populated in 1a)
+2. Prisma migration: migrate `Task` records to `actions` (map fields; dev data may be dropped)
+3. Prisma migration: drop `Task` table and `ConversationConfig` table
+4. Prisma migration: drop `KnowledgeEntry` table (no FK dependencies after use-case deletion)
+5. Prisma migration: make `organisation_id` NOT NULL across all tables
+6. Prisma migration: add HNSW index on `embeddings.embedding`
+7. Delete all 7 `src/application/usecases/knowledge/` use-case files
+8. Delete `PrismaKnowledgeRepository.ts`; replace `PrismaConversationConfigRepository.ts` with `PrismaChannelConfigRepository.ts` (already written in 1a)
+9. Delete all 7 Task use-case files (`CreateTaskFromExplicit`, `UpdateTask`, etc.)
+10. Delete `PrismaTaskRepository.ts`
+11. Remove specific button handler implementations (confirm_task, confirm_decision, confirm_action, confirm_knowledge); retain `CompositeMessage` + `onButtonActionReceived` dispatch infrastructure
+12. Remove `OverdueNudgeService` (replaced by staleness detection scheduled job in Phase 4)
+13. Remove `WeeklyDigestService` (replaced by `GenerateSummary` use-case + scheduler in Phase 4)
+14. Remove `PendingActionBuffer` (replaced by `InMemoryProcessingQueue` + Tier 2 extraction)
+15. Update `container.ts`: wire all new components; remove retired ones
+16. Update all contract tests; remove tests for deleted use-cases; add test for PAUSED/SECURE discard
+
+Gate: no references to `rawMessage`/`Task`/`KnowledgeEntry`/`ConversationConfig` in source; full test suite green.
 
 ### Phase 2 — Intelligence: Classification + Extraction Pipeline (Weeks 3–4)
 
@@ -797,7 +871,7 @@ Tasks:
 | `src/infrastructure/llm/StubConversationIntelligenceAdapter.ts` | Rename → `StubClassifierAdapter.ts` |
 | `src/infrastructure/llm/StubImplicitDetectionAdapter.ts` | Delete |
 | `src/infrastructure/search/PrismaSearchAdapter.ts` | Rename → `SemanticRetrievalPath.ts`; retarget to `embeddings` table |
-| `src/application/services/PendingActionBuffer.ts` | Delete (replaced by BullMQ + Tier 2 extraction) |
+| `src/application/services/PendingActionBuffer.ts` | Delete (replaced by `InMemoryProcessingQueue` + Tier 2 extraction) |
 | `src/application/usecases/knowledge/` (all 7 files) | Delete (KnowledgeEntry dropped; entity queries via `PrismaEntityRepository`) |
 | `src/infrastructure/persistence/postgres/PrismaKnowledgeRepository.ts` | Delete |
 | `src/infrastructure/persistence/postgres/PrismaConversationConfigRepository.ts` | Replace with `PrismaChannelConfigRepository.ts` |
