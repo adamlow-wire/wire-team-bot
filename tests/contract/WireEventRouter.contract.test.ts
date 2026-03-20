@@ -55,6 +55,8 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
     updateKnowledge: { execute: vi.fn().mockResolvedValue(null) },
     // General
     answerQuestion: { execute: vi.fn().mockResolvedValue(undefined) },
+    // Infrastructure identity
+    botUserId: { id: "bot-1", domain: "wire.com" },
     // Intelligence (default: no intent, bot stays silent)
     conversationIntelligence: {
       analyze: vi.fn().mockResolvedValue({ intent: "none", payload: {}, confidence: 0, shouldRespond: false }),
@@ -72,6 +74,8 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
       removeMembers: vi.fn(), clearConversation: vi.fn(),
     },
     conversationConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn() },
+    channelConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn() },
+    slidingWindow: { push: vi.fn(), getWindow: vi.fn().mockReturnValue([]), flush: vi.fn(), clear: vi.fn() },
     scheduler: { schedule: vi.fn(), cancel: vi.fn(), setHandler: vi.fn() },
     secretModeInactivityMs: 600_000,
     ...overrides,

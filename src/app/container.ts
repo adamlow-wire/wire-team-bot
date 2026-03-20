@@ -12,6 +12,8 @@ import { PrismaDecisionRepository } from "../infrastructure/persistence/postgres
 import { PrismaActionRepository } from "../infrastructure/persistence/postgres/PrismaActionRepository";
 import { PrismaReminderRepository } from "../infrastructure/persistence/postgres/PrismaReminderRepository";
 import { PrismaConversationConfigRepository } from "../infrastructure/persistence/postgres/PrismaConversationConfigRepository";
+import { PrismaChannelConfigRepository } from "../infrastructure/persistence/postgres/PrismaChannelConfigRepository";
+import { SlidingWindowBuffer } from "../infrastructure/buffer/SlidingWindowBuffer";
 import { PrismaKnowledgeRepository } from "../infrastructure/persistence/postgres/PrismaKnowledgeRepository";
 import { PrismaAuditLogRepository } from "../infrastructure/persistence/postgres/PrismaAuditLogRepository";
 import { PrismaSearchAdapter } from "../infrastructure/search/PrismaSearchAdapter";
@@ -79,6 +81,8 @@ export function createContainer(config: Config, logger: Logger): Container {
   const remindersRepo = new PrismaReminderRepository();
   const knowledgeRepo = new PrismaKnowledgeRepository();
   const conversationConfigRepo = new PrismaConversationConfigRepository();
+  const channelConfigRepo = new PrismaChannelConfigRepository();
+  const slidingWindow = new SlidingWindowBuffer();
   const auditLogRepo = new PrismaAuditLogRepository();
   const systemActorId = { id: config.wire.userId, domain: config.wire.userDomain };
   const dateTimeService = new SystemDateTimeService();
@@ -281,6 +285,8 @@ export function createContainer(config: Config, logger: Logger): Container {
     scheduler,
     secretModeInactivityMs: config.app.secretModeInactivityMs,
     conversationConfig: conversationConfigRepo,
+    channelConfig: channelConfigRepo,
+    slidingWindow,
   });
   handlerRef.current = router as HandlerManagerRef["current"];
 
