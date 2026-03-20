@@ -3,6 +3,7 @@
 > Branch: `v2.0`
 > Based on: MVP Architecture v2.0 specification
 > Current baseline: all v1 tests passing (63 pass, 7 skip), committed and pushed on `main`
+> Open questions resolved: 2026-03-20
 
 ---
 
@@ -18,15 +19,35 @@ that separates fast classification from deep extraction, embedding, and schedule
 Retrieval moves from keyword + semantic search to a **multi-path engine** that combines structured
 SQL, pgvector similarity, entity-graph traversal, and rolling conversation summaries.
 
+Two major additions over the initial spec:
+- **Organisation scope**: entities are cross-conversation within an organisation boundary; the
+  Wire domain string (`wire.com`, `staging.zinfra.io`, etc.) is used as the org identifier at
+  MVP — no management UI required.
+- **1:1 personal scope**: when Jeeves is in a DM with a single user, queries are scoped to that
+  user's personal entities (tasks assigned to them, actions they own, decisions they participated
+  in) across all organisation channels.
+
 ---
 
-## 2. What is Preserved from v1
+## 2. Resolved Design Decisions
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Entity deduplication | Pre-insert pgvector similarity check ≥ 0.92 within same org + entity type. Match → update existing; no match → insert new. |
+| 2 | Entity visibility | Cross-conversation within org. Wire domain = orgId at MVP. 1:1 DM with bot = personal scope (user's entities across org). |
+| 3 | rawMessage retention | Drop existing rawMessage content on Phase 1 migration. No re-processing of historical data. |
+| 4 | Contradiction threshold | Two-step: similarity ≥ 0.78 flags "same topic", then classify model asks "does B contradict A?". Threshold configurable via `DECISION_CONTRADICTION_THRESHOLD` env var (default 0.78). Suppress if both decisions < 30 min old. |
+| 5 | Summaries | Daily morning summary at 08:00 per channel timezone. Weekly summary Monday 08:00. No hourly summaries. "Catch me up" / "what did I miss" triggers on-demand generation for the past 24 h (or since user's last message in channel). |
+
+---
+
+## 3. What is Preserved from v1
 
 | Component | Status | Notes |
 |---|---|---|
 | Hexagonal architecture (ports/adapters) | Keep | Clean layering is good; domain stays stable |
-| `Task`, `Action`, `Decision`, `Reminder` domain entities | Keep with changes | Remove `rawMessage` fields |
-| `KnowledgeEntry` | Restructure | Merge into new `entities` model; keep `embedding` column |
+| `Task`, `Action`, `Decision`, `Reminder` domain entities | Keep with changes | Remove `rawMessage` fields; add `organisationId` |
+| `KnowledgeEntry` | Restructure | Merged into `Entity` model; keep `embedding` column |
 | Prisma + PostgreSQL + pgvector | Keep | Add new tables via migration |
 | `WireEventRouter` | Heavily refactor | Split into pipeline stages |
 | `OpenAIEmbeddingAdapter` | Keep | Wire to new `embed` model slot |
@@ -40,9 +61,31 @@ SQL, pgvector similarity, entity-graph traversal, and rolling conversation summa
 
 ---
 
-## 3. What Changes Fundamentally
+## 4. What Changes Fundamentally
 
-### 3.1 Extract-and-Forget
+### 4.1 Organisation Scope
+
+Every entity, conversation config, and signal is now scoped to an **organisation**. At MVP the
+`organisationId` is simply the Wire domain of the bot's own account (e.g. `wire.com`). No
+management UI or provisioning flow is needed — the bot reads its own domain from config on
+startup and stamps every write with it.
+
+```
+orgId = config.wire.userDomain   // e.g. "wire.com"
+```
+
+Retrieval always filters by `organisationId` before returning results. This is the primary
+data isolation boundary.
+
+**1:1 DM scope**: when a conversation has exactly two members (the bot + one human), Jeeves
+operates in *personal mode*:
+- "My tasks", "my actions", "my reminders" queries are scoped across the entire org, filtered
+  to `assigneeId = userId OR authorId = userId`
+- The member is told: "I can see everything assigned to you across all your organisation's
+  channels."
+- This is detected by checking `memberCache.getMembers(convId).length === 2` at runtime.
+
+### 4.2 Extract-and-Forget
 
 **Every** `rawMessage` field is removed from the DB schema. Currently stored in:
 - `Task.rawMessage` / `Task.rawMessageId`
@@ -53,12 +96,10 @@ SQL, pgvector similarity, entity-graph traversal, and rolling conversation summa
 
 These fields are replaced by a per-message processing pipeline that extracts structured data
 first, then drops the text. The `rawMessageId` (Wire message ID) is retained as a reference key
-for threading/reactions but the content string is not stored.
+for threading/reactions but the content string is not stored. Existing `rawMessage` content in
+the DB is dropped on the Phase 1 migration — no re-processing of historical data.
 
-**Migration strategy**: new nullable columns first → populate from extraction → drop old columns.
-The existing data will lose `rawMessage` content (acceptable — this is a dev/MVP app).
-
-### 3.2 Processing Pipeline (Four Tiers)
+### 4.3 Processing Pipeline (Four Tiers)
 
 ```
 Every message
@@ -66,215 +107,255 @@ Every message
     ▼
 Tier 1: Classify  ──── fast model (classify) ────►  intent + signal score
     │
-    ├─ low signal ──────────────────────────────►  tick ConversationSignal only
+    ├─ low signal ──────────────────────────────►  write ConversationSignal only
     │
     └─ high signal
            │
            ▼
        Tier 2: Extract  ─── deep model (extract) ──►  structured entities
            │
-           ├─► Task / Action / Decision / KnowledgeEntry (no raw text)
-           └─► entity_relationships upserted
+           ├─► Entity rows (dedup via similarity ≥ 0.92)
+           └─► EntityRelationship rows upserted
                    │
                    ▼
-               Tier 3: Embed  ─── embedding model ──►  pgvector column updated
+               Tier 3: Embed  ─── embedding model ──►  entity.embedding updated (async)
                    │
                    ▼
                Scheduled:
-               Tier 4: Summarise ─── summarise model ─►  summaries table
+               Tier 4: Summarise ─── summarise model ─►  ConversationSummary row
 ```
 
-Current architecture has Tier 1 + Tier 3 (embedding runs async on KnowledgeEntry only).
-v2.0 adds Tier 2 (deep extract) and Tier 4 (scheduled summarisation) and extends Tier 3 to all
-embeddable entities.
+### 4.4 Seven LLM Model Slots
 
-### 3.3 Seven LLM Model Slots
-
-| Slot | Env Var | Purpose | Current equivalent |
+| Slot | Env Var prefix | Purpose | Current equivalent |
 |---|---|---|---|
-| `classify` | `LLM_CLASSIFY_*` | Tier 1: every message, fast | `passiveLlm` |
-| `extract` | `LLM_EXTRACT_*` | Tier 2: deep extraction | `capableLlm` (implicit) |
-| `embed` | `LLM_EMBED_*` | pgvector embeddings | `embeddingConfig` |
-| `summarise` | `LLM_SUMMARISE_*` | Rolling summaries | new |
-| `queryAnalyse` | `LLM_QUERY_ANALYSE_*` | Query decomposition before retrieval | new |
-| `respond` | `LLM_RESPOND_*` | Final Jeeves response | `capableLlm` |
-| `complexSynthesis` | `LLM_COMPLEX_*` | Multi-source synthesis | new (optional) |
+| `classify` | `LLM_CLASSIFY_` | Tier 1: every message, fast | `LLM_PASSIVE_` |
+| `extract` | `LLM_EXTRACT_` | Tier 2: deep extraction | `LLM_CAPABLE_` (implicit) |
+| `embed` | `LLM_EMBED_` | pgvector embeddings | `LLM_EMBEDDING_` |
+| `summarise` | `LLM_SUMMARISE_` | Daily/weekly/on-demand summaries | new |
+| `queryAnalyse` | `LLM_QUERY_ANALYSE_` | Query decomposition before retrieval | new |
+| `respond` | `LLM_RESPOND_` | Final Jeeves answer | `LLM_CAPABLE_` |
+| `complexSynthesis` | `LLM_COMPLEX_` | Multi-source synthesis (optional) | new |
 
-Each slot has `baseUrl`, `apiKey`, `model`, `enabled` config. Slots fall back: if a slot is
-disabled, it uses the next capable slot up. `complexSynthesis` defaults to `respond`.
+Each slot has `BASE_URL`, `API_KEY`, `MODEL`, `ENABLED` suffixes. Disabled slots fall back:
+`complexSynthesis` → `respond`; `queryAnalyse` → `respond`; `summarise` → `respond`;
+`extract` → `respond`; `classify` → `extract`. `embed` has no fallback (embeddings optional).
 
-### 3.4 Channel Context (Enriched)
+Existing `LLM_PASSIVE_*` / `LLM_CAPABLE_*` vars kept as aliases during transition.
 
-`ConversationConfig.raw` currently holds an unstructured JSON blob with `purpose`. This is
-replaced by a proper set of columns:
+### 4.5 Channel Context (Enriched)
 
-```
-contextType:    enum(general | project | incident | decision | standup | customer)
-purpose:        string (existing, promoted)
-tags:           string[]
-stakeholders:   string[] (Wire user IDs)
-relatedChannels: string[] (conversation IDs)
-```
+`ConversationConfig.raw` blob replaced by proper typed columns:
 
-New commands:
-- `@Jeeves context: <description>` — set/update purpose
-- `@Jeeves context type: project` — set type
-- `@Jeeves context tags: alpha, mobile` — set tags
-- `@Jeeves context stakeholders: @alice @bob` — set stakeholders
-- `@Jeeves status` — Jeeves reports channel context + recent activity
+| Column | Type | Description |
+|---|---|---|
+| `purpose` | `TEXT` | What the channel is for (existing, promoted from raw) |
+| `contextType` | `TEXT` | `general \| project \| incident \| decision \| standup \| customer` |
+| `tags` | `TEXT[]` | e.g. `['alpha', 'mobile', 'q1']` |
+| `stakeholders` | `TEXT[]` | Wire user IDs of key people |
+| `relatedChannels` | `TEXT[]` | Conversation IDs of related channels |
+| `organisationId` | `TEXT` | Wire domain, set on first write |
 
-### 3.5 Entity Graph
+### 4.6 Entity Graph
 
-Two new tables: `Entity` and `EntityRelationship`.
-
-`Entity` is a superset of the current `KnowledgeEntry` — it represents any durable piece of
-team knowledge: tasks, actions, decisions, raw facts, people, projects. Typed by `entityType`.
+`Entity` is a single unified node table — it supersedes `KnowledgeEntry` and mirrors the
+structured fields of tasks/actions/decisions for graph connectivity.
 
 `EntityRelationship` stores typed directed edges:
-- `owns` — person owns a task/action
-- `depends_on` — task depends on another
-- `works_on` — person works on a project
-- `blocks` — entity blocks another
-- `reports_to` — org hierarchy
+- `owns` — person owns a task or action
+- `depends_on` — task/action depends on another
+- `works_on` — person works on a project or entity
+- `blocks` — one entity blocks another
+- `reports_to` — org hierarchy edge
 
-The entity graph feeds the **graph traversal retrieval path**: given a starting entity, the
-retrieval engine can walk relationships to return contextually related facts.
+Retrieval can BFS-traverse these edges: "what is blocking the Alpha deployment?" walks
+`blocks` edges from the Alpha project entity.
 
-### 3.6 Rolling Summaries + "Catch Me Up"
+**Deduplication**: before inserting any new `Entity`, the extraction pipeline runs a pgvector
+search for existing entities with the same `entityType` and `organisationId` where cosine
+similarity ≥ 0.92. If found, it updates `summary`, `detail`, `updatedAt` and increments
+`mentionCount`; no new row is created. Threshold configurable via `ENTITY_DEDUP_THRESHOLD`
+(default 0.92).
 
-New `ConversationSummary` table with `granularity` (hourly/daily/weekly) and `content`.
-Scheduled jobs generate summaries from `ConversationSignal` records using the `summarise` model.
+### 4.7 Summaries
 
-New commands:
-- `@Jeeves catch me up` / `@Jeeves what did I miss` — returns the most recent summary
-- Summaries are injected into LLM context automatically for better temporal awareness
+Scheduled jobs fire per active channel (any channel where a message was received in the past 7
+days):
 
-### 3.7 Multi-Path Retrieval
+| Job | Schedule | Default |
+|---|---|---|
+| `daily_summary` | 08:00 per channel timezone | On |
+| `weekly_summary` | Monday 08:00 per channel timezone | On |
 
-The current `PrismaSearchAdapter` (keyword + semantic RRF) becomes one path inside a
-`MultiPathRetrievalEngine`:
+"Catch me up" / "what did I miss" (and variants) triggers an on-demand summary covering:
+- Last 24 hours of `ConversationSignal` records for the channel, OR
+- Since the requesting user's last message in the channel — whichever is shorter
+
+The summary is generated by the `summarise` model and posted to the channel immediately.
+
+### 4.8 Multi-Path Retrieval
 
 ```
-Query
-  │
-  ├─ Path 1: Structured SQL  (tasks/actions/decisions filtered by status/date/assignee)
-  ├─ Path 2: Semantic pgvector  (existing HNSW + RRF hybrid)
-  ├─ Path 3: Entity graph  (BFS from named entities in the query)
-  └─ Path 4: Summary  (inject relevant rolling summary if temporal question)
-       │
-       ▼
-  RRF merge → top-k results → inject into LLM prompt
+Query → QueryAnalyser
+              │
+              ├─ Path 1: Structured SQL   (Task/Action/Decision filtered by status/date/person)
+              ├─ Path 2: Semantic pgvector (HNSW on entities.embedding, existing hybrid RRF)
+              ├─ Path 3: Entity graph     (BFS from named entities in query)
+              └─ Path 4: Summary          (inject daily summary if temporal/catch-up query)
+                   │
+                   ▼
+              RRF merge → top-k results → injected into LLM prompt
 ```
 
-### 3.8 Decision Contradiction Detection
+### 4.9 Decision Contradiction Detection
 
-After each new decision is logged, run a semantic similarity check against recent decisions in
-the same conversation. If cosine similarity > 0.85, flag to the user:
-> "I notice this may contradict decision DEC-0003 from 12 March. Shall I mark it superseded?"
+After each new decision is confirmed:
+1. pgvector similarity search against decisions in the same org from the past 90 days
+2. Any decision with cosine similarity ≥ `DECISION_CONTRADICTION_THRESHOLD` (default 0.78) is
+   a "same topic" candidate
+3. For each candidate, the `classify` model is asked: "Does decision B contradict decision A?
+   Answer yes or no." (single cheap call per candidate, typically ≤ 2 candidates)
+4. If any candidate returns "yes" and both decisions are > 30 minutes old, Jeeves posts:
+   > "I notice this may contradict decision DEC-0003 from 12 March (*We will use REST APIs*).
+   > Shall I mark it superseded?"
+5. Button actions: `supersede_decision` (existing) or `dismiss_contradiction`
 
 ---
 
-## 4. Database Schema Changes
+## 5. Database Schema Changes
 
-### 4.1 New Tables
+### 5.1 New Tables
 
-```sql
--- Lightweight signal per message (replaces rawMessage storage)
-CREATE TABLE conversation_signals (
-  id              TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL,
-  conversation_dom TEXT NOT NULL,
-  message_id      TEXT NOT NULL,
-  author_id       TEXT NOT NULL,
-  author_dom      TEXT NOT NULL,
-  signal_type     TEXT NOT NULL, -- 'task_mention','decision','action','question','general'
-  confidence      REAL NOT NULL,
-  timestamp       TIMESTAMP NOT NULL,
-  processed       BOOLEAN DEFAULT FALSE
-);
+```prisma
+model ConversationSignal {
+  id              String   @id
+  organisationId  String
+  conversationId  String
+  conversationDom String
+  messageId       String
+  authorId        String
+  authorDom       String
+  signalType      String   // 'task_mention','decision','action','question','general'
+  confidence      Float
+  timestamp       DateTime
+  processed       Boolean  @default(false)
 
--- Entity graph nodes
-CREATE TABLE entities (
-  id              TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL,
-  conversation_dom TEXT NOT NULL,
-  entity_type     TEXT NOT NULL, -- 'task','action','decision','fact','person','project'
-  label           TEXT NOT NULL, -- human-readable short name
-  summary         TEXT NOT NULL,
-  detail          TEXT,
-  category        TEXT,
-  confidence      TEXT,
-  tags            TEXT[],
-  ttl_days        INT,
-  embedding       vector(1024),
-  created_at      TIMESTAMP NOT NULL,
-  updated_at      TIMESTAMP NOT NULL,
-  deleted         BOOLEAN DEFAULT FALSE
-);
+  @@index([conversationId, conversationDom, timestamp])
+  @@index([organisationId, timestamp])
+  @@map("conversation_signals")
+}
 
--- Entity graph edges
-CREATE TABLE entity_relationships (
-  id              TEXT PRIMARY KEY,
-  from_entity_id  TEXT NOT NULL REFERENCES entities(id),
-  to_entity_id    TEXT NOT NULL REFERENCES entities(id),
-  relation_type   TEXT NOT NULL, -- 'owns','depends_on','works_on','blocks','reports_to'
-  weight          REAL DEFAULT 1.0,
-  created_at      TIMESTAMP NOT NULL
-);
+model Entity {
+  id              String   @id
+  organisationId  String
+  sourceConvId    String   // conversation where first extracted
+  sourceConvDom   String
+  entityType      String   // 'task','action','decision','fact','person','project'
+  label           String   // short human-readable name
+  summary         String
+  detail          String?
+  category        String?
+  confidence      String?
+  tags            String[]
+  ttlDays         Int?
+  mentionCount    Int      @default(1)
+  embedding       Unsupported("vector(1024)")?
+  createdAt       DateTime
+  updatedAt       DateTime
+  deleted         Boolean  @default(false)
 
--- Rolling conversation summaries
-CREATE TABLE conversation_summaries (
-  id              TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL,
-  conversation_dom TEXT NOT NULL,
-  granularity     TEXT NOT NULL, -- 'hourly','daily','weekly'
-  period_start    TIMESTAMP NOT NULL,
-  period_end      TIMESTAMP NOT NULL,
-  content         TEXT NOT NULL,
-  created_at      TIMESTAMP NOT NULL
-);
+  fromRelationships EntityRelationship[] @relation("from")
+  toRelationships   EntityRelationship[] @relation("to")
+
+  @@index([organisationId, entityType])
+  @@map("entities")
+}
+
+model EntityRelationship {
+  id             String   @id
+  fromEntityId   String
+  toEntityId     String
+  relationType   String   // 'owns','depends_on','works_on','blocks','reports_to'
+  weight         Float    @default(1.0)
+  createdAt      DateTime
+
+  from Entity @relation("from", fields: [fromEntityId], references: [id])
+  to   Entity @relation("to",   fields: [toEntityId],   references: [id])
+
+  @@index([fromEntityId])
+  @@index([toEntityId])
+  @@map("entity_relationships")
+}
+
+model ConversationSummary {
+  id              String   @id
+  organisationId  String
+  conversationId  String
+  conversationDom String
+  granularity     String   // 'daily','weekly','on_demand'
+  periodStart     DateTime
+  periodEnd       DateTime
+  content         String
+  createdAt       DateTime
+
+  @@index([conversationId, conversationDom, granularity, periodStart])
+  @@map("conversation_summaries")
+}
 ```
 
-### 4.2 Modified Tables
+### 5.2 Modified Tables
 
-**All entity tables** (`Task`, `Action`, `Decision`, `KnowledgeEntry`, `Reminder`):
-- Remove: `rawMessage TEXT`, `rawMessage TEXT`
-- Keep: `rawMessageId TEXT` (Wire message ID for threading)
+**`Task`, `Action`, `Decision`, `KnowledgeEntry`, `Reminder`**:
+- Add: `organisationId TEXT NOT NULL DEFAULT ''` (populated on migration from `conversationDom`)
+- Remove: `rawMessage TEXT` (dropped immediately on Phase 1 migration)
+- Keep: `rawMessageId TEXT`
 
 **`ConversationConfig`**:
-- Add: `contextType TEXT`, `tags TEXT[]`, `stakeholders TEXT[]`, `relatedChannels TEXT[]`
-- Keep: `purpose` (currently in `raw` blob — promote to first-class column)
-- Remove: `raw JSON` (after migrating existing purpose values)
+- Add: `organisationId TEXT`, `contextType TEXT`, `tags TEXT[]`, `stakeholders TEXT[]`,
+  `relatedChannels TEXT[]`, `purpose TEXT`
+- Migrate: `raw.purpose` → `purpose` column in Phase 1 migration script
+- Remove: `raw JSON` (after migration complete)
 
-### 4.3 Migration Order
+**`AuditLog`**:
+- Add: `organisationId TEXT`
 
-1. Add new tables (`conversation_signals`, `entities`, `entity_relationships`, `conversation_summaries`)
-2. Add nullable columns to `ConversationConfig` (contextType, tags, stakeholders, relatedChannels, purpose as column)
-3. Migrate `raw.purpose` → `purpose` column for existing rows
-4. Add `rawMessage` nullable columns to entity tables (prepare for removal)
-5. Drop `rawMessage` content columns after extraction pipeline is live
-6. Add HNSW index on `entities.embedding`
+### 5.3 Migration Order
+
+1. Add `organisationId` to all existing tables (nullable initially, `DEFAULT ''` for old rows)
+2. Backfill `organisationId` from `conversationDom` on all existing rows via migration SQL
+3. Add `purpose TEXT` column to `ConversationConfig`; migrate from `raw` blob
+4. Add new `ConversationConfig` columns (`contextType`, `tags`, `stakeholders`, `relatedChannels`)
+5. Drop `rawMessage` columns from all entity tables
+6. Drop `raw JSON` column from `ConversationConfig`
+7. Create `conversation_signals`, `entities`, `entity_relationships`, `conversation_summaries`
+8. Add HNSW index on `entities.embedding`
+9. Make `organisationId` NOT NULL once backfill confirmed
 
 ---
 
-## 5. New/Changed Application Ports
-
-### New Ports
+## 6. New/Changed Application Ports
 
 ```typescript
 // application/ports/ClassifierPort.ts
 export interface ClassifierPort {
-  classify(text: string, context: string[]): Promise<ClassifyResult>;
+  classify(text: string, context: string[], members?: MemberContext[]): Promise<ClassifyResult>;
 }
 export interface ClassifyResult {
-  intent: string;           // classify intent
-  signalScore: number;      // 0–1, how information-rich
-  captureHints: string[];   // what to extract in Tier 2
+  intent: string;
+  signalScore: number;   // 0–1
+  captureHints: string[]; // hints for Tier 2
 }
 
 // application/ports/ExtractionPort.ts
 export interface ExtractionPort {
-  extract(text: string, hints: string[], context: string[]): Promise<ExtractResult>;
+  extract(text: string, hints: string[], context: ExtractContext): Promise<ExtractResult>;
+}
+export interface ExtractContext {
+  organisationId: string;
+  conversationId: QualifiedId;
+  authorId: QualifiedId;
+  members: MemberContext[];
+  purpose?: string;
 }
 export interface ExtractResult {
   entities: ExtractedEntity[];
@@ -283,208 +364,218 @@ export interface ExtractResult {
 
 // application/ports/SummarisationPort.ts
 export interface SummarisationPort {
-  summarise(signals: ConversationSignal[], granularity: 'hourly'|'daily'|'weekly'): Promise<string>;
+  summarise(signals: ConversationSignal[], granularity: 'daily'|'weekly'|'on_demand',
+            context: SummariseContext): Promise<string>;
 }
 
 // application/ports/QueryAnalysisPort.ts
 export interface QueryAnalysisPort {
-  analyse(query: string, context: string[]): Promise<QueryPlan>;
+  analyse(query: string, context: string[], members: MemberContext[]): Promise<QueryPlan>;
 }
 export interface QueryPlan {
   paths: Array<'structured'|'semantic'|'graph'|'summary'>;
-  filters: Record<string, unknown>;
-  expansions: string[];  // entity names to graph-traverse from
+  filters: Record<string, unknown>;  // status, assignee, dateRange, etc.
+  expansions: string[];  // entity labels to graph-traverse from
+  isTemporal: boolean;   // true → include summary path
+  isPersonal: boolean;   // true → filter to requesting user
 }
 
 // application/ports/RetrievalPort.ts
 export interface RetrievalPort {
-  retrieve(plan: QueryPlan, conversationId: QualifiedId): Promise<RetrievalResult[]>;
+  retrieve(plan: QueryPlan, scope: RetrievalScope): Promise<RetrievalResult[]>;
+}
+export interface RetrievalScope {
+  organisationId: string;
+  conversationId?: QualifiedId;  // undefined = org-wide
+  userId?: QualifiedId;          // defined in personal/1:1 mode
 }
 ```
 
-### Modified Ports
-
-**`GeneralAnswerPort`** — add `RetrievalResult[]` replacing `KnowledgeContext[]`:
+**`GeneralAnswerPort`** updated:
 ```typescript
-answer(question, context, retrieval, members?, purpose?, contextType?): Promise<string>
+answer(question, conversationContext, retrieval: RetrievalResult[],
+       members?, purpose?, contextType?): Promise<string>
 ```
-
-**`ConversationIntelligenceService`** — renamed to `ClassifierPort` (same contract, new name).
-The existing `ImplicitDetectionService` is merged into the Tier 2 extraction flow.
 
 ---
 
-## 6. LLM Configuration
-
-### `LLMConfigAdapter.ts` — Extend
-
-Add seven `get*LLMConfig()` functions:
-```typescript
-getClassifyLLMConfig(config)    // was getPassiveLLMConfig
-getExtractLLMConfig(config)     // was getCapableLLMConfig
-getEmbedLLMConfig(config)       // was getEmbeddingConfig
-getSummariseLLMConfig(config)   // new
-getQueryAnalyseLLMConfig(config) // new
-getRespondLLMConfig(config)     // new
-getComplexSynthesisLLMConfig(config) // new, fallback to respond
-```
+## 7. LLM Configuration
 
 ### New Env Vars
 
+Each slot uses `BASE_URL`, `API_KEY`, `MODEL`, `ENABLED`:
+
 ```
+# Tier 1 — classify every message (fast, cheap)
 LLM_CLASSIFY_BASE_URL=
 LLM_CLASSIFY_API_KEY=
 LLM_CLASSIFY_MODEL=
+
+# Tier 2 — deep extraction (capable)
 LLM_EXTRACT_BASE_URL=
 LLM_EXTRACT_API_KEY=
 LLM_EXTRACT_MODEL=
+
+# Tier 3 — embeddings
+LLM_EMBED_BASE_URL=        # was LLM_EMBEDDING_BASE_URL
+LLM_EMBED_API_KEY=
+LLM_EMBED_MODEL=
+LLM_EMBED_DIMS=1024
+
+# Tier 4 — summarisation
 LLM_SUMMARISE_BASE_URL=
 LLM_SUMMARISE_API_KEY=
 LLM_SUMMARISE_MODEL=
+
+# Retrieval — query analysis
 LLM_QUERY_ANALYSE_BASE_URL=
 LLM_QUERY_ANALYSE_API_KEY=
 LLM_QUERY_ANALYSE_MODEL=
+
+# Response — Jeeves answers
 LLM_RESPOND_BASE_URL=
 LLM_RESPOND_API_KEY=
 LLM_RESPOND_MODEL=
+
+# Complex synthesis (optional — falls back to respond)
 LLM_COMPLEX_BASE_URL=
 LLM_COMPLEX_API_KEY=
 LLM_COMPLEX_MODEL=
+
+# Contradiction detection
+DECISION_CONTRADICTION_THRESHOLD=0.78
+
+# Entity deduplication
+ENTITY_DEDUP_THRESHOLD=0.92
 ```
 
-Existing `LLM_PASSIVE_*` and `LLM_CAPABLE_*` vars are kept as aliases for `classify` and
-`extract`/`respond` respectively during transition.
+`LLM_PASSIVE_*` and `LLM_CAPABLE_*` kept as aliases → `classify` and `respond` respectively.
 
 ---
 
-## 7. New Infrastructure Adapters
+## 8. New Infrastructure Adapters
 
 | File | Role |
 |---|---|
-| `infrastructure/llm/OpenAIClassifierAdapter.ts` | Tier 1 classify (rename/refactor from `OpenAIConversationIntelligenceAdapter`) |
+| `infrastructure/llm/OpenAIClassifierAdapter.ts` | Tier 1 (refactor from `OpenAIConversationIntelligenceAdapter`) |
 | `infrastructure/llm/OpenAIExtractionAdapter.ts` | Tier 2 deep extraction |
-| `infrastructure/llm/OpenAISummarisationAdapter.ts` | Tier 4 rolling summaries |
+| `infrastructure/llm/OpenAISummarisationAdapter.ts` | Daily/weekly/on-demand summaries |
 | `infrastructure/llm/OpenAIQueryAnalysisAdapter.ts` | Pre-retrieval query planning |
-| `infrastructure/persistence/postgres/PrismaEntityRepository.ts` | Entity + relationship CRUD |
-| `infrastructure/persistence/postgres/PrismaConversationSignalRepository.ts` | Signal storage |
-| `infrastructure/persistence/postgres/PrismaConversationSummaryRepository.ts` | Summary storage |
-| `infrastructure/retrieval/MultiPathRetrievalEngine.ts` | Orchestrates 4 retrieval paths |
+| `infrastructure/persistence/postgres/PrismaEntityRepository.ts` | Entity + relationship CRUD + dedup query |
+| `infrastructure/persistence/postgres/PrismaConversationSignalRepository.ts` | Signal writes + period reads |
+| `infrastructure/persistence/postgres/PrismaConversationSummaryRepository.ts` | Summary writes + latest-per-channel reads |
+| `infrastructure/retrieval/MultiPathRetrievalEngine.ts` | Orchestrates 4 paths, merges via RRF |
 | `infrastructure/retrieval/StructuredRetrievalPath.ts` | SQL-based structured retrieval |
-| `infrastructure/retrieval/GraphRetrievalPath.ts` | Entity-graph BFS |
-| `infrastructure/retrieval/SummaryRetrievalPath.ts` | Rolling summary injection |
+| `infrastructure/retrieval/SemanticRetrievalPath.ts` | Renamed from `PrismaSearchAdapter` |
+| `infrastructure/retrieval/GraphRetrievalPath.ts` | BFS over entity_relationships |
+| `infrastructure/retrieval/SummaryRetrievalPath.ts` | Injects relevant ConversationSummary |
 
 ---
 
-## 8. WireEventRouter Refactor
+## 9. WireEventRouter Refactor
 
-The current `WireEventRouter` is a 700+ line God Object that does classification, routing,
-buffering, and response generation. It is split into:
+Current `WireEventRouter` (~700 lines) is split:
 
 ```
-WireEventRouter          — thin Wire event handler, delegates immediately to pipeline
+WireEventRouter       — thin Wire event handler only
     │
-    └─► MessagePipeline  — orchestrates the 4 tiers per message
+    └─► MessagePipeline
             │
-            ├─► Tier1ClassifyStep    — classify model, returns intent + signal score
-            ├─► Tier2ExtractStep     — extract model, returns structured entities
-            ├─► Tier3EmbedStep       — embedding model, async, fire-and-forget
-            └─► CommandRouter        — handles @mention commands (status, context, catch me up, etc.)
+            ├─► Tier1ClassifyStep     (ClassifierPort)
+            ├─► Tier2ExtractStep      (ExtractionPort → EntityRepository)
+            ├─► Tier3EmbedStep        (EmbeddingPort, async fire-and-forget)
+            └─► CommandRouter
+                    ├─► @mention commands (status, catch me up, context:, knowledge, tasks, etc.)
+                    └─► Button action handler (promote action, confirm/dismiss task/decision)
 ```
 
-`WireEventRouter` retains Wire SDK event wiring (`handleTextMessage`, `onButtonAction`,
-`onConversationMemberJoined`, etc.) but each handler immediately delegates to `MessagePipeline`.
-
-**Existing contract tests are preserved** — the test suite mocks at the use-case level, which
-remains stable. New tests cover the pipeline stages independently.
-
----
-
-## 9. New Commands
-
-| Command | Handler |
-|---|---|
-| `@Jeeves status` | `StatusCommand` — reports channel context, recent entity counts, last summary |
-| `@Jeeves catch me up` / `@Jeeves what did I miss` | `CatchMeUpCommand` — returns most recent daily summary |
-| `@Jeeves context: <text>` | `SetContextCommand` — updates `ConversationConfig.purpose` |
-| `@Jeeves context type: <type>` | `SetContextCommand` — updates `contextType` |
-| `@Jeeves context tags: <tags>` | `SetContextCommand` — updates `tags` |
-| `@Jeeves context stakeholders: <mentions>` | `SetContextCommand` — updates `stakeholders` |
+**Personal mode detection** in `MessagePipeline`:
+```typescript
+const members = await memberCache.getMembers(convId);
+const isPersonalMode = members.length === 2;  // bot + 1 human
+```
+Personal mode sets `RetrievalScope.userId` so queries run org-wide filtered to that user.
 
 ---
 
-## 10. Implementation Phases
+## 10. New Commands
 
-### Phase 1 — Foundation (DB + Config)
+| Command | Use-case | Notes |
+|---|---|---|
+| `@Jeeves status` | `StatusCommand` | Channel context, entity counts by type, last summary date |
+| `@Jeeves catch me up` / `what did I miss` | `CatchMeUpCommand` | On-demand summary: 24 h or since last user message |
+| `@Jeeves context: <text>` | `SetContextCommand` | Update `purpose` |
+| `@Jeeves context type: <type>` | `SetContextCommand` | Update `contextType` |
+| `@Jeeves context tags: <tags>` | `SetContextCommand` | Update `tags` |
+| `@Jeeves context stakeholders: @x @y` | `SetContextCommand` | Update `stakeholders` |
 
-**Goal**: New schema in place, 7-model config wired, no functional regressions.
+---
 
-Tasks:
-1. Write Prisma migration: add `conversation_signals`, `entities`, `entity_relationships`, `conversation_summaries`
-2. Write Prisma migration: add new `ConversationConfig` columns; migrate `raw.purpose`
-3. Add `PrismaEntityRepository`, `PrismaConversationSignalRepository`, `PrismaConversationSummaryRepository`
-4. Extend `LLMConfigAdapter` with 7 model slot functions
-5. Update `.env.example` and `docker-compose.yml` with new env vars
-6. Update `container.ts` to wire new repos and adapters
-7. All existing tests still pass
+## 11. Implementation Phases
 
-**Deliverable**: Schema + config foundation, no behaviour change.
+### Phase 1 — Foundation: Schema + Organisation + Config
+**Goal**: New schema live, organisation scope wired, 7-model config, no behaviour change.
+
+1. Prisma migration: add `organisationId` to all existing tables; backfill from `conversationDom`
+2. Prisma migration: promote `purpose` to column on `ConversationConfig`; add `contextType`, `tags`, `stakeholders`, `relatedChannels`; drop `raw`
+3. Prisma migration: drop `rawMessage` from all entity tables
+4. Prisma migration: create `conversation_signals`, `entities`, `entity_relationships`, `conversation_summaries`; add HNSW index
+5. Add `PrismaEntityRepository`, `PrismaConversationSignalRepository`, `PrismaConversationSummaryRepository`
+6. Extend `LLMConfigAdapter` with 7 slot functions + `DECISION_CONTRADICTION_THRESHOLD` + `ENTITY_DEDUP_THRESHOLD`
+7. Stamp `organisationId = config.wire.userDomain` on all new writes throughout existing use-cases
+8. Update `PrismaConversationConfigRepository` to read/write new typed columns
+9. Update `.env.example` and `docker-compose.yml`
+10. **Gate**: all existing tests pass
 
 ### Phase 2 — Processing Pipeline
+**Goal**: Four-tier pipeline live; extract-and-forget for new messages.
 
-**Goal**: Tiered classification → extraction → embed. Extract-and-forget for new messages.
-
-Tasks:
-1. Create `ClassifierPort` and `OpenAIClassifierAdapter` (refactor from `OpenAIConversationIntelligenceAdapter`)
-2. Create `ExtractionPort` and `OpenAIExtractionAdapter`
-3. Create `MessagePipeline` class (Tier 1 + Tier 2 + Tier 3)
-4. Route high-signal messages through `ExtractionAdapter` → write to `entities` + `entity_relationships`
-5. Write `ConversationSignal` per message (all messages, lightweight)
-6. Existing `Task`/`Action`/`Decision` use-cases continue to create their respective records — they now also write an `Entity` row (dual-write during transition)
-7. Remove `rawMessage` content from new entity writes (keep column nullable for old rows)
-8. Update `PendingActionBuffer` integration — matured actions flow through extraction
-9. Update contract tests for new pipeline
-
-**Deliverable**: Two-tier processing live. New messages don't store raw text.
+1. Create `ClassifierPort` + `OpenAIClassifierAdapter` (refactor from `OpenAIConversationIntelligenceAdapter`)
+2. Create `ExtractionPort` + `OpenAIExtractionAdapter`
+3. Create `MessagePipeline` (Tier 1 → Tier 2 → Tier 3)
+4. Write `ConversationSignal` per message (all messages, Tier 1 result)
+5. High-signal messages: run extraction → write `Entity` rows with dedup check (≥ 0.92)
+6. Write `EntityRelationship` rows from extraction result
+7. Tier 3: async embed on new/updated entities
+8. `PendingActionBuffer` matured actions → pass through extraction before persisting
+9. Detect personal mode (2-member conv) in `MessagePipeline`; set `RetrievalScope.userId`
+10. Update contract tests for pipeline
+11. **Gate**: tests pass; new messages produce no `rawMessage` in DB
 
 ### Phase 3 — Retrieval Engine
+**Goal**: Multi-path retrieval replaces current keyword+semantic.
 
-**Goal**: Multi-path retrieval replacing current keyword+semantic hybrid.
+1. Create `QueryAnalysisPort` + `OpenAIQueryAnalysisAdapter`
+2. Create `StructuredRetrievalPath` (SQL, respects org/conv/user scope)
+3. Rename `PrismaSearchAdapter` → `SemanticRetrievalPath`; update to use `Entity` table
+4. Create `GraphRetrievalPath` (BFS on `entity_relationships`, depth ≤ 3)
+5. Create `SummaryRetrievalPath` (returns latest `ConversationSummary` if `isTemporal`)
+6. Create `MultiPathRetrievalEngine` (orchestrates all 4, merges via RRF)
+7. Update `AnswerQuestion` to use `MultiPathRetrievalEngine` + `RetrievalScope`
+8. Update `OpenAIGeneralAnswerAdapter` with richer context (contextType, org-wide scope note)
+9. Decision contradiction detection (post-log two-step: similarity → classify)
+10. Update tests
+11. **Gate**: "catch me up" retrieval works; org-wide personal queries work
 
-Tasks:
-1. Create `QueryAnalysisPort` and `OpenAIQueryAnalysisAdapter`
-2. Create `StructuredRetrievalPath` (SQL queries against Task/Action/Decision by filters)
-3. Create `GraphRetrievalPath` (BFS over `entity_relationships`)
-4. Create `SummaryRetrievalPath` (returns relevant `ConversationSummary` if temporal query)
-5. Create `MultiPathRetrievalEngine` (orchestrates all 4 paths, merges via RRF)
-6. Update `AnswerQuestion` to use `MultiPathRetrievalEngine` instead of `PrismaSearchAdapter`
-7. Update `OpenAIGeneralAnswerAdapter` with richer context blocks
-8. Implement decision contradiction detection (post-log similarity check)
-9. Update tests
+### Phase 4 — Summaries + Commands
+**Goal**: Scheduled summaries, new commands, full v2.0 feature set.
 
-**Deliverable**: Retrieval quality dramatically improved; graph and summary paths live.
-
-### Phase 4 — Summaries + Proactive
-
-**Goal**: Rolling summaries, "catch me up", new context commands, `@Jeeves status`.
-
-Tasks:
-1. Create `SummarisationPort` and `OpenAISummarisationAdapter`
-2. Create `GenerateSummary` use-case (reads signals for period → calls summarise model → writes summary)
-3. Add `hourly_summary`, `daily_summary`, `weekly_summary` scheduled jobs to `InProcessScheduler`
-4. Implement `CatchMeUpCommand` use-case
-5. Implement `StatusCommand` use-case
-6. Implement `SetContextCommand` use-case (with all sub-commands)
-7. Wire all new commands into `WireEventRouter` / `CommandRouter`
-8. Update contract tests for new commands
-9. Remove `raw` JSON blob from `ConversationConfig` (after full migration)
-
-**Deliverable**: Full v2.0 feature set live.
+1. Create `SummarisationPort` + `OpenAISummarisationAdapter`
+2. Create `GenerateSummary` use-case (reads signals → summarise model → write `ConversationSummary`)
+3. `InProcessScheduler`: add `daily_summary` (08:00 per timezone) and `weekly_summary` (Monday 08:00) jobs
+4. Implement `CatchMeUpCommand` (on-demand, posts to channel)
+5. Implement `StatusCommand`
+6. Implement `SetContextCommand` (all sub-commands)
+7. Wire all new commands into `CommandRouter`
+8. Inject daily summary into LLM context automatically when answering questions
+9. Update contract tests for all new commands
+10. **Gate**: full test suite passes; all commands work end-to-end
 
 ---
 
-## 11. File Deletion / Renaming
+## 12. File Deletions / Renames
 
-| Current File | Action |
+| Current | Action |
 |---|---|
 | `src/domain/services/ConversationIntelligenceService.ts` | Rename → `ClassifierService.ts` |
 | `src/domain/services/ImplicitDetectionService.ts` | Delete (merged into ExtractionPort) |
@@ -492,44 +583,38 @@ Tasks:
 | `src/infrastructure/llm/OpenAIImplicitDetectionAdapter.ts` | Delete |
 | `src/infrastructure/llm/StubConversationIntelligenceAdapter.ts` | Rename → `StubClassifierAdapter.ts` |
 | `src/infrastructure/llm/StubImplicitDetectionAdapter.ts` | Delete |
-| `src/infrastructure/search/PrismaSearchAdapter.ts` | Becomes one path inside `MultiPathRetrievalEngine`; keep as `SemanticRetrievalPath.ts` |
+| `src/infrastructure/search/PrismaSearchAdapter.ts` | Rename → `SemanticRetrievalPath.ts`; update to use `entities` table |
+| `src/application/usecases/knowledge/` (all) | Migrate: `StoreKnowledge`, `RetrieveKnowledge`, `ListKnowledge`, `DeleteKnowledge`, `UpdateKnowledge` → operate on `Entity` table via `PrismaEntityRepository` |
 
 ---
 
-## 12. Testing Strategy
+## 13. Testing Strategy
 
 ### Unit Tests
-- Each retrieval path tested independently with mocked repos
-- `MessagePipeline` tested with mocked classifier/extractor
-- `MultiPathRetrievalEngine` tested with mocked paths
+- Each retrieval path independently with mocked repos
+- `MessagePipeline` with mocked classifier/extractor (Tier 1 → Tier 2 → Tier 3)
+- `MultiPathRetrievalEngine` with mocked paths
+- Entity dedup logic: same-type high-similarity → update, low-similarity → insert
 
 ### Contract Tests (existing style)
-- Preserve all existing `WireEventRouter.contract.test.ts` tests
-- Add new contracts for: pipeline flow, context commands, catch-me-up, status, contradiction detection
+- All existing `WireEventRouter.contract.test.ts` tests preserved
+- New contracts: pipeline flow, context commands, catch-me-up, status, contradiction detection, personal mode
 
 ### Integration Tests
-- Separate test that runs against a real Postgres (pgvector) instance
-- Covers: entity write → embed → retrieve flow end-to-end
+- Real Postgres (pgvector): entity write → embed → dedup check → retrieve end-to-end
+- Organisation isolation: entities from org A not returned for org B queries
 
 ---
 
-## 13. Risks and Mitigations
+## 14. Risks and Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Extract-and-forget breaks audit trail | Retain `rawMessageId`; audit log records the action taken |
-| 7-model config is complex to operate | Each slot falls back gracefully; `.env.example` documents clearly |
-| Entity graph grows unbounded | Add TTL to `entity_relationships`; mark stale edges on entity deletion |
-| Summarisation costs (LLM calls per hour) | `hourly_summary` is optional/off by default; only `daily_summary` on by default |
-| Contract test surface area doubles | New tests stay focused; stub adapters keep tests fast |
-| Migration on existing DB with `rawMessage` data | Soft-delete approach: nullable columns added first, old data retained until Phase 2 complete, then dropped |
-
----
-
-## 14. Open Questions (resolve before Phase 2)
-
-1. **Entity deduplication**: If two messages extract the same fact ("Alice owns the API project"), do we create one entity or two? Need a dedup strategy (embeddings similarity before insert).
-2. **Entity visibility**: Are entities scoped to conversation, or can they be cross-conversation for shared knowledge? Spec implies per-conversation but worth confirming.
-3. **`rawMessage` retention policy for existing data**: Drop immediately on migration, or keep for a period and then clean up with a scheduled job?
-4. **Contradiction threshold**: Cosine similarity 0.85 for decision contradiction — needs empirical tuning. Should be configurable.
-5. **Hourly summary cost**: With many active channels, hourly summarisation runs `n_channels × 1 LLM call/hour`. Confirm acceptable or make opt-in per channel.
+| `organisationId` backfill leaves empty strings | Migration validates non-empty before making NOT NULL; guard in repos |
+| Dedup threshold (0.92) too aggressive → lost context | Log dedup merges; `mentionCount` provides audit; threshold configurable |
+| Dedup threshold too low → false merges | 0.92 chosen conservatively; same-type filter further narrows candidates |
+| Entity graph grows unbounded | `EntityRelationship` gets a `staleness` flag; cleanup job marks edges stale on entity soft-delete |
+| Personal mode exposes cross-channel data unintentionally | Always confirm scope in Jeeves response: "Across all channels in your organisation, you have…" |
+| Contradiction detection false positives | Two-step approach + 30-min suppression; user can always dismiss |
+| Daily summary runs before channel has any signals | `GenerateSummary` is a no-op if signal count = 0 for period |
+| rawMessage drop breaks existing tests | Contracts updated in Phase 1 alongside schema; no test uses rawMessage content directly |
