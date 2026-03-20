@@ -9,6 +9,9 @@ yarn-error.log*
 # Environment / secrets
 .env
 .env.local
+.env.old
+.env.*.local
+*.env
 
 # Wire SDK local dependency artifacts
 wire-apps-js-sdk/node_modules/
