@@ -36,12 +36,15 @@ import type { ConversationMessageBuffer } from "../../application/services/Conve
 import type { DateTimeService } from "../../domain/services/DateTimeService";
 import type { ConversationMemberCache, CachedMember } from "../../domain/services/ConversationMemberCache";
 import type { ConversationConfigRepository } from "../../domain/repositories/ConversationConfigRepository";
+import type { ChannelConfigRepository } from "../../domain/repositories/ChannelConfigRepository";
 import type { ConversationIntelligenceService, ConversationIntelligenceResult } from "../../domain/services/ConversationIntelligenceService";
 import type { WireOutboundPort } from "../../application/ports/WireOutboundPort";
 import type { SchedulerPort } from "../../application/ports/SchedulerPort";
 import type { Logger } from "../../application/ports/Logger";
 import type { TaskPriority, TaskStatus } from "../../domain/entities/Task";
 import type { ActionStatus } from "../../domain/entities/Action";
+import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
+import { toChannelId } from "./channelId";
 
 const CONTEXT_WINDOW = 10;
 const IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE = 0.7;
@@ -99,7 +102,11 @@ export interface WireEventRouterDeps {
   messageBuffer: ConversationMessageBuffer;
   dateTimeService: DateTimeService;
   memberCache: ConversationMemberCache;
+  /** Legacy config repo — still used by existing use-cases (e.g. timezone lookup). Kept for Phase 1a compat. */
   conversationConfig: ConversationConfigRepository;
+  /** New v2 channel config repo — drives the state machine. */
+  channelConfig: ChannelConfigRepository;
+  slidingWindow: SlidingWindowBuffer;
   scheduler: SchedulerPort;
   secretModeInactivityMs: number;
 }
@@ -124,7 +131,8 @@ interface PendingCaptureConfirmation {
 export class WireEventRouter extends WireEventsHandler {
   private readonly pendingKnowledge = new Map<string, PendingKnowledgeConfirmation>();
   private readonly pendingCaptures = new Map<string, PendingCaptureConfirmation>();
-  private readonly secretModeConvs = new Set<string>();
+  /** In-memory channel state cache — authoritative source is channelConfig DB. */
+  private readonly channelStateCache = new Map<string, "active" | "paused" | "secure">();
   private readonly lastActivityByConv = new Map<string, number>();
   private readonly knownConvs = new Set<string>();
   private readonly actionedMessageIds = new Map<string, Set<string>>();
@@ -135,11 +143,15 @@ export class WireEventRouter extends WireEventsHandler {
     super();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Entry point
+  // ─────────────────────────────────────────────────────────────────────────
+
   async onTextMessageReceived(wireMessage: TextMessage): Promise<void> {
     const text = wireMessage.text ?? "";
     const convId = wireMessage.conversationId as QualifiedId;
     const sender = wireMessage.sender as QualifiedId;
-    const convKey = `${convId.id}@${convId.domain}`;
+    const channelId = toChannelId(convId);
     const log = this.deps.logger.child({
       conversationId: convId.id,
       senderId: sender.id,
@@ -153,20 +165,16 @@ export class WireEventRouter extends WireEventsHandler {
       text,
       timestamp: new Date(),
     });
-    this.lastActivityByConv.set(convKey, Date.now());
+    this.lastActivityByConv.set(channelId, Date.now());
 
-    if (!this.knownConvs.has(convKey)) {
-      this.knownConvs.add(convKey);
-      const config = await this.deps.conversationConfig.get(convId);
-      if (config?.secretMode) {
-        this.secretModeConvs.add(convKey);
-        this.scheduleInactivityCheck(convId, convKey);
-        log.info("Secret mode restored from DB");
-      }
+    // Hydrate channel state from DB on first message in this process lifetime.
+    if (!this.knownConvs.has(channelId)) {
+      this.knownConvs.add(channelId);
+      await this.hydrateChannelState(convId, channelId, log);
     }
 
     try {
-      await this.handleTextMessage(wireMessage, text, convId, sender, convKey, log);
+      await this.handleTextMessage(wireMessage, text, convId, sender, channelId, log);
     } catch (err) {
       log.error("Handler failed", { err: String(err), stack: err instanceof Error ? err.stack : undefined });
       try {
@@ -179,15 +187,46 @@ export class WireEventRouter extends WireEventsHandler {
     }
   }
 
+  private async hydrateChannelState(convId: QualifiedId, channelId: string, log: Logger): Promise<void> {
+    try {
+      const cfg = await this.deps.channelConfig.get(channelId);
+      if (cfg) {
+        this.channelStateCache.set(channelId, cfg.state as "active" | "paused" | "secure");
+        if (cfg.state === "secure") {
+          this.scheduleInactivityCheck(convId, channelId);
+          log.info("Channel state restored from DB", { state: cfg.state });
+        }
+        return;
+      }
+      // Fall back to legacy ConversationConfig for existing channels without a channel_config row.
+      const legacyCfg = await this.deps.conversationConfig.get(convId);
+      if (legacyCfg?.secretMode) {
+        this.channelStateCache.set(channelId, "secure");
+        this.scheduleInactivityCheck(convId, channelId);
+        log.info("Channel state restored from legacy DB (secretMode=true)");
+      } else {
+        this.channelStateCache.set(channelId, "active");
+      }
+    } catch (err) {
+      log.warn("Failed to hydrate channel state", { err: String(err) });
+      this.channelStateCache.set(channelId, "active");
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Core message handler
+  // ─────────────────────────────────────────────────────────────────────────
+
   private async handleTextMessage(
     wireMessage: TextMessage,
     text: string,
     convId: QualifiedId,
     sender: QualifiedId,
-    convKey: string,
+    channelId: string,
     log: Logger,
   ): Promise<void> {
     const lowered = text.trim().toLowerCase();
+    const channelState = this.channelStateCache.get(channelId) ?? "active";
 
     // Resolve conversation members for LLM context injection
     const members = this.deps.memberCache.getMembers(convId).map((m) => ({
@@ -195,22 +234,85 @@ export class WireEventRouter extends WireEventsHandler {
       name: m.name,
     }));
 
-    // Tick the action buffer — every message advances the maturity countdown
+    // Always push to sliding window regardless of state — flush happens on SECURE entry
+    this.deps.slidingWindow.push(channelId, {
+      messageId: wireMessage.id,
+      authorId: sender.id,
+      text,
+      timestamp: new Date(),
+    });
+
+    // ── PAUSED state ──────────────────────────────────────────────────────────
+    // Discard all messages silently EXCEPT direct @Jeeves commands for state changes.
+    if (channelState === "paused") {
+      const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+      if (!botMentioned) {
+        log.debug("Channel paused — message discarded");
+        return;
+      }
+      // Only allow state-change commands while paused
+      if (this.matchesResumeCommand(lowered)) {
+        await this.setChannelState(convId, channelId, "active", sender.id, wireMessage.id, log);
+        return;
+      }
+      if (this.matchesSecureCommand(lowered)) {
+        await this.setChannelState(convId, channelId, "secure", sender.id, wireMessage.id, log);
+        return;
+      }
+      await this.deps.wireOutbound.sendPlainText(
+        convId,
+        "I'm currently standing by. Say _\"resume\"_ or mention me to bring me back.",
+        { replyToMessageId: wireMessage.id },
+      );
+      return;
+    }
+
+    // ── SECURE state ──────────────────────────────────────────────────────────
+    // Same as PAUSED but sliding window was already flushed on entry.
+    if (channelState === "secure") {
+      this.scheduleInactivityCheck(convId, channelId);
+      // Flush the token we just pushed — nothing should accumulate during secure
+      this.deps.slidingWindow.flush(channelId);
+      const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+      if (botMentioned && this.matchesResumeCommand(lowered)) {
+        await this.exitSecureMode(convId, channelId, wireMessage.id, log);
+        return;
+      }
+      log.debug("Secure mode active — message discarded");
+      return;
+    }
+
+    // ── ACTIVE state — normal processing ─────────────────────────────────────
+
     this.pendingActionBuffer.tick(convId, text);
 
-    // ── Secret mode ───────────────────────────────────────────────────────────
-    if (this.secretModeConvs.has(convKey)) {
-      this.scheduleInactivityCheck(convId, convKey);
-      const result = await this.deps.conversationIntelligence.analyze({
-        currentMessage: text, currentMessageId: wireMessage.id,
-        recentMessages: [], sensitivity: "normal", conversationId: convId,
-      });
-      if (result.intent === "secret_mode_off" && result.confidence >= INTENT_CONFIDENCE_THRESHOLD) {
-        await this.exitSecretMode(convId, convKey, wireMessage.id, log);
-      } else {
-        log.debug("Secret mode active — message dropped");
+    // ── Check for state-change commands first (before fast-path) ─────────────
+    const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+
+    if (botMentionedEarly || this.startsWithJeeves(lowered)) {
+      if (this.matchesPauseCommand(lowered)) {
+        await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
+        return;
       }
-      return;
+      if (this.matchesSecureCommand(lowered)) {
+        await this.setChannelState(convId, channelId, "secure", sender.id, wireMessage.id, log);
+        return;
+      }
+      if (this.matchesResumeCommand(lowered)) {
+        // Already active — acknowledge gracefully
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          "I am already at your service.",
+          { replyToMessageId: wireMessage.id },
+        );
+        return;
+      }
+      // Context commands: @Jeeves context: <purpose>
+      const contextMatch = this.matchContextCommand(text);
+      if (contextMatch) {
+        await this.handleContextCommand(contextMatch, convId, channelId, sender, wireMessage.id, log);
+        return;
+      }
     }
 
     // ── Fast-path: ID-based mutations (no LLM needed) ─────────────────────────
@@ -402,12 +504,12 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    // ── Awaiting channel purpose ───────────────────────────────────────────────
-    // If we asked for the channel purpose after joining, capture the next substantive message.
-    if (this.awaitingPurpose.has(convKey)) {
+    // ── Awaiting channel purpose ──────────────────────────────────────────────
+    if (this.awaitingPurpose.has(channelId)) {
       const trimmed = text.trim();
       if (trimmed.length >= 10) {
-        this.awaitingPurpose.delete(convKey);
+        this.awaitingPurpose.delete(channelId);
+        // Persist to both legacy and new channel config
         const existing = await this.deps.conversationConfig.get(convId);
         await this.deps.conversationConfig.upsert({
           conversationId: convId,
@@ -419,18 +521,21 @@ export class WireEventRouter extends WireEventsHandler {
           purpose: trimmed,
           raw: existing?.raw ?? null,
         });
+        // Also update channel_config if it exists
+        const channelCfg = await this.deps.channelConfig.get(channelId);
+        if (channelCfg) {
+          await this.deps.channelConfig.upsert({ ...channelCfg, purpose: trimmed });
+        }
         await this.deps.wireOutbound.sendPlainText(
           convId,
-          "Thank you — I'll bear that in mind.",
+          "Thank you — I shall bear that in mind.",
           { replyToMessageId: wireMessage.id },
         );
         return;
       }
     }
 
-    // ── Matured action processing ──────────────────────────────────────────────
-    // Actions buffered from ambient speech are promoted to real action items once
-    // enough messages have passed without resolution signals.
+    // ── Matured action processing ─────────────────────────────────────────────
     const maturedActions = this.pendingActionBuffer.popMatured(convId);
     for (const action of maturedActions) {
       void (async () => {
@@ -454,10 +559,10 @@ export class WireEventRouter extends WireEventsHandler {
       })();
     }
 
-    // ── Single-pass intelligence: intent + capture + shouldRespond ────────────
+    // ── Single-pass intelligence ──────────────────────────────────────────────
     const recentAll = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW);
     const previousMessageText = recentAll.length >= 2 ? recentAll[recentAll.length - 2].text : undefined;
-    const actioned = this.actionedMessageIds.get(convKey) ?? new Set<string>();
+    const actioned = this.actionedMessageIds.get(channelId) ?? new Set<string>();
     const recentFiltered = recentAll.filter((m) => !actioned.has(m.messageId));
 
     const config = await this.deps.conversationConfig.get(convId);
@@ -480,7 +585,6 @@ export class WireEventRouter extends WireEventsHandler {
       intelligence = { intent: "none", payload: {}, confidence: 0, shouldRespond: false };
     }
 
-    // If the bot was explicitly @mentioned, always respond regardless of LLM decision.
     const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
     if (botMentioned && !intelligence.shouldRespond) {
       intelligence = { ...intelligence, shouldRespond: true };
@@ -494,19 +598,16 @@ export class WireEventRouter extends WireEventsHandler {
       botMentioned,
     });
 
-    // Phase 3: shouldRespond gates the whole response path
     if (!intelligence.shouldRespond) {
-      // Even if bot won't reply, a capture candidate may still be presented
       if (intelligence.capture && intelligence.capture.confidence >= IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE
           && config?.implicitDetectionEnabled !== false) {
-        await this.presentCapture(intelligence.capture, wireMessage, convId, sender, convKey, log);
+        await this.presentCapture(intelligence.capture, wireMessage, convId, sender, channelId, log);
       }
       return;
     }
 
     if (intelligence.confidence >= INTENT_CONFIDENCE_THRESHOLD && intelligence.intent !== "none") {
-      await this.routeIntent(intelligence, wireMessage, convId, sender, convKey, previousMessageText, log, members, config?.purpose);
-      // Mark creating intents as actioned to prevent passive re-capture
+      await this.routeIntent(intelligence, wireMessage, convId, sender, channelId, previousMessageText, log, members, config?.purpose);
       const creatingIntents = new Set([
         "create_task", "update_task", "update_task_status", "create_decision", "supersede_decision",
         "create_action", "update_action", "update_action_status", "reassign_action",
@@ -514,15 +615,14 @@ export class WireEventRouter extends WireEventsHandler {
         "store_knowledge", "update_knowledge", "delete_knowledge",
       ]);
       if (creatingIntents.has(intelligence.intent)) {
-        this.markActioned(convKey, wireMessage.id);
+        this.markActioned(channelId, wireMessage.id);
       }
       return;
     }
 
-    // No actionable intent but shouldRespond — try capture if available, then fall back to help
     if (intelligence.capture && intelligence.capture.confidence >= IMPLICIT_KNOWLEDGE_MIN_CONFIDENCE
         && config?.implicitDetectionEnabled !== false) {
-      await this.presentCapture(intelligence.capture, wireMessage, convId, sender, convKey, log);
+      await this.presentCapture(intelligence.capture, wireMessage, convId, sender, channelId, log);
       return;
     }
 
@@ -542,19 +642,221 @@ export class WireEventRouter extends WireEventsHandler {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Channel state machine
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private async setChannelState(
+    convId: QualifiedId,
+    channelId: string,
+    newState: "active" | "paused" | "secure",
+    actorId: string,
+    replyToMessageId: string,
+    log: Logger,
+  ): Promise<void> {
+    const now = new Date();
+    this.channelStateCache.set(channelId, newState);
+    log.info("Channel state change", { channelId, newState });
+
+    // Upsert channel_config row
+    try {
+      const existing = await this.deps.channelConfig.get(channelId);
+      if (existing) {
+        await this.deps.channelConfig.setState(channelId, newState, actorId, now);
+        if (newState === "secure") {
+          await this.deps.channelConfig.openSecureRange(channelId, now);
+        } else if (existing.state === "secure" && newState !== "secure") {
+          await this.deps.channelConfig.closeSecureRange(channelId, now);
+        }
+      }
+    } catch (err) {
+      log.warn("Failed to persist channel state", { err: String(err) });
+    }
+
+    // Also keep legacy ConversationConfig in sync for existing use-cases
+    try {
+      const legacyCfg = await this.deps.conversationConfig.get(convId);
+      await this.deps.conversationConfig.upsert({
+        conversationId: convId,
+        timezone: legacyCfg?.timezone ?? "UTC",
+        locale: legacyCfg?.locale ?? "en",
+        secretMode: newState === "secure",
+        implicitDetectionEnabled: legacyCfg?.implicitDetectionEnabled,
+        sensitivity: legacyCfg?.sensitivity,
+        purpose: legacyCfg?.purpose,
+        raw: legacyCfg?.raw ?? null,
+      });
+    } catch { /* non-fatal */ }
+
+    if (newState === "secure") {
+      this.deps.slidingWindow.flush(channelId);
+      this.scheduleInactivityCheck(convId, channelId);
+      await this.deps.wireOutbound.sendPlainText(convId,
+        "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice.",
+        { replyToMessageId });
+    } else if (newState === "paused") {
+      this.deps.scheduler.cancel(`secret-inactivity-${channelId}`);
+      await this.deps.wireOutbound.sendPlainText(convId,
+        "Understood. I shall step out. Do let me know when you require my attention again.",
+        { replyToMessageId });
+    } else {
+      // active
+      this.deps.scheduler.cancel(`secret-inactivity-${channelId}`);
+      await this.deps.wireOutbound.sendPlainText(convId,
+        "Very good. I shall resume my duties forthwith.",
+        { replyToMessageId });
+    }
+  }
+
+  private async exitSecureMode(
+    convId: QualifiedId,
+    channelId: string,
+    replyToMessageId: string,
+    log: Logger,
+  ): Promise<void> {
+    // Re-use setChannelState for consistency
+    await this.setChannelState(convId, channelId, "active", "", replyToMessageId, log);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Context command handler
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private async handleContextCommand(
+    match: ContextCommandMatch,
+    convId: QualifiedId,
+    channelId: string,
+    sender: QualifiedId,
+    replyToMessageId: string,
+    log: Logger,
+  ): Promise<void> {
+    try {
+      const existing = await this.deps.channelConfig.get(channelId);
+      const base = existing ?? {
+        channelId,
+        organisationId: convId.domain,
+        state: "active" as const,
+        secureRanges: [],
+        timezone: "UTC",
+        locale: "en",
+      };
+
+      const now = new Date();
+      const updated = { ...base };
+
+      switch (match.field) {
+        case "purpose":
+          updated.purpose = match.value;
+          break;
+        case "type":
+          updated.contextType = match.value as "customer" | "project" | "team" | "general";
+          break;
+        case "tags":
+          updated.tags = match.value.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean);
+          break;
+        case "stakeholders":
+          updated.stakeholders = match.value.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean);
+          break;
+        case "related":
+          updated.relatedChannels = match.value.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean);
+          break;
+      }
+
+      updated.contextUpdatedAt = now;
+      updated.contextUpdatedBy = sender.id;
+
+      await this.deps.channelConfig.upsert(updated);
+
+      // Keep legacy config in sync for the purpose field
+      if (match.field === "purpose") {
+        const legacyCfg = await this.deps.conversationConfig.get(convId);
+        await this.deps.conversationConfig.upsert({
+          conversationId: convId,
+          timezone: legacyCfg?.timezone ?? "UTC",
+          locale: legacyCfg?.locale ?? "en",
+          secretMode: legacyCfg?.secretMode ?? false,
+          implicitDetectionEnabled: legacyCfg?.implicitDetectionEnabled,
+          sensitivity: legacyCfg?.sensitivity,
+          purpose: match.value,
+          raw: legacyCfg?.raw ?? null,
+        });
+      }
+
+      await this.deps.wireOutbound.sendPlainText(convId, "Noted. Context updated.", { replyToMessageId });
+    } catch (err) {
+      log.warn("Failed to update channel context", { err: String(err) });
+      await this.deps.wireOutbound.sendPlainText(convId, "I'm afraid I was unable to update the channel context just now.", { replyToMessageId });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Command pattern matchers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private startsWithJeeves(lowered: string): boolean {
+    return lowered.startsWith("jeeves") || lowered.startsWith("@jeeves");
+  }
+
+  private stripJeevesPrefix(lowered: string): string {
+    return lowered.replace(/^@?jeeves[,:]?\s*/i, "").trim();
+  }
+
+  private matchesPauseCommand(lowered: string): boolean {
+    const stripped = this.stripJeevesPrefix(lowered);
+    return /^(pause|step out)$/.test(stripped) || /^pause$/.test(lowered) || /^step out$/.test(lowered);
+  }
+
+  private matchesResumeCommand(lowered: string): boolean {
+    const stripped = this.stripJeevesPrefix(lowered);
+    return /^(resume|come back)$/.test(stripped) || /^(resume|come back)$/.test(lowered);
+  }
+
+  private matchesSecureCommand(lowered: string): boolean {
+    const stripped = this.stripJeevesPrefix(lowered);
+    return /^(secure mode|ears off|secure)$/.test(stripped)
+      || /^(secure mode|ears off)$/.test(lowered);
+  }
+
+  private matchContextCommand(text: string): ContextCommandMatch | null {
+    // @Jeeves context: <value>
+    const purposeMatch = text.match(/^@?[Jj]eeves[,:]?\s+context:\s*(.+)$/i);
+    if (purposeMatch) return { field: "purpose", value: purposeMatch[1].trim() };
+
+    // @Jeeves context type: <value>
+    const typeMatch = text.match(/^@?[Jj]eeves[,:]?\s+context\s+type:\s*(.+)$/i);
+    if (typeMatch) return { field: "type", value: typeMatch[1].trim() };
+
+    // @Jeeves context tags: <value>
+    const tagsMatch = text.match(/^@?[Jj]eeves[,:]?\s+context\s+tags:\s*(.+)$/i);
+    if (tagsMatch) return { field: "tags", value: tagsMatch[1].trim() };
+
+    // @Jeeves context stakeholders: <value>
+    const stakeholdersMatch = text.match(/^@?[Jj]eeves[,:]?\s+context\s+stakeholders:\s*(.+)$/i);
+    if (stakeholdersMatch) return { field: "stakeholders", value: stakeholdersMatch[1].trim() };
+
+    // @Jeeves context related: <value>
+    const relatedMatch = text.match(/^@?[Jj]eeves[,:]?\s+context\s+related:\s*(.+)$/i);
+    if (relatedMatch) return { field: "related", value: relatedMatch[1].trim() };
+
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Capture presentation
+  // ─────────────────────────────────────────────────────────────────────────
+
   private async presentCapture(
     capture: NonNullable<ConversationIntelligenceResult["capture"]>,
     wireMessage: TextMessage,
     convId: QualifiedId,
     sender: QualifiedId,
-    convKey: string,
+    channelId: string,
     log: Logger,
   ): Promise<void> {
     const display = capture.summary.slice(0, 150);
-    this.markActioned(convKey, wireMessage.id);
+    this.markActioned(channelId, wireMessage.id);
 
     if (capture.type === "knowledge") {
-      // Facts are stored silently — no confirmation prompt needed.
       log.debug("Silently storing knowledge capture", { confidence: capture.confidence });
       void this.deps.storeKnowledge.execute({
         conversationId: convId, authorId: sender, authorName: "",
@@ -565,8 +867,6 @@ export class WireEventRouter extends WireEventsHandler {
         log.warn("Failed to silently store knowledge capture", { err: String(err) });
       });
     } else if (capture.type === "action") {
-      // Actions detected in ambient speech are buffered — we watch the conversation
-      // for a few messages before committing, giving the team time to resolve it naturally.
       log.debug("Buffering action capture for delayed observation", { confidence: capture.confidence });
       this.pendingActionBuffer.add(convId, {
         description: capture.detail || capture.summary,
@@ -580,7 +880,7 @@ export class WireEventRouter extends WireEventsHandler {
     } else if (capture.type === "task" || capture.type === "decision") {
       const label = capture.type === "task" ? "a task" : "a decision";
       log.debug(`Presenting ${capture.type} capture prompt`, { confidence: capture.confidence });
-      this.pendingCaptures.set(convKey, {
+      this.pendingCaptures.set(channelId, {
         type: capture.type,
         summary: capture.summary,
         detail: capture.detail || capture.summary,
@@ -597,12 +897,16 @@ export class WireEventRouter extends WireEventsHandler {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent routing
+  // ─────────────────────────────────────────────────────────────────────────
+
   private async routeIntent(
     result: ConversationIntelligenceResult,
     wireMessage: TextMessage,
     convId: QualifiedId,
     sender: QualifiedId,
-    convKey: string,
+    channelId: string,
     previousMessageText: string | undefined,
     log: Logger,
     members: Array<{ id: string; name?: string }>,
@@ -764,7 +1068,6 @@ export class WireEventRouter extends WireEventsHandler {
         break;
       }
       case "retrieve_knowledge": {
-        // Unified RAG path: search KB and synthesise via LLM (same as general_question)
         const question = p.query ?? rawText;
         if (question.length > 0) {
           const recentContext = this.deps.messageBuffer
@@ -824,21 +1127,7 @@ export class WireEventRouter extends WireEventsHandler {
         await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
         break;
       // ── Meta ──────────────────────────────────────────────────────────────
-      case "general_question": {
-        const recentContext = this.deps.messageBuffer
-          .getLastN(convId, CONTEXT_WINDOW)
-          .slice(0, -1)
-          .map((m) => m.text);
-        await this.deps.answerQuestion.execute({
-          question: rawText,
-          conversationContext: recentContext,
-          conversationId: convId,
-          replyToMessageId: wireMessage.id,
-          members,
-          conversationPurpose,
-        });
-        break;
-      }
+      case "general_question":
       case "help": {
         const recentContext = this.deps.messageBuffer
           .getLastN(convId, CONTEXT_WINDOW)
@@ -854,94 +1143,64 @@ export class WireEventRouter extends WireEventsHandler {
         });
         break;
       }
+      // Legacy intent names — mapped to new state machine
       case "secret_mode_on":
-        await this.enterSecretMode(convId, convKey, wireMessage.id, sender, log);
+        await this.setChannelState(convId, channelId, "secure", sender.id, wireMessage.id, log);
         break;
       case "secret_mode_off":
-        await this.exitSecretMode(convId, convKey, wireMessage.id, log);
+        await this.setChannelState(convId, channelId, "active", sender.id, wireMessage.id, log);
         break;
     }
   }
 
-  private async enterSecretMode(
-    convId: QualifiedId, convKey: string, replyToMessageId: string, _sender: QualifiedId, log: Logger,
-  ): Promise<void> {
-    this.secretModeConvs.add(convKey);
-    log.info("Entering secret mode", { conversationId: convId.id });
-    const existing = await this.deps.conversationConfig.get(convId);
-    await this.deps.conversationConfig.upsert({
-      conversationId: convId, timezone: existing?.timezone ?? "UTC", locale: existing?.locale ?? "en",
-      secretMode: true, implicitDetectionEnabled: existing?.implicitDetectionEnabled,
-      sensitivity: existing?.sensitivity, purpose: existing?.purpose, raw: existing?.raw ?? null,
-    });
-    this.scheduleInactivityCheck(convId, convKey);
-    await this.deps.wireOutbound.sendPlainText(convId,
-      "I've gone quiet. I won't record anything from this conversation until you ask me to resume.",
-      { replyToMessageId });
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Inactivity check (SECURE mode only)
+  // ─────────────────────────────────────────────────────────────────────────
 
-  private async exitSecretMode(
-    convId: QualifiedId, convKey: string, replyToMessageId: string, log: Logger,
-  ): Promise<void> {
-    this.secretModeConvs.delete(convKey);
-    this.deps.scheduler.cancel(`secret-inactivity-${convKey}`);
-    log.info("Exiting secret mode", { conversationId: convId.id });
-    const existing = await this.deps.conversationConfig.get(convId);
-    await this.deps.conversationConfig.upsert({
-      conversationId: convId, timezone: existing?.timezone ?? "UTC", locale: existing?.locale ?? "en",
-      secretMode: false, implicitDetectionEnabled: existing?.implicitDetectionEnabled,
-      sensitivity: existing?.sensitivity, purpose: existing?.purpose, raw: existing?.raw ?? null,
-    });
-    await this.deps.wireOutbound.sendPlainText(convId, "I'm listening again.", { replyToMessageId });
-  }
-
-  private markActioned(convKey: string, messageId: string): void {
-    let set = this.actionedMessageIds.get(convKey);
-    if (!set) { set = new Set(); this.actionedMessageIds.set(convKey, set); }
-    set.add(messageId);
-    if (set.size > 200) set.delete(set.values().next().value as string);
-  }
-
-  private scheduleInactivityCheck(convId: QualifiedId, convKey: string): void {
-    this.deps.scheduler.cancel(`secret-inactivity-${convKey}`);
+  private scheduleInactivityCheck(convId: QualifiedId, channelId: string): void {
+    this.deps.scheduler.cancel(`secret-inactivity-${channelId}`);
     this.deps.scheduler.schedule({
-      id: `secret-inactivity-${convKey}`, type: "secret_inactivity",
+      id: `secret-inactivity-${channelId}`, type: "secret_inactivity",
       runAt: new Date(Date.now() + this.deps.secretModeInactivityMs),
       payload: { convId },
     });
   }
 
   async handleSecretModeInactivityCheck(convId: QualifiedId): Promise<void> {
-    const convKey = `${convId.id}@${convId.domain}`;
-    if (!this.secretModeConvs.has(convKey)) return;
-    const lastActivity = this.lastActivityByConv.get(convKey) ?? 0;
+    const channelId = toChannelId(convId);
+    if (this.channelStateCache.get(channelId) !== "secure") return;
+    const lastActivity = this.lastActivityByConv.get(channelId) ?? 0;
     const inactiveMs = Date.now() - lastActivity;
     if (inactiveMs >= this.deps.secretModeInactivityMs) {
-      this.deps.logger.debug("Secret mode inactivity prompt sent", { conversationId: convId.id });
+      this.deps.logger.debug("Secure mode inactivity prompt sent", { conversationId: convId.id });
       await this.deps.wireOutbound.sendPlainText(convId,
-        "This conversation has been quiet for a while. Type _\"resume\"_ whenever you'd like me to start listening again.");
+        "This conversation has been quiet for a while. Say _\"resume\"_ whenever you'd like me to start listening again.");
     } else {
       this.deps.scheduler.schedule({
-        id: `secret-inactivity-${convKey}`, type: "secret_inactivity",
+        id: `secret-inactivity-${channelId}`, type: "secret_inactivity",
         runAt: new Date(lastActivity + this.deps.secretModeInactivityMs),
         payload: { convId },
       });
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Button actions
+  // ─────────────────────────────────────────────────────────────────────────
+
   async onButtonActionReceived(wireMessage: ButtonActionMessage): Promise<void> {
     const convId = wireMessage.conversationId as QualifiedId;
     const senderId = wireMessage.sender as QualifiedId;
     const { buttonId, referenceMessageId } = wireMessage;
-    const convKey = `${convId.id}@${convId.domain}`;
+    const channelId = toChannelId(convId);
     const log = this.deps.logger.child({ conversationId: convId.id, senderId: senderId.id, buttonId });
 
     switch (buttonId) {
       case "confirm_knowledge": {
-        const pending = this.pendingKnowledge.get(convKey);
+        const pending = this.pendingKnowledge.get(channelId);
         if (pending) {
-          this.pendingKnowledge.delete(convKey);
-          this.markActioned(convKey, pending.rawMessageId);
+          this.pendingKnowledge.delete(channelId);
+          this.markActioned(channelId, pending.rawMessageId);
           try {
             await this.deps.storeKnowledge.execute({
               conversationId: convId, authorId: pending.authorId, authorName: "",
@@ -955,10 +1214,10 @@ export class WireEventRouter extends WireEventsHandler {
         break;
       }
       case "confirm_capture": {
-        const pending = this.pendingCaptures.get(convKey);
+        const pending = this.pendingCaptures.get(channelId);
         if (pending) {
-          this.pendingCaptures.delete(convKey);
-          this.markActioned(convKey, pending.rawMessageId);
+          this.pendingCaptures.delete(channelId);
+          this.markActioned(channelId, pending.rawMessageId);
           try {
             if (pending.type === "action") {
               await this.deps.createActionFromExplicit.execute({
@@ -986,9 +1245,9 @@ export class WireEventRouter extends WireEventsHandler {
         break;
       }
       case "dismiss":
-        this.pendingKnowledge.delete(convKey);
-        this.pendingCaptures.delete(convKey);
-        this.markActioned(convKey, wireMessage.referenceMessageId ?? "");
+        this.pendingKnowledge.delete(channelId);
+        this.pendingCaptures.delete(channelId);
+        this.markActioned(channelId, wireMessage.referenceMessageId ?? "");
         break;
       case "yes":
         await this.deps.wireOutbound.sendPlainText(convId, "Use _\"action: <description>\"_ to log the action.");
@@ -1008,36 +1267,114 @@ export class WireEventRouter extends WireEventsHandler {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Conversation lifecycle events
+  // ─────────────────────────────────────────────────────────────────────────
+
   async onAppAddedToConversation(conversation: Conversation, members: ConversationMember[]): Promise<void> {
     const convId = { id: conversation.id, domain: conversation.domain } as QualifiedId;
-    const convKey = `${convId.id}@${convId.domain}`;
+    const channelId = toChannelId(convId);
     this.deps.memberCache.setMembers(convId, toCachedMembers(members));
 
-    // Ask for channel purpose if we don't already have it stored.
+    // Determine personal mode: 2-member conversation (one is the bot itself)
+    const nonBotMembers = members.filter((m) => m.userId.id !== this.deps.botUserId.id);
+    const isPersonalMode = nonBotMembers.length === 1;
+
+    // Upsert channel_config row with name and joined_at
     try {
-      const config = await this.deps.conversationConfig.get(convId);
-      if (!config?.purpose) {
-        this.awaitingPurpose.add(convKey);
-        await this.deps.wireOutbound.sendPlainText(
-          convId,
-          "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
-        );
+      const now = new Date();
+      const existing = await this.deps.channelConfig.get(channelId);
+      await this.deps.channelConfig.upsert({
+        channelId,
+        channelName: (conversation as { name?: string }).name ?? existing?.channelName,
+        organisationId: convId.domain,
+        state: existing?.state ?? "active",
+        secureRanges: existing?.secureRanges ?? [],
+        purpose: existing?.purpose,
+        contextType: existing?.contextType,
+        tags: existing?.tags ?? [],
+        stakeholders: existing?.stakeholders ?? [],
+        relatedChannels: existing?.relatedChannels ?? [],
+        timezone: existing?.timezone ?? "UTC",
+        locale: existing?.locale ?? "en",
+        joinedAt: existing?.joinedAt ?? now,
+        isPersonalMode,
+      });
+    } catch {
+      // Non-fatal — proceed without persisting
+    }
+
+    // Ask for channel purpose if not already set
+    try {
+      const channelCfg = await this.deps.channelConfig.get(channelId);
+      if (!channelCfg?.purpose) {
+        const legacyCfg = await this.deps.conversationConfig.get(convId);
+        if (!legacyCfg?.purpose) {
+          this.awaitingPurpose.add(channelId);
+          await this.deps.wireOutbound.sendPlainText(
+            convId,
+            "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
+          );
+        }
       }
     } catch {
-      // Non-fatal — proceed without purpose
+      // Non-fatal
     }
   }
 
   async onConversationDeleted(conversationId: QualifiedId): Promise<void> {
+    const channelId = toChannelId(conversationId);
     this.deps.memberCache.clearConversation(conversationId as QualifiedId);
     this.pendingActionBuffer.clearConversation(conversationId as QualifiedId);
+    this.deps.slidingWindow.clear(channelId);
+    this.channelStateCache.delete(channelId);
+    this.knownConvs.delete(channelId);
   }
 
   async onUserJoinedConversation(conversationId: QualifiedId, members: ConversationMember[]): Promise<void> {
     this.deps.memberCache.addMembers(conversationId as QualifiedId, toCachedMembers(members));
+    await this.updatePersonalMode(conversationId as QualifiedId);
   }
 
   async onUserLeftConversation(conversationId: QualifiedId, members: QualifiedId[]): Promise<void> {
     this.deps.memberCache.removeMembers(conversationId as QualifiedId, members as QualifiedId[]);
+    await this.updatePersonalMode(conversationId as QualifiedId);
   }
+
+  private async updatePersonalMode(convId: QualifiedId): Promise<void> {
+    const channelId = toChannelId(convId);
+    const allMembers = this.deps.memberCache.getMembers(convId);
+    const nonBotMembers = allMembers.filter((m) => m.userId.id !== this.deps.botUserId.id);
+    const isPersonalMode = nonBotMembers.length === 1;
+    try {
+      const existing = await this.deps.channelConfig.get(channelId);
+      if (existing) {
+        await this.deps.channelConfig.upsert({ ...existing, isPersonalMode });
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private markActioned(channelId: string, messageId: string): void {
+    let set = this.actionedMessageIds.get(channelId);
+    if (!set) { set = new Set(); this.actionedMessageIds.set(channelId, set); }
+    set.add(messageId);
+    if (set.size > 200) set.delete(set.values().next().value as string);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal types
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ContextField = "purpose" | "type" | "tags" | "stakeholders" | "related";
+
+interface ContextCommandMatch {
+  field: ContextField;
+  value: string;
 }

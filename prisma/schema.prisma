@@ -1,14 +1,16 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
 }
 
 model Task {
-  id              String   @id
+  id              String    @id
   conversationId  String
   conversationDom String
   authorId        String
@@ -20,24 +22,28 @@ model Task {
   updatedAt       DateTime
   tags            String[]
   status          String
-  deleted         Boolean  @default(false)
-  version         Int      @default(1)
+  deleted         Boolean   @default(false)
+  version         Int       @default(1)
 
-  description     String
-  assigneeId      String
-  assigneeDom     String
-  assigneeName    String
-  creatorId       String
-  creatorDom      String
-  deadline        DateTime?
-  priority        String
-  recurrence      String?
-  linkedIds       String[]
-  completionNote  String?
+  description    String
+  assigneeId     String
+  assigneeDom    String
+  assigneeName   String
+  creatorId      String
+  creatorDom     String
+  deadline       DateTime?
+  priority       String
+  recurrence     String?
+  linkedIds      String[]
+  completionNote String?
+
+  // Phase 1a additions
+  organisationId String?
+  sourceRef      Json?
 }
 
 model Reminder {
-  id              String   @id
+  id              String    @id
   conversationId  String?
   conversationDom String?
   authorId        String
@@ -49,15 +55,19 @@ model Reminder {
   updatedAt       DateTime
   tags            String[]
   status          String
-  deleted         Boolean  @default(false)
-  version         Int      @default(1)
+  deleted         Boolean   @default(false)
+  version         Int       @default(1)
 
-  description     String
-  targetId        String
-  targetDom       String
-  triggerAt       DateTime
-  recurrence      String?
-  linkedIds       String[]
+  description String
+  targetId    String
+  targetDom   String
+  triggerAt   DateTime
+  recurrence  String?
+  linkedIds   String[]
+
+  // Phase 1a additions
+  organisationId String?
+  sourceRef      Json?
 }
 
 model Decision {
@@ -82,6 +92,15 @@ model Decision {
   updatedAt       DateTime
   deleted         Boolean  @default(false)
   version         Int      @default(1)
+
+  // Phase 1a additions
+  organisationId  String?
+  sourceRef       Json?
+  decidedAt       DateTime?
+  rationale       String?
+  decidedBy       String[]
+  confidence      Float?
+  extractionModel String?
 }
 
 model Action {
@@ -107,13 +126,21 @@ model Action {
   updatedAt       DateTime
   deleted         Boolean   @default(false)
   version         Int       @default(1)
+
+  // Phase 1a additions
+  organisationId    String?
+  sourceRef         Json?
+  stalenessAt       DateTime?
+  lastStatusCheck   DateTime?
+  actionConfidence  Float?
+  relatedDecisionId String?
 }
 
 model KnowledgeEntry {
-  id               String   @id
-  conversationId   String
+  id              String    @id
+  conversationId  String
   conversationDom String
-  authorId         String
+  authorId        String
   authorDom       String
   authorName      String
   rawMessageId    String
@@ -124,29 +151,28 @@ model KnowledgeEntry {
   confidence      String
   relatedIds      String[]
   ttlDays         Int?
-  verifiedBy      Json     // KnowledgeVerifiedBy[]
-  retrievalCount  Int      @default(0)
+  verifiedBy      Json      // KnowledgeVerifiedBy[]
+  retrievalCount  Int       @default(0)
   lastRetrieved   DateTime?
   tags            String[]
   timestamp       DateTime
   updatedAt       DateTime
-  deleted         Boolean  @default(false)
-  version         Int      @default(1)
-  // Populated asynchronously after create/update via OpenAIEmbeddingAdapter.
-  // Dimension must match LLM_EMBEDDING_DIMS (default 1024 for bge-m3).
-  // If you switch models, update LLM_EMBEDDING_DIMS and add a migration to
-  // ALTER COLUMN embedding TYPE vector(<new_dims>).
+  deleted         Boolean   @default(false)
+  version         Int       @default(1)
   embedding       Unsupported("vector(1024)")?
+
+  // Phase 1a additions
+  organisationId String?
 }
 
 model ConversationConfig {
-  conversationId   String
-  conversationDom  String
-  timezone         String   @default("UTC")
-  locale           String   @default("en")
-  secretMode       Boolean  @default(false)
-  raw              Json?
-  updatedAt        DateTime @updatedAt
+  conversationId  String
+  conversationDom String
+  timezone        String   @default("UTC")
+  locale          String   @default("en")
+  secretMode      Boolean  @default(false)
+  raw             Json?
+  updatedAt       DateTime @updatedAt
 
   @@id([conversationId, conversationDom])
 }
@@ -171,5 +197,134 @@ model AuditLog {
   entityType      String?
   entityId        String?
   details         Json?
+
+  // Phase 1a addition
+  organisationId String?
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1a: New tables
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Replaces ConversationConfig in Phase 1b. Coexists with it during Phase 1a.
+/// State machine: active | paused | secure.
+model ChannelConfig {
+  channelId          String    @id @map("channel_id")
+  channelName        String?   @map("channel_name")
+  organisationId     String    @map("organisation_id")
+  state              String    @default("active")
+  stateChangedAt     DateTime? @map("state_changed_at")
+  stateChangedBy     String?   @map("state_changed_by")
+  purpose            String?
+  contextType        String?   @map("context_type")
+  tags               String[]
+  stakeholders       String[]
+  relatedChannels    String[]  @map("related_channels")
+  contextUpdatedAt   DateTime? @map("context_updated_at")
+  contextUpdatedBy   String?   @map("context_updated_by")
+  secureRanges       Json      @default("[]") @map("secure_ranges")
+  timezone           String    @default("UTC")
+  locale             String    @default("en")
+  joinedAt           DateTime? @map("joined_at")
+  isPersonalMode     Boolean   @default(false) @map("is_personal_mode")
+
+  @@map("channel_config")
+}
+
+/// Named entities extracted from conversations (person, service, project, team, tool, concept).
+model Entity {
+  id              String    @id @default(uuid())
+  channelId       String    @map("channel_id")
+  organisationId  String    @map("organisation_id")
+  entityType      String    @map("entity_type")
+  name            String
+  aliases         String[]
+  metadata        Json      @default("{}")
+  firstSeen       DateTime? @map("first_seen")
+  lastMentioned   DateTime? @map("last_mentioned")
+  mentionCount    Int       @default(1) @map("mention_count")
+  deleted         Boolean   @default(false)
+
+  sourceRelationships EntityRelationship[] @relation("source")
+  targetRelationships EntityRelationship[] @relation("target")
+
+  @@map("entities")
+}
+
+/// Typed edges between entities in the entity graph.
+model EntityRelationship {
+  id               String    @id @default(uuid())
+  sourceId         String    @map("source_id")
+  targetId         String    @map("target_id")
+  relationship     String    // owns | depends_on | works_on | blocks | reports_to
+  context          String?
+  confidence       Float     @default(0.7)
+  firstObserved    DateTime? @map("first_observed")
+  lastObserved     DateTime? @map("last_observed")
+  observationCount Int       @default(1) @map("observation_count")
+  sourceRef        Json?     @map("source_ref")
+
+  source Entity @relation("source", fields: [sourceId], references: [id])
+  target Entity @relation("target", fields: [targetId], references: [id])
+
+  @@unique([sourceId, targetId, relationship])
+  @@map("entity_relationships")
+}
+
+/// Standalone embeddings table (Layer 4). Source text is discarded after embedding.
+/// Holds vectors for decisions, signals, summaries, and message-level embeds.
+model Embedding {
+  id             String    @id @default(uuid())
+  sourceType     String    @map("source_type")  // decision | action | signal | summary | message
+  sourceId       String?   @map("source_id")
+  channelId      String    @map("channel_id")
+  organisationId String    @map("organisation_id")
+  authorId       String?   @map("author_id")
+  createdAt      DateTime  @map("created_at")
+  topicTags      String[]  @map("topic_tags")
+  // vector column managed directly via raw SQL migration (HNSW index)
+  // embedding vector(1024) — omitted from Prisma model, accessed via $queryRaw
+
+  @@map("embeddings")
+}
+
+/// Lightweight signals captured from every message (low-signal = discussion only).
+model ConversationSignal {
+  id              String    @id @default(uuid())
+  channelId       String    @map("channel_id")
+  organisationId  String    @map("organisation_id")
+  signalType      String    @map("signal_type")  // discussion | question | blocker | update | concern
+  summary         String
+  participants    String[]
+  tags            String[]
+  relatedEntities String[]  @map("related_entities")
+  occurredAt      DateTime  @map("occurred_at")
+  confidence      Float     @default(0.6)
+  sourceRef       Json      @map("source_ref")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("conversation_signals")
+}
+
+/// Rolling summaries (daily | weekly | on_demand) per channel or other scope.
+model ConversationSummary {
+  id             String   @id @default(uuid())
+  scopeType      String   @map("scope_type")    // channel | topic | project | person
+  scopeId        String   @map("scope_id")      // channel_id or entity name
+  organisationId String   @map("organisation_id")
+  periodStart    DateTime @map("period_start")
+  periodEnd      DateTime @map("period_end")
+  granularity    String   // daily | weekly | on_demand
+  summary        String
+  keyDecisions   String[] @map("key_decisions")
+  keyActions     String[] @map("key_actions")
+  activeTopics   String[] @map("active_topics")
+  participants   String[]
+  sentiment      String?  // productive | contentious | blocked | routine
+  messageCount   Int?     @map("message_count")
+  modelVersion   String?  @map("model_version")
+  generatedAt    DateTime @default(now()) @map("generated_at")
+
+  @@unique([scopeType, scopeId, granularity, periodStart])
+  @@map("conversation_summaries")
+}
