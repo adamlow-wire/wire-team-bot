@@ -45,4 +45,6 @@ export interface ChannelConfigRepository {
   openSecureRange(channelId: string, start: Date): Promise<void>;
   /** Close the most recent open secure range. */
   closeSecureRange(channelId: string, end: Date): Promise<void>;
+  /** Return all channels in the given state (default: active). Used by startup scheduler to seed summary jobs. */
+  listByState(state: ChannelState): Promise<ChannelConfig[]>;
 }

@@ -147,4 +147,9 @@ export class PrismaChannelConfigRepository implements ChannelConfigRepository {
       data: { secureRanges: existing as object[] },
     });
   }
+
+  async listByState(state: ChannelState): Promise<ChannelConfig[]> {
+    const rows = await this.prisma.channelConfig.findMany({ where: { state } });
+    return rows.map(toChannelConfig);
+  }
 }

@@ -36,7 +36,6 @@ describe("LogDecision", () => {
       authorId,
       authorName: "Alice",
       rawMessageId: "msg-1",
-      rawMessage: "decision: We will use Prisma",
       summary: "We will use Prisma",
       contextMessages: [],
       participantIds: [authorId],

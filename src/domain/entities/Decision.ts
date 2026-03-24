@@ -16,10 +16,15 @@ export interface DecisionAttachment {
   mimeType: string;
 }
 
+export interface DecisionSourceRef {
+  /** Wire message IDs the decision was extracted from. */
+  wire_msg_ids: string[];
+  timestamp_range: { start: string; end: string };
+}
+
 export interface Decision {
   id: string;
   summary: string;
-  rawMessage: string;
   rawMessageId: string;
   context: DecisionContextItem[];
   authorId: QualifiedId;
@@ -36,4 +41,19 @@ export interface Decision {
   updatedAt: Date;
   deleted: boolean;
   version: number;
+  // Phase 1a / Phase 2 additions
+  /** When the decision was crystallised (defaults to timestamp if not set). */
+  decidedAt?: Date;
+  /** Why this decision was made, synthesised by the extractor. */
+  rationale?: string;
+  /** Names/IDs of participants who made the decision. */
+  decidedBy?: string[];
+  /** LLM extraction confidence (0–1). Absent for manually-created decisions. */
+  confidence?: number;
+  /** Model name used for extraction, if extracted by the pipeline. */
+  extractionModel?: string;
+  /** Wire message reference — replaces verbatim rawMessage content. */
+  sourceRef?: DecisionSourceRef;
+  /** Wire domain used as organisation scope. */
+  organisationId?: string;
 }

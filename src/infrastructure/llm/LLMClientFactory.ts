@@ -25,6 +25,13 @@ export interface ChatCompletionOptions {
   max_tokens?: number;
   temperature?: number;
   response_format?: { type: "json_object" } | { type: "text" };
+  /**
+   * When set and above config.complexityThreshold, the request is escalated to
+   * the slot named by `escalateToSlot` (default: "complexSynthesis").
+   */
+  complexity?: number;
+  /** Slot to escalate to when complexity > threshold. Defaults to "complexSynthesis". */
+  escalateToSlot?: SlotName;
 }
 
 export interface ChatCompletionResult {
@@ -53,7 +60,16 @@ export class LLMClientFactory {
     messages: ChatMessage[],
     options: ChatCompletionOptions = {},
   ): Promise<ChatCompletionResult> {
-    const slotCfg: JeevesModelSlot = this.config.slots[slot];
+    // Complexity escalation: when query complexity exceeds threshold, use a more
+    // capable model slot (default: complexSynthesis) for the generation call.
+    const effectiveSlot: SlotName =
+      options.complexity !== undefined &&
+      options.complexity > this.config.complexityThreshold &&
+      (options.escalateToSlot ?? "complexSynthesis" as SlotName) in this.config.slots
+        ? (options.escalateToSlot ?? "complexSynthesis" as SlotName)
+        : slot;
+
+    const slotCfg: JeevesModelSlot = this.config.slots[effectiveSlot];
 
     // Primary attempt
     try {
@@ -63,7 +79,7 @@ export class LLMClientFactory {
       const isFallbackable = this.isFallbackError(err);
       if (!isFallbackable) throw err;
       this.logger.warn("LLM primary attempt failed, retrying with fallback", {
-        slot,
+        slot: effectiveSlot,
         primaryModel: slotCfg.model,
         fallbackModel: slotCfg.fallback,
         err: String(err),

@@ -1,68 +1,41 @@
 import type {
   ConversationConfig,
   ConversationConfigRepository,
-  ImplicitSensitivity,
 } from "../../../domain/repositories/ConversationConfigRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import { getPrismaClient } from "./PrismaClient";
 
+/** Returns the canonical channel_id string used in channel_config. */
+function toChannelId(q: QualifiedId): string {
+  return `${q.id}@${q.domain}`;
+}
+
+/**
+ * Phase 1b: ConversationConfig table has been dropped.
+ * This adapter reads from channel_config (the Phase 1a replacement) and maps
+ * the fields that callers still need (timezone, locale, purpose, secretMode).
+ *
+ * upsert() is a no-op — all writes go through ChannelConfigRepository directly.
+ */
 export class PrismaConversationConfigRepository implements ConversationConfigRepository {
   private prisma = getPrismaClient();
 
   async get(conversationId: QualifiedId): Promise<ConversationConfig | null> {
-    const row = await this.prisma.conversationConfig.findUnique({
-      where: {
-        conversationId_conversationDom: {
-          conversationId: conversationId.id,
-          conversationDom: conversationId.domain,
-        },
-      },
-    });
+    const channelId = toChannelId(conversationId);
+    const row = await this.prisma.channelConfig.findUnique({ where: { channelId } });
     if (!row) return null;
-    const raw = (row.raw as Record<string, unknown>) ?? {};
     return {
-      conversationId: { id: row.conversationId, domain: row.conversationDom },
+      conversationId,
       timezone: row.timezone,
       locale: row.locale,
-      secretMode: row.secretMode,
-      implicitDetectionEnabled: raw.implicitDetectionEnabled as boolean | undefined,
-      sensitivity: raw.sensitivity as ImplicitSensitivity | undefined,
-      purpose: raw.purpose as string | undefined,
-      raw: row.raw ?? undefined,
+      secretMode: row.state === "secure",
+      purpose: row.purpose ?? undefined,
+      raw: null,
     };
   }
 
   async upsert(config: ConversationConfig): Promise<ConversationConfig> {
-    await this.prisma.conversationConfig.upsert({
-      where: {
-        conversationId_conversationDom: {
-          conversationId: config.conversationId.id,
-          conversationDom: config.conversationId.domain,
-        },
-      },
-      create: {
-        conversationId: config.conversationId.id,
-        conversationDom: config.conversationId.domain,
-        timezone: config.timezone,
-        locale: config.locale,
-        secretMode: config.secretMode ?? false,
-        raw: {
-          implicitDetectionEnabled: config.implicitDetectionEnabled,
-          sensitivity: config.sensitivity,
-          purpose: config.purpose,
-        } as object,
-      },
-      update: {
-        timezone: config.timezone,
-        locale: config.locale,
-        secretMode: config.secretMode ?? false,
-        raw: {
-          implicitDetectionEnabled: config.implicitDetectionEnabled,
-          sensitivity: config.sensitivity,
-          purpose: config.purpose,
-        } as object,
-      },
-    });
+    // All persistent config is now managed via ChannelConfigRepository.
     return config;
   }
 }

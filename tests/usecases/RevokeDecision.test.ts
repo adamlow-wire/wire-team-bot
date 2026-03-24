@@ -12,7 +12,6 @@ describe("RevokeDecision", () => {
   const decision: Decision = {
     id: "DEC-0001",
     summary: "Use MySQL",
-    rawMessage: "",
     rawMessageId: "",
     context: [],
     authorId: convId,
