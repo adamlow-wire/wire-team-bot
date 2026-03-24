@@ -9,39 +9,6 @@ datasource db {
   extensions = [pgvector(map: "vector")]
 }
 
-model Task {
-  id              String    @id
-  conversationId  String
-  conversationDom String
-  authorId        String
-  authorDom       String
-  authorName      String
-  rawMessageId    String
-  rawMessage      String
-  timestamp       DateTime
-  updatedAt       DateTime
-  tags            String[]
-  status          String
-  deleted         Boolean   @default(false)
-  version         Int       @default(1)
-
-  description    String
-  assigneeId     String
-  assigneeDom    String
-  assigneeName   String
-  creatorId      String
-  creatorDom     String
-  deadline       DateTime?
-  priority       String
-  recurrence     String?
-  linkedIds      String[]
-  completionNote String?
-
-  // Phase 1a additions
-  organisationId String?
-  sourceRef      Json?
-}
-
 model Reminder {
   id              String    @id
   conversationId  String?
@@ -50,7 +17,6 @@ model Reminder {
   authorDom       String
   authorName      String
   rawMessageId    String
-  rawMessage      String
   timestamp       DateTime
   updatedAt       DateTime
   tags            String[]
@@ -78,7 +44,6 @@ model Decision {
   authorDom       String
   authorName      String
   rawMessageId    String
-  rawMessage      String
   summary         String
   context         Json     // DecisionContextItem[]
   participants    Json     // QualifiedId[] serialized
@@ -114,7 +79,6 @@ model Action {
   assigneeDom     String
   assigneeName    String
   rawMessageId    String
-  rawMessage      String
   description     String
   deadline        DateTime?
   status          String
@@ -134,47 +98,6 @@ model Action {
   lastStatusCheck   DateTime?
   actionConfidence  Float?
   relatedDecisionId String?
-}
-
-model KnowledgeEntry {
-  id              String    @id
-  conversationId  String
-  conversationDom String
-  authorId        String
-  authorDom       String
-  authorName      String
-  rawMessageId    String
-  rawMessage      String
-  summary         String
-  detail          String
-  category        String
-  confidence      String
-  relatedIds      String[]
-  ttlDays         Int?
-  verifiedBy      Json      // KnowledgeVerifiedBy[]
-  retrievalCount  Int       @default(0)
-  lastRetrieved   DateTime?
-  tags            String[]
-  timestamp       DateTime
-  updatedAt       DateTime
-  deleted         Boolean   @default(false)
-  version         Int       @default(1)
-  embedding       Unsupported("vector(1024)")?
-
-  // Phase 1a additions
-  organisationId String?
-}
-
-model ConversationConfig {
-  conversationId  String
-  conversationDom String
-  timezone        String   @default("UTC")
-  locale          String   @default("en")
-  secretMode      Boolean  @default(false)
-  raw             Json?
-  updatedAt       DateTime @updatedAt
-
-  @@id([conversationId, conversationDom])
 }
 
 /// Atomic per-entity-type ID counter. nextVal is incremented via a single

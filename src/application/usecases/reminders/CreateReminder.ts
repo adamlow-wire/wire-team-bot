@@ -12,7 +12,6 @@ export interface CreateReminderInput {
   authorId: QualifiedId;
   authorName: string;
   rawMessageId: string;
-  rawMessage: string;
   description: string;
   targetId: QualifiedId;
   triggerAt: Date;
@@ -38,7 +37,6 @@ export class CreateReminder {
       authorId: input.authorId,
       authorName: input.authorName,
       rawMessageId: input.rawMessageId,
-      rawMessage: input.rawMessage,
       timestamp: now,
       updatedAt: now,
       tags: [],

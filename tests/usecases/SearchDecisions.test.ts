@@ -24,7 +24,6 @@ describe("SearchDecisions", () => {
       {
         id: "DEC-0001",
         summary: "Use Prisma for persistence",
-        rawMessage: "",
         rawMessageId: "",
         context: [],
         authorId: convId,

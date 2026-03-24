@@ -14,7 +14,6 @@ describe("ReassignAction", () => {
   const action: Action = {
     id: "ACT-0001",
     description: "Deploy",
-    rawMessage: "",
     rawMessageId: "",
     assigneeId: actorId,
     assigneeName: "Alice",

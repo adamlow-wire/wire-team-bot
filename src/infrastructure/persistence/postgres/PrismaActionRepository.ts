@@ -33,7 +33,6 @@ export class PrismaActionRepository implements ActionRepository {
         assigneeDom: action.assigneeId.domain,
         assigneeName: action.assigneeName,
         rawMessageId: action.rawMessageId,
-        rawMessage: action.rawMessage,
         description: action.description,
         deadline: action.deadline,
         status: action.status,
@@ -45,6 +44,13 @@ export class PrismaActionRepository implements ActionRepository {
         updatedAt: action.updatedAt,
         deleted: action.deleted,
         version: action.version,
+        // Phase 1a / Phase 2 fields
+        stalenessAt: action.stalenessAt ?? null,
+        lastStatusCheck: action.lastStatusCheck ?? null,
+        actionConfidence: action.actionConfidence ?? null,
+        relatedDecisionId: action.relatedDecisionId ?? null,
+        sourceRef: action.sourceRef ? (action.sourceRef as object) : undefined,
+        organisationId: action.organisationId ?? null,
       },
     });
     return action;
@@ -116,7 +122,6 @@ export class PrismaActionRepository implements ActionRepository {
     assigneeDom: string;
     assigneeName: string;
     rawMessageId: string;
-    rawMessage: string;
     description: string;
     deadline: Date | null;
     status: string;
@@ -128,6 +133,12 @@ export class PrismaActionRepository implements ActionRepository {
     updatedAt: Date;
     deleted: boolean;
     version: number;
+    stalenessAt?: Date | null;
+    lastStatusCheck?: Date | null;
+    actionConfidence?: number | null;
+    relatedDecisionId?: string | null;
+    sourceRef?: unknown;
+    organisationId?: string | null;
   }): Action {
     return {
       id: row.id,
@@ -137,7 +148,6 @@ export class PrismaActionRepository implements ActionRepository {
       authorName: row.authorName,
       assigneeName: row.assigneeName,
       rawMessageId: row.rawMessageId,
-      rawMessage: row.rawMessage,
       description: row.description,
       deadline: row.deadline,
       status: row.status as Action["status"],
@@ -149,6 +159,12 @@ export class PrismaActionRepository implements ActionRepository {
       updatedAt: row.updatedAt,
       deleted: row.deleted,
       version: row.version,
+      stalenessAt: row.stalenessAt ?? undefined,
+      lastStatusCheck: row.lastStatusCheck ?? undefined,
+      actionConfidence: row.actionConfidence ?? undefined,
+      relatedDecisionId: row.relatedDecisionId ?? undefined,
+      sourceRef: row.sourceRef ? (row.sourceRef as Action["sourceRef"]) : undefined,
+      organisationId: row.organisationId ?? undefined,
     };
   }
 }

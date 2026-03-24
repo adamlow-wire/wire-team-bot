@@ -12,7 +12,6 @@ describe("SupersedeDecision", () => {
   const oldDecision: Decision = {
     id: "DEC-0001",
     summary: "Use MySQL",
-    rawMessage: "",
     rawMessageId: "",
     context: [],
     authorId,
@@ -52,7 +51,6 @@ describe("SupersedeDecision", () => {
       authorId,
       authorName: "Alice",
       rawMessageId: "msg-1",
-      rawMessage: "decision: Use Prisma supersedes DEC-0001",
       newSummary: "Use Prisma",
       supersedesDecisionId: "DEC-0001",
       replyToMessageId: "msg-1",
@@ -92,7 +90,6 @@ describe("SupersedeDecision", () => {
       authorId,
       authorName: "",
       rawMessageId: "msg-1",
-      rawMessage: "decision: New supersedes DEC-9999",
       newSummary: "New",
       supersedesDecisionId: "DEC-9999",
     });

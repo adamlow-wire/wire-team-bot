@@ -34,12 +34,12 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
     async sendPlainText(
       conversationId: QualifiedId,
       text: string,
-      _options?: OutboundTextOptions,
+      options?: OutboundTextOptions,
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
       logger.debug("sendPlainText", { conversationId: conversationId.id, preview: text.slice(0, 80) });
-      await h.manager.sendMessage(TextMessage.create({ conversationId, text }));
+      await h.manager.sendMessage(TextMessage.create({ conversationId, text, mentions: options?.mentions }));
     },
 
     async sendCompositePrompt(

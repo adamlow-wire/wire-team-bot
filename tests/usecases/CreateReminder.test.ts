@@ -58,7 +58,6 @@ describe("CreateReminder", () => {
       authorId,
       authorName: "Alice",
       rawMessageId: "msg-1",
-      rawMessage: "reminder: Call John",
       description: "Call John",
       targetId: authorId,
       triggerAt,

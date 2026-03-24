@@ -33,7 +33,6 @@ export class PrismaDecisionRepository implements DecisionRepository {
         authorDom: decision.authorId.domain,
         authorName: decision.authorName,
         rawMessageId: decision.rawMessageId,
-        rawMessage: decision.rawMessage,
         summary: decision.summary,
         context: toJson(decision.context),
         participants: toJson(participantsToJson(decision.participants)),
@@ -47,6 +46,14 @@ export class PrismaDecisionRepository implements DecisionRepository {
         updatedAt: decision.updatedAt,
         deleted: decision.deleted,
         version: decision.version,
+        // Phase 1a / Phase 2 fields
+        decidedAt: decision.decidedAt ?? decision.timestamp,
+        rationale: decision.rationale ?? null,
+        decidedBy: decision.decidedBy ?? [],
+        confidence: decision.confidence ?? null,
+        extractionModel: decision.extractionModel ?? null,
+        sourceRef: decision.sourceRef ? toJson(decision.sourceRef) : undefined,
+        organisationId: decision.organisationId ?? null,
       },
     });
     return decision;
@@ -108,7 +115,6 @@ export class PrismaDecisionRepository implements DecisionRepository {
     authorDom: string;
     authorName: string;
     rawMessageId: string;
-    rawMessage: string;
     summary: string;
     context: unknown;
     participants: unknown;
@@ -122,6 +128,13 @@ export class PrismaDecisionRepository implements DecisionRepository {
     updatedAt: Date;
     deleted: boolean;
     version: number;
+    decidedAt?: Date | null;
+    rationale?: string | null;
+    decidedBy?: string[];
+    confidence?: number | null;
+    extractionModel?: string | null;
+    sourceRef?: unknown;
+    organisationId?: string | null;
   }): Decision {
     const context = (row.context as DecisionContextItem[]) ?? [];
     const attachments = (row.attachments as DecisionAttachment[]) ?? [];
@@ -131,7 +144,6 @@ export class PrismaDecisionRepository implements DecisionRepository {
       authorId: { id: row.authorId, domain: row.authorDom },
       authorName: row.authorName,
       rawMessageId: row.rawMessageId,
-      rawMessage: row.rawMessage,
       summary: row.summary,
       context,
       participants: participantsFromJson(row.participants),
@@ -145,6 +157,13 @@ export class PrismaDecisionRepository implements DecisionRepository {
       updatedAt: row.updatedAt,
       deleted: row.deleted,
       version: row.version,
+      decidedAt: row.decidedAt ?? undefined,
+      rationale: row.rationale ?? undefined,
+      decidedBy: row.decidedBy ?? undefined,
+      confidence: row.confidence ?? undefined,
+      extractionModel: row.extractionModel ?? undefined,
+      sourceRef: row.sourceRef ? (row.sourceRef as Decision["sourceRef"]) : undefined,
+      organisationId: row.organisationId ?? undefined,
     };
   }
 }

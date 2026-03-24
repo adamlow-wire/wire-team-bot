@@ -1,49 +1,159 @@
-# Wire Team Bot
+# Wire Team Bot (Jeeves)
 
-An AI-powered team productivity bot for Wire that records decisions, tasks, actions, reminders, and institutional knowledge directly from your conversations.
+An AI-powered team productivity bot for Wire. Jeeves observes your team conversations, extracts structured knowledge (decisions, actions, entities), and answers questions about your team's history — all while keeping message content inside your infrastructure.
 
 ---
 
 ## Security and data sovereignty
 
-Wire itself uses end-to-end encryption. This bot operates inside that trust boundary — it is an **authorised participant** in the conversations it joins, not a passive network tap. That means a few things matter a great deal:
+Wire itself uses end-to-end encryption. Jeeves is an **authorised participant** in the conversations it joins — it sees decrypted content and must be treated with the same sensitivity as a trusted team member.
 
-- **The bot sees decrypted message content.** It must be treated with the same sensitivity as a human team member who has been added to those conversations.
-- **Where inference happens matters.** If intent classification is performed by a cloud API (OpenAI, Anthropic, etc.) then message fragments are transmitted to that provider's servers. For most organisations this is unacceptable for internal conversations.
-- **The recommended deployment keeps all data inside your network.** The passive LLM (see below) runs locally via Ollama with no outbound connections beyond what Wire itself requires. No message content leaves your infrastructure.
+### Extract-and-forget
+
+Jeeves never stores raw message text. Every message is:
+1. Classified in-memory (Tier 1)
+2. If high-signal: structured facts are extracted (Tier 2) — only the extracted decisions, actions, and entities are written to the database
+3. An embedding vector is computed and stored; the source text is discarded immediately after (Tier 3)
+
+Nothing that could reconstruct a conversation is retained.
 
 ### Recommended deployment posture
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │  Your infrastructure (Docker host)    │
-                    │                                        │
-  Wire servers ◄───►│  wire-team-bot  ◄──► ollama (local)  │
-  (E2EE only)       │       │                               │
-                    │       ▼                               │
-                    │    postgres                           │
-                    └──────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────┐
+                    │  Your infrastructure (Docker host)            │
+                    │                                               │
+  Wire servers ◄───►│  wire-team-bot  ◄──►  ollama (local models) │
+  (E2EE only)       │       │                                      │
+                    │       ▼                                      │
+                    │    postgres + pgvector                        │
+                    └──────────────────────────────────────────────┘
 ```
 
-- **No inbound ports** — the bot connects outbound to Wire only; nothing listens on a public interface.
-- **Postgres bound to localhost** — not reachable from outside the Docker host.
-- **Ollama not exposed** — only reachable by the bot container on the internal Docker network.
-- **Capable (cloud) LLM is optional.** If you only set `LLM_PASSIVE_*` and leave `LLM_CAPABLE_*` unset, every LLM call uses the local model and nothing leaves the host.
+- **No inbound ports** — the bot connects outbound to Wire; nothing listens on a public interface.
+- **Postgres bound to Docker network** — not reachable from outside the host.
+- **Ollama not exposed** — only the bot container can reach it.
+- **All inference on-premises** by default. Set `JEEVES_LLM_BASE_URL` to a local Ollama endpoint and no message content ever leaves your network.
 
 ---
 
-## Split model architecture
+## Architecture
 
-The bot distinguishes two tiers of LLM usage:
+Jeeves uses a **hexagonal (ports and adapters)** architecture. The domain and application layers have no dependency on Wire, Prisma, or any LLM provider — infrastructure components can be swapped without touching business logic.
 
-| Tier | Purpose | Recommended model |
+```
+src/
+  app/               # Config, container wiring, entry point
+  domain/            # Entities, repository ports, service interfaces
+  application/
+    usecases/        # Business logic (decisions, actions, reminders, general)
+    ports/           # Interfaces: GeneralAnswerPort, RetrievalPort, ClassifierPort, etc.
+    services/        # ConversationMessageBuffer
+  infrastructure/
+    buffer/          # SlidingWindowBuffer (in-memory ring buffer, 30 msgs)
+    llm/             # LLMClientFactory + per-slot model adapters
+    pipeline/        # ProcessingPipeline (Tier 1→2→3 orchestration)
+    queue/           # InMemoryProcessingQueue (async worker pool, max 5 concurrent)
+    persistence/     # Prisma/Postgres repositories
+    retrieval/       # MultiPathRetrievalEngine + four retrieval paths
+    scheduler/       # InProcessScheduler (setTimeout-based, self-rescheduling)
+    services/        # Member cache, user resolution
+    wire/            # WireEventRouter + WireOutboundAdapter
+```
+
+### Processing pipeline (per message)
+
+```
+Message received (ACTIVE channel)
+        │
+        ▼
+InMemoryProcessingQueue
+        │
+        ▼
+Tier 1: Classify ── OpenAIClassifierAdapter
+  categories[], confidence, entities[], is_high_signal
+        │
+        ├── is_high_signal=false ──► write ConversationSignal (lightweight)
+        │
+        └── is_high_signal=true
+               │
+               ▼
+        Tier 2: Extract ── OpenAIExtractionAdapter (sliding window of last 30 msgs)
+          ├─ Decision rows      (summary, rationale, decided_by, confidence, source_ref)
+          ├─ Action rows        (description, owner, deadline, staleness_at, source_ref)
+          ├─ Entity rows        (dedup: pgvector similarity ≥ 0.92 + alias match)
+          ├─ EntityRelationship rows
+          ├─ ConversationSignal rows
+          └─ Contradiction check (similarity search → classify: "does B contradict A?")
+               │
+               ▼
+        Tier 3: Embed ── JeevesEmbeddingAdapter (async, fire-and-forget)
+          └─ EmbeddingRepository  (source text discarded after vector computed)
+```
+
+### Retrieval engine (per question)
+
+When Jeeves is asked a question, it runs before generating a response:
+
+```
+OpenAIQueryAnalysisAdapter  ──►  QueryPlan
+  (intent, entities, timeRange, paths, complexity: 0–1)
+        │
+        ▼
+MultiPathRetrievalEngine  (all paths run in parallel via Promise.allSettled)
+  ├─ StructuredRetrievalPath   SQL decisions/actions filtered by owner/status/date/tag
+  ├─ SemanticRetrievalPath     pgvector HNSW similarity search on embeddings table
+  ├─ GraphRetrievalPath        BFS on entity_relationships (depth ≤ 3, max 15 entities)
+  └─ SummaryRetrievalPath      cached channel summaries (auto-runs for temporal/institutional)
+        │
+        ▼
+  Weighted RRF merge
+    score = Σ(1/(60+rank)) × multi-path-boost(1.5×) × recency × confidence
+    token budget: 7,000 tokens
+        │
+        ▼
+OpenAIGeneralAnswerAdapter
+  Context prompt: Relevant Decisions / Relevant Actions / Related Context / User's Question
+  Model: respond slot; escalates to complexSynthesis when complexity > threshold
+```
+
+### Scheduled jobs
+
+| Job | Schedule | What it does |
 |---|---|---|
-| **Passive** | Runs on every message: intent classification, `shouldRespond` decision, passive knowledge capture detection. Must be fast and low-cost. | Local — Gemma 3 4B via Ollama (default); Qwen3 8B also works |
-| **Capable** | Reserved for tasks that benefit from stronger reasoning: complex summarisation, semantic ranking, future multi-step planning. | Cloud — GPT-4o, Claude 3.5 Sonnet, or a larger local model |
+| `staleness_check` | Every 6 hours | Nudges channel for overdue/stale open actions |
+| `daily_summary_all` | 08:00 UTC daily | Generates daily rolling summary for all active channels |
+| `weekly_summary_all` | Monday 08:00 UTC | Generates weekly summary for all active channels |
 
-Both tiers speak the OpenAI-compatible `/v1/chat/completions` API, so Ollama, vLLM, LM Studio, and any OpenAI-compatible endpoint work out of the box.
+All jobs self-reschedule after firing via `InProcessScheduler`.
 
-If `LLM_PASSIVE_*` variables are not set, the passive tier falls back to the capable tier config. If neither is configured, LLM features are disabled and the bot operates in command-only mode (fast-path regex routing still works for all explicit `TASK-`, `ACT-`, `REM-`, `KB-` commands).
+### Channel state machine
+
+```
+ACTIVE  ──► @Jeeves pause / step out ──────►  PAUSED
+  ▲          @Jeeves secure mode / ears off ► SECURE (flushes sliding window)
+  └────────── @Jeeves resume ◄──────────────────────
+```
+
+State is persisted to `channel_config`. SECURE records a `secure_range` timestamp so surrounding context is excluded from future inference.
+
+---
+
+## LLM model slots
+
+Jeeves uses seven purpose-specific model slots, all sharing one OpenAI-compatible endpoint:
+
+| Slot | Purpose | Default model | Env var |
+|---|---|---|---|
+| `classify` | Tier 1: is this message high-signal? | `qwen3-2507:4b` | `JEEVES_MODEL_CLASSIFY` |
+| `extract` | Tier 2: extract decisions/actions/entities | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_EXTRACT` |
+| `embed` | Tier 3: compute embedding vectors | `qwen3-embedding:4b` | `JEEVES_MODEL_EMBED` |
+| `summarise` | Daily/weekly/on-demand channel summaries | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_SUMMARISE` |
+| `queryAnalyse` | Parse question into retrieval plan | `granite4-tiny-h:7b` | `JEEVES_MODEL_QUERY_ANALYSE` |
+| `respond` | Generate Jeeves-voice answers | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_RESPOND` |
+| `complexSynthesis` | Escalation for complex multi-source queries | `qwen3-next:80b` | `JEEVES_MODEL_COMPLEX` |
+
+Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, the slot retries once then falls back.
 
 ---
 
@@ -53,7 +163,7 @@ If `LLM_PASSIVE_*` variables are not set, the passive tier falls back to the cap
 
 - Docker and Docker Compose v2
 - A Wire account for the bot (`WIRE_SDK_USER_*` credentials)
-- *(Optional for cloud LLM)* An OpenAI-compatible API key
+- An Ollama instance (or any OpenAI-compatible LLM endpoint)
 
 ### 1. Clone and configure
 
@@ -61,7 +171,7 @@ If `LLM_PASSIVE_*` variables are not set, the passive tier falls back to the cap
 git clone <repo-url>
 cd wire-team-bot
 cp .env.example .env
-# Edit .env — see Environment variables below
+# Edit .env — set Wire credentials and JEEVES_LLM_BASE_URL
 ```
 
 ### 2. Start the stack
@@ -70,129 +180,125 @@ cp .env.example .env
 docker compose up -d
 ```
 
-On first start, Ollama will pull the passive model (`gemma3:4b` by default — ~2.5 GB). This happens once; the model is persisted in the `ollama-data` volume.
-
-To use a different model:
-
-```bash
-LLM_PASSIVE_MODEL=qwen3:8b docker compose up -d
-```
-
 ### 3. Add the bot to a Wire conversation
 
-Log in to Wire as the bot user and add it to any group conversation. It will begin listening immediately.
+Add the bot user to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and fill in the required values. All variables are optional unless marked **required**.
-
 ### Wire credentials (all required)
 
 | Variable | Description |
 |---|---|
-| `WIRE_SDK_USER_EMAIL` | Email address of the bot's Wire account |
-| `WIRE_SDK_USER_PASSWORD` | Password of the bot's Wire account |
-| `WIRE_SDK_USER_ID` | Wire UUID of the bot user (found in Wire admin or account settings) |
+| `WIRE_SDK_USER_EMAIL` | Email of the bot's Wire account |
+| `WIRE_SDK_USER_PASSWORD` | Password |
+| `WIRE_SDK_USER_ID` | Wire UUID of the bot user |
 | `WIRE_SDK_USER_DOMAIN` | Wire federation domain (e.g. `wire.example.com`) |
-| `WIRE_SDK_API_HOST` | Wire backend API hostname (e.g. `https://api.wire.example.com`) |
-| `WIRE_SDK_CRYPTO_PASSWORD` | Passphrase used to encrypt the local crypto store |
+| `WIRE_SDK_API_HOST` | Wire backend API hostname |
+| `WIRE_SDK_CRYPTO_PASSWORD` | Passphrase for the local crypto store |
 
 ### Database
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `postgres://wirebot:wirebot@db:5432/wire_team_bot` | PostgreSQL connection string. In Docker Compose the default points at the bundled `db` service. |
+| `DATABASE_URL` | `postgres://wirebot:wirebot@db:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string |
 
-### Passive LLM (ambient listening)
-
-The passive model runs on every received message. Use a local model to keep data on-premises.
+### Jeeves LLM (v2 — seven-slot config)
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PASSIVE_PROVIDER` | `ollama` | Provider name (informational). |
-| `LLM_PASSIVE_BASE_URL` | `http://ollama:11434/v1` | Base URL of the OpenAI-compatible API endpoint. |
-| `LLM_PASSIVE_MODEL` | `gemma3:4b` | Model identifier as understood by the provider (e.g. `gemma3:4b`, `qwen3:8b`). |
-| `LLM_PASSIVE_API_KEY` | *(empty)* | API key. Not required for local Ollama. |
-| `LLM_PASSIVE_ENABLED` | `true` | Set to `false` to disable LLM features entirely and use command-only mode. |
+| `JEEVES_LLM_BASE_URL` | *(from `LLM_CAPABLE_BASE_URL`)* | Shared endpoint for all model slots |
+| `JEEVES_LLM_API_KEY` | *(from `LLM_CAPABLE_API_KEY`)* | Shared API key |
+| `JEEVES_LLM_TIMEOUT_MS` | `60000` | Per-call timeout in milliseconds |
+| `JEEVES_MODEL_CLASSIFY` | `qwen3-2507:4b` | Tier 1 classification model |
+| `JEEVES_MODEL_EXTRACT` | `qwen3-2507:30b-a3b` | Tier 2 extraction model |
+| `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` | Embedding model |
+| `JEEVES_MODEL_SUMMARISE` | `qwen3-2507:30b-a3b` | Summarisation model |
+| `JEEVES_MODEL_QUERY_ANALYSE` | `granite4-tiny-h:7b` | Query analysis model |
+| `JEEVES_MODEL_RESPOND` | `qwen3-2507:30b-a3b` | Response generation model |
+| `JEEVES_MODEL_COMPLEX` | `qwen3-next:80b` | Complex synthesis escalation model |
+| `JEEVES_FALLBACK_*` | *(see config.ts)* | Fallback for each slot on 503/timeout |
+| `JEEVES_EMBED_DIMS` | `1024` | Embedding vector dimensions — must match your model |
+| `JEEVES_COMPLEXITY_THRESHOLD` | `0.7` | Query complexity above which `respond` escalates to `complexSynthesis` |
+| `JEEVES_EXTRACT_CONFIDENCE_MIN` | `0.6` | Minimum extraction confidence to persist a result |
+| `JEEVES_CONTRADICTION_THRESHOLD` | `0.78` | Cosine similarity to trigger contradiction detection |
+| `JEEVES_ENTITY_DEDUP_THRESHOLD` | `0.92` | Cosine similarity for entity deduplication |
 
-### Capable LLM (complex reasoning — optional)
+### Legacy v1 LLM tiers (still active)
 
-Currently reserved for future higher-quality reasoning tasks. Falls back to the passive tier if not configured.
+These power the foreground intent router (`create_decision`, `create_action`, etc.) and are not deprecated.
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_CAPABLE_PROVIDER` | `openai` | Provider name. |
-| `LLM_CAPABLE_BASE_URL` | `https://api.openai.com/v1` | Base URL. Any OpenAI-compatible endpoint works. |
-| `LLM_CAPABLE_MODEL` | `gpt-4o-mini` | Model identifier. |
-| `LLM_CAPABLE_API_KEY` | *(empty)* | API key. Required for cloud providers. |
-| `LLM_CAPABLE_ENABLED` | auto | Enabled automatically if `LLM_CAPABLE_API_KEY` is set. |
-
-> **Legacy variables:** `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_ENABLED` are still read as fallbacks for the capable tier, for backwards compatibility.
+| `LLM_PASSIVE_BASE_URL` | `http://ollama:11434/v1` | Endpoint for the v1 ambient classification model |
+| `LLM_PASSIVE_MODEL` | `gemma3:4b` | Model for v1 intent classification |
+| `LLM_CAPABLE_BASE_URL` | `https://api.openai.com/v1` | Endpoint for v1 capable-tier calls; also seeds `JEEVES_LLM_BASE_URL` default |
+| `LLM_CAPABLE_MODEL` | `gpt-4o-mini` | Model for v1 capable-tier calls |
+| `LLM_CAPABLE_API_KEY` | *(empty)* | API key for v1 capable tier |
 
 ### Application
 
 | Variable | Default | Description |
 |---|---|---|
-| `LOG_LEVEL` | `info` | Logging verbosity: `debug`, `info`, `warn`, `error`. |
-| `MESSAGE_BUFFER_SIZE` | `50` | Number of recent messages kept in memory per conversation for LLM context. Max 500. |
-| `STORAGE_DIR` | `storage` | Directory for the Wire SDK's local crypto/session store. |
-| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of silence before the bot prompts to exit secret mode (default 30 min). |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `MESSAGE_BUFFER_SIZE` | `50` | Recent messages in memory per conversation (max 500) |
+| `STORAGE_DIR` | `storage` | Wire SDK local crypto store directory |
+| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of silence before prompting to exit secure mode (default 30 min) |
 
 ---
 
-## What the bot can do
+## What Jeeves can do
 
-**Tasks** — `task: write the spec` or `we need to write the migration doc`
-- Update: `TASK-0001 done` | `cancelled` | `in_progress`
-- Reassign: `TASK-0001 reassign to Mark`
-- Deadline: `TASK-0001 due Friday`
-- List mine: `my tasks` | List team: `team tasks`
+### Explicit commands (always available, no LLM required)
 
-**Decisions** — `decision: we're going with Postgres` or `we've decided to use option A`
-- List/search: `list decisions` | `decisions about pricing`
-- Revoke: `revoke DEC-0001`
+**Decisions**
+- `decision: we're using Postgres` — log a decision
+- `decisions about auth` — search decisions
+- `list decisions` — list recent decisions
+- `revoke DEC-0001 wrong call` — revoke a decision
+- `decision: use REST supersedes DEC-0001` — supersede a prior decision
 
-**Actions** — `action: John to follow up on contract` or `John should call the client`
-- Update: `ACT-0001 done` | `cancelled`
-- Reassign: `assign ACT-0001 to Mark`
-- Deadline: `ACT-0001 due Friday`
-- List mine: `my actions` | Team: `team actions` | Overdue: `overdue actions`
+**Actions** (tasks have been consolidated into actions)
+- `action: Alice to review the contract` — log an action
+- `ACT-0001 done` | `cancelled` | `in_progress` — update status
+- `assign ACT-0001 to Mark` | `ACT-0001 reassign to Mark` — reassign
+- `ACT-0001 due Friday` — set deadline
+- `my actions` | `team actions` | `overdue actions` — list
 
-**Reminders** — `remind me at 3pm to call John`
-- List: `show reminders` | Cancel: `cancel REM-0001` | Snooze: `snooze REM-0001 1 hour`
+**Reminders**
+- `remind me at 3pm to call John` — set a reminder
+- `show reminders` — list yours
+- `cancel REM-0001` | `snooze REM-0001 1 hour` — manage
 
-**Knowledge** — `remember that we have 10k users` | say a fact then `remember this`
-- Retrieve: `what is our rate limit?`
-- Update: `update KB-0001 new text` | Forget: `forget KB-0001`
+### Intelligent commands (require LLM)
 
-**Passive capture** — the bot also detects facts and decisions worth recording from natural conversation and asks before storing anything.
+**Questions** — `@Jeeves what did we decide about the API rate limit?`
+Jeeves analyses the question, runs the multi-path retrieval engine (structured + semantic + graph + summary), merges results, and answers in Jeeves voice citing channel + date.
 
-**Secret mode** — type `secret mode` to pause the bot. Type `resume` to start listening again.
+**Catch me up** — `@Jeeves catch me up` | `@Jeeves what did I miss`
+Posts the most recent daily summary (if fresh), or generates one on-demand for the past 24 hours.
 
----
+**Status** — `@Jeeves status`
+Reports channel state (active/paused/secure), entity counts, last summary date.
 
-## Architecture
+**Channel context** — sets metadata that improves retrieval quality:
+- `@Jeeves context: This channel coordinates the platform migration project`
+- `@Jeeves context type: project` | `team` | `customer` | `general`
+- `@Jeeves context tags: backend, migration`
+- `@Jeeves context stakeholders: @alice @bob`
+- `@Jeeves context related: #ops-channel`
 
-```
-src/
-  app/               # Config, container wiring, entry point
-  domain/            # Entities, repository ports, service ports
-  application/       # Use cases, application services
-  infrastructure/
-    llm/             # OpenAI-compatible adapters (passive + capable tiers)
-    persistence/     # Prisma/Postgres repositories
-    scheduler/       # In-process job scheduler
-    services/        # User resolution, member cache
-    wire/            # Wire SDK event router and outbound adapter
-```
+### Passive capture
 
-The bot follows a hexagonal (ports and adapters) architecture. The domain and application layers have no dependency on Wire, Prisma, or any LLM provider. Swap any infrastructure component without touching business logic.
+Jeeves monitors conversations for decisions and facts worth capturing. When it detects one with high confidence, it asks before storing anything. Low-confidence signals are stored as `ConversationSignal` records (searchable, not surfaced directly).
 
-### LLM call budget
+### Channel modes
 
-With the split model in place, the passive model handles intent classification on every message. The capable model is only invoked for operations that genuinely benefit from higher reasoning quality. In practice, most of the bot's work (fast-path ID commands, exact-match list commands) never touches an LLM at all.
+- `@Jeeves pause` / `step out` → **PAUSED**: Jeeves stops processing until resumed. Responds only to `@Jeeves resume`.
+- `@Jeeves secure mode` / `ears off` → **SECURE**: Same as PAUSED, but also flushes the sliding window buffer and records a secure period marker. Context from before/after the secure window is not used for inference.
+- `@Jeeves resume` / `come back` → **ACTIVE**: Resume normal processing.
 
 ---
 
@@ -204,8 +310,29 @@ cp .env.example .env          # fill in credentials
 npx prisma migrate dev        # create the local DB schema
 npm run dev                   # start with ts-node watch
 
-npm test                      # run unit + contract tests
-npx tsc --noEmit              # type-check without emitting
+npm test                      # run unit + contract tests (Vitest)
+npx tsc --noEmit              # type-check
 ```
 
 Database migrations live in `prisma/migrations/`. The schema is in `prisma/schema.prisma`.
+
+### Test layout
+
+| Directory | What it covers |
+|---|---|
+| `tests/usecases/` | Unit tests for use cases — fully mocked, no DB/network |
+| `tests/pipeline/` | Unit tests for pipeline adapters (classifier, extractor, summariser, query analyser) |
+| `tests/retrieval/` | Unit tests for retrieval paths and engine |
+| `tests/contract/` | `WireEventRouter` routing contract — mocked use cases, real router |
+| `tests/integration/` | Real Postgres + pgvector (requires `INTEGRATION_TESTS=1`) |
+
+### Key files for orientation
+
+| File | Role |
+|---|---|
+| `src/app/container.ts` | Wires every dependency; where to look when adding new components |
+| `src/app/config.ts` | All env var parsing and defaults |
+| `src/infrastructure/wire/WireEventRouter.ts` | Message routing: fast-path commands, channel state, pipeline enqueue |
+| `src/infrastructure/pipeline/ProcessingPipeline.ts` | Tier 1→2→3 orchestration |
+| `src/infrastructure/retrieval/MultiPathRetrievalEngine.ts` | RRF merge of four retrieval paths |
+| `prisma/schema.prisma` | Database schema |

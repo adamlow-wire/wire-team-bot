@@ -24,7 +24,6 @@ describe("ListTeamActions", () => {
       {
         id: "ACT-0001",
         description: "Deploy",
-        rawMessage: "",
         rawMessageId: "",
         assigneeId: user1,
         assigneeName: "Alice",

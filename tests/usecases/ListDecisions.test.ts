@@ -22,7 +22,6 @@ describe("ListDecisions", () => {
       {
         id: "DEC-0001",
         summary: "Use Prisma",
-        rawMessage: "",
         rawMessageId: "",
         context: [],
         authorId: convId,
