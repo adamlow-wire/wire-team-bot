@@ -1,8 +1,17 @@
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
 
+export interface OutboundMention {
+  userId: QualifiedId;
+  /** Byte offset of the `@Name` token in the message text. */
+  offset: number;
+  /** Byte length of the `@Name` token. */
+  length: number;
+}
+
 /** Options for plain-text send. replyToMessageId is ignored until the Wire SDK exposes reply-in-thread. */
 export interface OutboundTextOptions {
   replyToMessageId?: string;
+  mentions?: OutboundMention[];
 }
 
 export interface CompositeButton {

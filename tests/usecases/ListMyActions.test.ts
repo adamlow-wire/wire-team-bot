@@ -23,7 +23,6 @@ describe("ListMyActions", () => {
       {
         id: "ACT-0001",
         description: "Deploy",
-        rawMessage: "",
         rawMessageId: "",
         assigneeId,
         assigneeName: "Alice",

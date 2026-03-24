@@ -1,13 +1,8 @@
-export interface KnowledgeContext {
-  id: string;
-  summary: string;
-  detail: string;
-  confidence: string;
-  updatedAt: Date;
-}
+import type { RetrievalResult } from "./RetrievalPort";
 
 export interface ConversationMemberContext {
   id: string;
+  domain?: string;
   name?: string;
 }
 
@@ -15,8 +10,9 @@ export interface GeneralAnswerService {
   answer(
     question: string,
     conversationContext: string[],
-    knowledgeContext: KnowledgeContext[],
+    retrievalResults: RetrievalResult[],
     members?: ConversationMemberContext[],
     conversationPurpose?: string,
+    complexity?: number,
   ): Promise<string>;
 }

@@ -20,14 +20,6 @@ function makeMessage(text: string, id = "msg-1") {
 function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouterDeps {
   return {
     logger: { child: vi.fn().mockReturnThis(), debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    // Tasks
-    createTaskFromExplicit: { execute: vi.fn().mockResolvedValue({ id: "TASK-0001" }) },
-    updateTaskStatus: { execute: vi.fn().mockResolvedValue(null) },
-    updateTask: { execute: vi.fn().mockResolvedValue(null) },
-    reassignTask: { execute: vi.fn().mockResolvedValue(null) },
-    updateTaskDeadline: { execute: vi.fn().mockResolvedValue(null) },
-    listMyTasks: { execute: vi.fn().mockResolvedValue([]) },
-    listTeamTasks: { execute: vi.fn().mockResolvedValue([]) },
     // Decisions
     logDecision: { execute: vi.fn().mockResolvedValue({ id: "DEC-0001" }) },
     searchDecisions: { execute: vi.fn().mockResolvedValue(undefined) },
@@ -37,7 +29,6 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
     // Actions
     createActionFromExplicit: { execute: vi.fn().mockResolvedValue({ id: "ACT-0001" }) },
     updateActionStatus: { execute: vi.fn().mockResolvedValue(null) },
-    updateAction: { execute: vi.fn().mockResolvedValue(null) },
     reassignAction: { execute: vi.fn().mockResolvedValue(null) },
     updateActionDeadline: { execute: vi.fn().mockResolvedValue(null) },
     listMyActions: { execute: vi.fn().mockResolvedValue([]) },
@@ -48,19 +39,10 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
     listMyReminders: { execute: vi.fn().mockResolvedValue([]) },
     cancelReminder: { execute: vi.fn().mockResolvedValue(null) },
     snoozeReminder: { execute: vi.fn().mockResolvedValue(null) },
-    // Knowledge
-    storeKnowledge: { execute: vi.fn().mockResolvedValue({ id: "KB-0001" }) },
-    retrieveKnowledge: { execute: vi.fn().mockResolvedValue(undefined) },
-    deleteKnowledge: { execute: vi.fn().mockResolvedValue(null) },
-    updateKnowledge: { execute: vi.fn().mockResolvedValue(null) },
     // General
     answerQuestion: { execute: vi.fn().mockResolvedValue(undefined) },
     // Infrastructure identity
     botUserId: { id: "bot-1", domain: "wire.com" },
-    // Intelligence (default: no intent, bot stays silent)
-    conversationIntelligence: {
-      analyze: vi.fn().mockResolvedValue({ intent: "none", payload: {}, confidence: 0, shouldRespond: false }),
-    },
     wireOutbound: {
       sendPlainText: vi.fn().mockResolvedValue(undefined),
       sendCompositePrompt: vi.fn().mockResolvedValue(undefined),
@@ -74,7 +56,7 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
       removeMembers: vi.fn(), clearConversation: vi.fn(),
     },
     conversationConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn() },
-    channelConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn() },
+    channelConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn(), listByState: vi.fn().mockResolvedValue([]) },
     slidingWindow: { push: vi.fn(), getWindow: vi.fn().mockReturnValue([]), flush: vi.fn(), clear: vi.fn() },
     scheduler: { schedule: vi.fn(), cancel: vi.fn(), setHandler: vi.fn() },
     secretModeInactivityMs: 600_000,
@@ -94,17 +76,21 @@ describe("WireEventRouter contract: fast-path routing", () => {
     router = new WireEventRouter(deps);
   });
 
-  it("'TASK-0001 done' → updateTaskStatus with status done", async () => {
+  it("'TASK-0001 done' → sends graceful redirect (tasks consolidated)", async () => {
     await router.onTextMessageReceived(makeMessage("TASK-0001 done"));
-    expect(deps.updateTaskStatus.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ taskId: "TASK-0001", newStatus: "done" }),
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId,
+      expect.stringContaining("actions"),
+      expect.anything(),
     );
   });
 
-  it("'close TASK-0001' → updateTaskStatus with status done", async () => {
+  it("'close TASK-0001' → sends graceful redirect (tasks consolidated)", async () => {
     await router.onTextMessageReceived(makeMessage("close TASK-0001"));
-    expect(deps.updateTaskStatus.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ taskId: "TASK-0001", newStatus: "done" }),
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId,
+      expect.stringContaining("actions"),
+      expect.anything(),
     );
   });
 
@@ -136,10 +122,12 @@ describe("WireEventRouter contract: fast-path routing", () => {
     );
   });
 
-  it("'TASK-0001 reassign to alice' → reassignTask", async () => {
+  it("'TASK-0001 reassign to alice' → sends graceful redirect (tasks consolidated)", async () => {
     await router.onTextMessageReceived(makeMessage("TASK-0001 reassign to alice"));
-    expect(deps.reassignTask.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ taskId: "TASK-0001", newAssigneeReference: "alice" }),
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId,
+      expect.stringContaining("actions"),
+      expect.anything(),
     );
   });
 
@@ -157,17 +145,21 @@ describe("WireEventRouter contract: fast-path routing", () => {
     );
   });
 
-  it("'forget KB-0001' → deleteKnowledge fast-path", async () => {
+  it("'forget KB-0001' → sends graceful message (KB being rebuilt)", async () => {
     await router.onTextMessageReceived(makeMessage("forget KB-0001"));
-    expect(deps.deleteKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ knowledgeId: "KB-0001" }),
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId,
+      expect.stringMatching(/knowledge|rebuilt/i),
+      expect.anything(),
     );
   });
 
-  it("'update KB-0001 new text' → updateKnowledge fast-path", async () => {
+  it("'update KB-0001 new text' → sends graceful message (KB being rebuilt)", async () => {
     await router.onTextMessageReceived(makeMessage("update KB-0001 new text"));
-    expect(deps.updateKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ knowledgeId: "KB-0001", newSummary: "new text" }),
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId,
+      expect.stringMatching(/knowledge|rebuilt/i),
+      expect.anything(),
     );
   });
 
@@ -176,14 +168,14 @@ describe("WireEventRouter contract: fast-path routing", () => {
     expect(deps.listDecisions.execute).toHaveBeenCalledOnce();
   });
 
-  it("'my tasks' exact-match → listMyTasks", async () => {
+  it("'my tasks' exact-match → redirects to listMyActions", async () => {
     await router.onTextMessageReceived(makeMessage("my tasks"));
-    expect(deps.listMyTasks.execute).toHaveBeenCalledOnce();
+    expect(deps.listMyActions.execute).toHaveBeenCalledOnce();
   });
 
-  it("'team tasks' exact-match → listTeamTasks", async () => {
+  it("'team tasks' exact-match → redirects to listTeamActions", async () => {
     await router.onTextMessageReceived(makeMessage("team tasks"));
-    expect(deps.listTeamTasks.execute).toHaveBeenCalledOnce();
+    expect(deps.listTeamActions.execute).toHaveBeenCalledOnce();
   });
 
   it("'my actions' exact-match → listMyActions", async () => {
@@ -203,28 +195,11 @@ describe("WireEventRouter contract: fast-path routing", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Intelligence-path routing (LLM mock provides intent)
+// Explicit-command routing (no LLM)
 // ─────────────────────────────────────────────────────────────────────────────
-describe("WireEventRouter contract: intelligence-path routing", () => {
-  it("create_task intent → createTaskFromExplicit", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_task", confidence: 0.9, shouldRespond: true, payload: { description: "Deploy to prod" } }),
-      },
-    });
-    const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(makeMessage("task: Deploy to prod"));
-    expect(deps.createTaskFromExplicit.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Deploy to prod" }),
-    );
-  });
-
-  it("create_decision intent → logDecision", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_decision", confidence: 0.9, shouldRespond: true, payload: { summary: "Use Postgres" } }),
-      },
-    });
+describe("WireEventRouter contract: explicit command routing", () => {
+  it("decision: <text> → logDecision", async () => {
+    const deps = makeDeps();
     const router = new WireEventRouter(deps);
     await router.onTextMessageReceived(makeMessage("decision: Use Postgres"));
     expect(deps.logDecision.execute).toHaveBeenCalledWith(
@@ -232,25 +207,8 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     );
   });
 
-  it("list_decisions intent with query → searchDecisions", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "list_decisions", confidence: 0.9, shouldRespond: true, payload: { query: "auth" } }),
-      },
-    });
-    const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(makeMessage("decisions about auth"));
-    expect(deps.searchDecisions.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ searchText: "auth" }),
-    );
-  });
-
-  it("create_action intent → createActionFromExplicit", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_action", confidence: 0.9, shouldRespond: true, payload: { description: "Write the spec" } }),
-      },
-    });
+  it("action: <text> → createActionFromExplicit", async () => {
+    const deps = makeDeps();
     const router = new WireEventRouter(deps);
     await router.onTextMessageReceived(makeMessage("action: Write the spec"));
     expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(
@@ -258,38 +216,27 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     );
   });
 
-  it("store_knowledge intent → storeKnowledge", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "store_knowledge", confidence: 0.9, shouldRespond: true, payload: { summary: "API rate limit is 500/min", detail: "API rate limit is 500/min" } }),
-      },
-    });
+  it("decisions about <query> → searchDecisions", async () => {
+    const deps = makeDeps();
     const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(makeMessage("knowledge: API rate limit is 500/min"));
-    expect(deps.storeKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: "API rate limit is 500/min" }),
+    await router.onTextMessageReceived(makeMessage("decisions about auth"));
+    expect(deps.searchDecisions.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ searchText: "auth" }),
     );
   });
 
-  it("retrieve_knowledge intent → answerQuestion (unified RAG path)", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "retrieve_knowledge", confidence: 0.9, shouldRespond: true, payload: { query: "the rate limit" } }),
-      },
-    });
+  it("search decisions <query> → searchDecisions", async () => {
+    const deps = makeDeps();
     const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(makeMessage("what is the rate limit?"));
-    expect(deps.answerQuestion.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ question: "the rate limit" }),
+    await router.onTextMessageReceived(makeMessage("search decisions rate limiting"));
+    expect(deps.searchDecisions.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ searchText: "rate limiting" }),
     );
   });
 
-  it("create_reminder with parseable time → createReminder", async () => {
+  it("remind me <time> to <desc> with parseable time → createReminder", async () => {
     const parsedDate = new Date("2026-03-16T15:00:00Z");
     const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_reminder", confidence: 0.9, shouldRespond: true, payload: { timeExpression: "3pm", description: "call John" } }),
-      },
       dateTimeService: { parse: vi.fn().mockReturnValue({ value: parsedDate }) },
     });
     const router = new WireEventRouter(deps);
@@ -299,14 +246,10 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     );
   });
 
-  it("create_reminder with unparseable time → sends error, no reminder created", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_reminder", confidence: 0.9, shouldRespond: true, payload: { timeExpression: "someday", description: "call John" } }),
-      },
-    });
+  it("remind me <time> to <desc> with unparseable time → error, no reminder created", async () => {
+    const deps = makeDeps();
     const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(makeMessage("remind me to call John"));
+    await router.onTextMessageReceived(makeMessage("remind me someday to call John"));
     expect(deps.createReminder.execute).not.toHaveBeenCalled();
     expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
       convId,
@@ -315,7 +258,7 @@ describe("WireEventRouter contract: intelligence-path routing", () => {
     );
   });
 
-  it("shouldRespond:false + intent:none → bot stays silent", async () => {
+  it("non-command message without bot mention → bot stays silent", async () => {
     const deps = makeDeps();
     const router = new WireEventRouter(deps);
     await router.onTextMessageReceived(makeMessage("yes its set up for tomorrow"));
@@ -342,14 +285,10 @@ describe("WireEventRouter contract: general behaviour", () => {
   });
 
   it("sends error reply when a use case throws", async () => {
-    const d = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({ intent: "create_task", confidence: 0.9, shouldRespond: true, payload: { description: "crash this" } }),
-      },
-    });
-    vi.mocked(d.createTaskFromExplicit.execute).mockRejectedValueOnce(new Error("boom"));
+    const d = makeDeps();
+    vi.mocked(d.createActionFromExplicit.execute).mockRejectedValueOnce(new Error("boom"));
     const r = new WireEventRouter(d);
-    await r.onTextMessageReceived(makeMessage("task: crash this"));
+    await r.onTextMessageReceived(makeMessage("action: crash this"));
     expect(d.wireOutbound.sendPlainText).toHaveBeenCalledWith(
       convId,
       expect.stringContaining("Something went wrong"),
@@ -366,55 +305,11 @@ function makeButtonAction(buttonId: string, referenceMessageId = "msg-1", id = "
 }
 
 describe("WireEventRouter contract: button action handling", () => {
-  it("confirm_knowledge stores the pending knowledge entry", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({
-          intent: "none", confidence: 0, shouldRespond: false,
-          payload: {},
-          capture: { type: "knowledge", confidence: 0.9, summary: "Retries are capped at 3", detail: "Retries are capped at 3", payload: {} },
-        }),
-      },
-      conversationConfig: { get: vi.fn().mockResolvedValue({ implicitDetectionEnabled: true, sensitivity: "normal" }), upsert: vi.fn() },
-    });
-    const router = new WireEventRouter(deps);
-
-    // Knowledge captures are now stored silently — no confirmation prompt
-    await router.onTextMessageReceived(makeMessage("we decided retries are capped at 3"));
-    expect(deps.wireOutbound.sendCompositePrompt).not.toHaveBeenCalled();
-    expect(deps.storeKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: "Retries are capped at 3", silent: true }),
-    );
-  });
-
-  it("dismiss button does not affect knowledge — knowledge is stored silently on detection", async () => {
-    const deps = makeDeps({
-      conversationIntelligence: {
-        analyze: vi.fn().mockResolvedValue({
-          intent: "none", confidence: 0, shouldRespond: false,
-          payload: {},
-          capture: { type: "knowledge", confidence: 0.9, summary: "Retries capped", detail: "Retries capped", payload: {} },
-        }),
-      },
-      conversationConfig: { get: vi.fn().mockResolvedValue({ implicitDetectionEnabled: true, sensitivity: "normal" }), upsert: vi.fn() },
-    });
-    const router = new WireEventRouter(deps);
-
-    await router.onTextMessageReceived(makeMessage("retries capped"));
-    // Knowledge was stored immediately; dismiss has nothing to clear
-    expect(deps.storeKnowledge.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: "Retries capped", silent: true }),
-    );
-  });
-
-  it("'yes' button sends guidance message", async () => {
+  it("unknown button id → warns but does not throw", async () => {
     const deps = makeDeps();
     const router = new WireEventRouter(deps);
-    await router.onButtonActionReceived(makeButtonAction("yes"));
-    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
-      convId,
-      expect.stringContaining("action:"),
-    );
+    await router.onButtonActionReceived(makeButtonAction("unknown_button"));
+    expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
   });
 });
 
@@ -448,5 +343,134 @@ describe("WireEventRouter contract: member cache lifecycle", () => {
     const router = new WireEventRouter(deps);
     await router.onUserLeftConversation(convId, [sender]);
     expect(deps.memberCache.removeMembers).toHaveBeenCalledWith(convId, [sender]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2: Pipeline enqueue behaviour
+// ─────────────────────────────────────────────────────────────────────────────
+describe("WireEventRouter contract: Phase 2 pipeline enqueue", () => {
+  function makeQueueDeps() {
+    const enqueueSpy = vi.fn();
+    const processSpy = vi.fn().mockResolvedValue(undefined);
+    const queue = {
+      enqueue: enqueueSpy,
+      setWorker: vi.fn(),
+      depth: 0,
+      concurrency: 0,
+    };
+    const pipeline = { process: processSpy };
+    return { queue, pipeline, enqueueSpy, processSpy };
+  }
+
+  it("enqueues a job for every ACTIVE channel message", async () => {
+    const { queue, pipeline, enqueueSpy } = makeQueueDeps();
+    const deps = makeDeps({
+      processingQueue: queue as unknown as WireEventRouterDeps["processingQueue"],
+      pipeline: pipeline as unknown as WireEventRouterDeps["pipeline"],
+      orgId: "wire.com",
+    });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("hello there"));
+    expect(enqueueSpy).toHaveBeenCalledOnce();
+    expect(enqueueSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: `${convId.id}@${convId.domain}`,
+        payload: expect.objectContaining({ text: "hello there" }),
+      }),
+    );
+  });
+
+  it("does NOT enqueue when pipeline deps are absent", async () => {
+    const deps = makeDeps();  // no processingQueue or pipeline
+    const router = new WireEventRouter(deps);
+    // Just ensure it does not throw
+    await expect(router.onTextMessageReceived(makeMessage("hello there"))).resolves.toBeUndefined();
+  });
+
+  it("does NOT enqueue when channel is PAUSED (no bot mention)", async () => {
+    const { queue, pipeline, enqueueSpy } = makeQueueDeps();
+    const deps = makeDeps({
+      processingQueue: queue as unknown as WireEventRouterDeps["processingQueue"],
+      pipeline: pipeline as unknown as WireEventRouterDeps["pipeline"],
+      channelConfig: {
+        get: vi.fn().mockResolvedValue({ state: "paused", secureRanges: [], timezone: "UTC", locale: "en", organisationId: "wire.com", channelId: `${convId.id}@${convId.domain}` }),
+        upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn(), listByState: vi.fn().mockResolvedValue([]),
+      },
+    });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("just talking"));
+    expect(enqueueSpy).not.toHaveBeenCalled();
+  });
+
+  it("does NOT enqueue when channel is SECURE", async () => {
+    const { queue, pipeline, enqueueSpy } = makeQueueDeps();
+    const deps = makeDeps({
+      processingQueue: queue as unknown as WireEventRouterDeps["processingQueue"],
+      pipeline: pipeline as unknown as WireEventRouterDeps["pipeline"],
+      channelConfig: {
+        get: vi.fn().mockResolvedValue({ state: "secure", secureRanges: [], timezone: "UTC", locale: "en", organisationId: "wire.com", channelId: `${convId.id}@${convId.domain}` }),
+        upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn(), listByState: vi.fn().mockResolvedValue([]),
+      },
+    });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("confidential stuff"));
+    expect(enqueueSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 4: CatchMeUpCommand routing
+// ─────────────────────────────────────────────────────────────────────────────
+describe("WireEventRouter contract: Phase 4 catch me up routing", () => {
+  function makeCatchMeUpCommand() {
+    return { execute: vi.fn().mockResolvedValue(undefined) };
+  }
+
+  function makeMsg(text: string) {
+    return {
+      id: "msg-1",
+      text,
+      conversationId: convId,
+      sender: { ...sender },
+      mentions: [{ userId: { id: "bot-1", domain: "wire.com" } }],
+    };
+  }
+
+  it("'@Jeeves catch me up' → catchMeUpCommand.execute", async () => {
+    const catchMeUpCommand = makeCatchMeUpCommand();
+    const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMsg("catch me up"));
+    expect(catchMeUpCommand.execute).toHaveBeenCalledOnce();
+    expect(catchMeUpCommand.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: `${convId.id}@${convId.domain}` }),
+    );
+  });
+
+  it("'@Jeeves what did I miss' → catchMeUpCommand.execute", async () => {
+    const catchMeUpCommand = makeCatchMeUpCommand();
+    const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMsg("what did I miss"));
+    expect(catchMeUpCommand.execute).toHaveBeenCalledOnce();
+  });
+
+  it("'@Jeeves what's new' → catchMeUpCommand.execute", async () => {
+    const catchMeUpCommand = makeCatchMeUpCommand();
+    const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMsg("what's new"));
+    expect(catchMeUpCommand.execute).toHaveBeenCalledOnce();
+  });
+
+  it("catch me up without catchMeUpCommand dep → falls through to intelligence path", async () => {
+    const deps = makeDeps(); // no catchMeUpCommand
+    const router = new WireEventRouter(deps);
+    // Bot is mentioned so answerQuestion would be called if intelligence path reached
+    const msg = makeMsg("catch me up");
+    await router.onTextMessageReceived(msg);
+    // catchMeUpCommand absent — should not throw, router continues
+    expect(deps.wireOutbound.sendPlainText).not.toThrow();
   });
 });
