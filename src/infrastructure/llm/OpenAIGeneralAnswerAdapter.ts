@@ -37,7 +37,8 @@ When referencing a person who appears in the "Conversation members" list, use @N
 Answering questions — priority order:
 1. Use the ## Recent conversation section first. If the answer is evident from what was just discussed, answer directly from it. Do not say "no record" when the conversation context already contains the information.
 2. Use ## Relevant Decisions, ## Relevant Actions, ## Related Context if provided — these are structured records retrieved from the team's history.
-3. If neither the conversation context nor retrieval results cover the question, answer from general knowledge and note you have no specific team records on the topic.
+3. If the question is about team data (actions, decisions, reminders, tasks) and the ## Data summary section shows zero records, state clearly that nothing has been recorded yet. Do NOT invent, suggest, or generate example actions or decisions — only report what is in the retrieved sections above.
+4. For general knowledge questions unrelated to team data, answer from general knowledge and note you have no specific team records on the topic.
 
 Critical behaviour rules — these override everything else:
 - NEVER say "Shall I check", "Would you like me to look", or any variant of asking permission before retrieving information. The user is asking because they want the answer. Retrieve and respond immediately.
@@ -158,7 +159,14 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
         ? `## Recent conversation\n${conversationContext.map((t) => `> ${t}`).join("\n")}\n\n`
         : "";
 
-    const userContent = `${purposeBlock}${memberBlock}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
+    const zeroWarnings: string[] = [];
+    if (actions.length === 0) zeroWarnings.push("ZERO actions exist in the database — do not invent any");
+    if (decisions.length === 0) zeroWarnings.push("ZERO decisions exist in the database — do not invent any");
+    const dataSummary = zeroWarnings.length > 0
+      ? `## Data summary\n${zeroWarnings.map(w => `- ${w}`).join("\n")}\n\n`
+      : `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
+
+    const userContent = `${purposeBlock}${memberBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
 
     try {
       const result = await this.llm.chatCompletion(
