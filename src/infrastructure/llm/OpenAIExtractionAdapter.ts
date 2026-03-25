@@ -86,7 +86,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
       const result = await this.llm.chatCompletion("extract", [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
-      ], { max_tokens: 600, temperature: 0 });
+      ], { max_tokens: 1500, temperature: 0 });
       raw = result.content;
 
       if (result.usedFallback) {
