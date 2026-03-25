@@ -99,12 +99,15 @@ export class LLMClientFactory {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
+    // Strip internal-only fields before sending to the API
+    const { complexity: _c, escalateToSlot: _e, ...apiOptions } = options;
+
     let res: Response;
     try {
       res = await fetch(this.url, {
         method: "POST",
         headers: this.headers,
-        body: JSON.stringify({ model, messages, ...options }),
+        body: JSON.stringify({ model, messages, ...apiOptions }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -123,7 +126,9 @@ export class LLMClientFactory {
     }
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    return data.choices?.[0]?.message?.content?.trim() ?? "";
+    const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
+    // Strip <think>…</think> blocks emitted by reasoning models (e.g. qwen3-think variants)
+    return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   }
 
   private isFallbackable(err: unknown): boolean {
