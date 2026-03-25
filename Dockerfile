@@ -35,8 +35,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json ./
+COPY entrypoint.sh ./entrypoint.sh
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/wire-apps-js-sdk ./wire-apps-js-sdk
+# Migrations run at startup via entrypoint.sh
+COPY prisma ./prisma
 
-CMD ["npm", "run", "start"]
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
