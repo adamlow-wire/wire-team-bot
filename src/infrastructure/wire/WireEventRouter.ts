@@ -449,8 +449,11 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // remind me <time-expression> to <description>
+    // Also handles: "make/set/create/add a reminder for <time> that/to <desc>"
     const remindMatch = text.match(/^remind(?:\s+me)?\s+(.+?)\s+to\s+(.+)$/i)
-                     ?? text.match(/^reminder\s+(.+?)\s+to\s+(.+)$/i);
+                     ?? text.match(/^reminder\s+(.+?)\s+to\s+(.+)$/i)
+                     ?? text.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+for\s+(.+?)\s+(?:that|to)\s+(.+)$/i)
+                     ?? text.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+(.+?)\s+(?:that|to)\s+(.+)$/i);
     if (remindMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       const parsed = this.deps.dateTimeService.parse(remindMatch[1].trim(), { timezone: config?.timezone ?? "UTC" });
@@ -489,7 +492,9 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.listOverdueActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
-    if (lowered === "my reminders" || lowered === "show reminders" || lowered === "list reminders" || lowered === "reminders") {
+    if (lowered === "my reminders" || lowered === "show reminders" || lowered === "list reminders" || lowered === "reminders"
+        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+we\s+have)?[?]?$/i.test(lowered)
+        || /^(?:what|show|list)\s+(?:are\s+(?:the|our)\s+)?(?:open\s+)?reminders?[?]?$/i.test(lowered)) {
       await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
@@ -554,7 +559,11 @@ export class WireEventRouter extends WireEventsHandler {
       const recent = this.deps.messageBuffer.getLastN(convId, 3);
       // Find the last message Jeeves sent, ignoring the current one (not yet buffered)
       const lastJeeves = [...recent].reverse().find(m => m.senderId.id === this.deps.botUserId.id);
-      return lastJeeves != null && lastJeeves.text.trimEnd().endsWith("?");
+      // Check if the last sentence of Jeeves' message ends with "?" — handles
+      // multi-paragraph responses where the offer question isn't the very last line.
+      if (lastJeeves == null) return false;
+      const lastSentence = lastJeeves.text.trim().split(/\n+/).filter(Boolean).pop() ?? "";
+      return lastSentence.trimEnd().endsWith("?");
     })();
 
     // ── @Jeeves mention or follow-up — answer question ────────────────────────
