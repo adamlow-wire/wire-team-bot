@@ -537,8 +537,20 @@ export class WireEventRouter extends WireEventsHandler {
       }
     }
 
-    // ── @Jeeves mention — answer question ────────────────────────────────────
-    if (botMentionedEarly) {
+    // ── Follow-up detection ───────────────────────────────────────────────────
+    // If Jeeves' most recent message (within the last 3 buffered messages) ended
+    // with a question mark, treat the next human message as a follow-up even
+    // without an explicit @mention.
+    const isFollowUp = (() => {
+      if (botMentionedEarly) return false;
+      const recent = this.deps.messageBuffer.getLastN(convId, 3);
+      // Find the last message Jeeves sent, ignoring the current one (not yet buffered)
+      const lastJeeves = [...recent].reverse().find(m => m.senderId.id === this.deps.botUserId.id);
+      return lastJeeves != null && lastJeeves.text.trimEnd().endsWith("?");
+    })();
+
+    // ── @Jeeves mention or follow-up — answer question ────────────────────────
+    if (botMentionedEarly || isFollowUp) {
       const config = await this.deps.conversationConfig.get(convId);
       const recentContext = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW).slice(0, -1).map((m) =>
         m.senderName ? `${m.senderName}: ${m.text}` : m.text,

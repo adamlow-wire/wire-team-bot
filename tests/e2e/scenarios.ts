@@ -244,7 +244,7 @@ export const scenarios: Scenario[] = [
     description: "Answer a question from recent conversation context",
     steps: [
       // All three steps share one process so the sliding window contains the context
-      { input: "we decided to use Redis for the session cache" },
+      { input: "we decided to use Redis for the session cache", shareProcess: true },
       { input: "the main reason was that Redis supports TTL natively", shareProcess: true },
       {
         input: "@jeeves what are we using for the session cache and why?",
@@ -296,7 +296,7 @@ export const scenarios: Scenario[] = [
     description: "Follow-up 'yes' is coherent — not a no-record fallback",
     steps: [
       // Both steps share one CLI process so conversation context persists
-      { input: "@jeeves shall I create a reminder to review the deployment checklist?" },
+      { input: "@jeeves shall I create a reminder to review the deployment checklist?", shareProcess: true },
       {
         input: "@jeeves yes",
         shareProcess: true,
