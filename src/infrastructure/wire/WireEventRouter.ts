@@ -117,6 +117,14 @@ export class WireEventRouter extends WireEventsHandler {
 
 
     const senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
+
+    // Lazily resolve the sender's display name if not yet in cache (e.g. existing conversations after restart).
+    if (senderMember && !senderMember.name) {
+      void this.deps.wireOutbound.getUserProfile(sender).then((profile) => {
+        if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name);
+      });
+    }
+
     this.deps.messageBuffer.push(convId, {
       messageId: wireMessage.id,
       senderId: sender,
