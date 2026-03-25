@@ -24,7 +24,16 @@ export interface CompositePromptOptions {
   replyToMessageId?: string;
 }
 
+export interface UserProfile {
+  id: QualifiedId;
+  name: string;
+  handle?: string;
+}
+
 export interface WireOutboundPort {
+  /** Fetch a user's display name from the Wire backend. Returns null on failure. */
+  getUserProfile(userId: QualifiedId): Promise<UserProfile | null>;
+
   sendPlainText(
     conversationId: QualifiedId,
     text: string,

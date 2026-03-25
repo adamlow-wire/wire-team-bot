@@ -22,4 +22,6 @@ export interface ConversationMemberCache {
   getMembers(conversationId: QualifiedId): CachedMember[];
   removeMembers(conversationId: QualifiedId, userIds: QualifiedId[]): void;
   clearConversation(conversationId: QualifiedId): void;
+  /** Update the display name for a specific member (resolved lazily via user API). */
+  updateMemberName(conversationId: QualifiedId, userId: QualifiedId, name: string): void;
 }

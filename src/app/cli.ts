@@ -105,6 +105,10 @@ function createCliOutbound(memberCache: InMemoryMemberCache): WireOutboundPort {
     },
     async sendReaction() {},
     async sendFile() {},
+    async getUserProfile(userId: QualifiedId) {
+      const m = MEMBERS.find((mem) => mem.id.id === userId.id);
+      return m ? { id: userId, name: m.name } : null;
+    },
   };
 }
 

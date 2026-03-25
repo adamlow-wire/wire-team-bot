@@ -4,17 +4,24 @@ import type {
   OutboundTextOptions,
   CompositePromptOptions,
   CompositeButton,
+  UserProfile,
 } from "../../application/ports/WireOutboundPort";
 import type { Logger } from "../../application/ports/Logger";
 import { TextMessage, CompositeMessage, ReactionMessage } from "wire-apps-js-sdk";
-import type { WireApplicationManager } from "wire-apps-js-sdk";
+import type { WireMessage } from "wire-apps-js-sdk";
 
 /**
- * Ref to the current Wire events handler. The SDK sets handler.manager after create;
- * the adapter uses this to send messages.
+ * Minimal interface for the Wire SDK manager methods used by the outbound adapter.
+ * Defined here to avoid importing the un-exported WireApplicationManager class directly.
  */
+export interface ManagerHandle {
+  sendMessage(message: WireMessage): Promise<string>;
+  sendAsset(conversationId: QualifiedId, asset: { data: Uint8Array; name: string; mimeType: string }): Promise<string>;
+  getUser(userId: QualifiedId): Promise<{ id: QualifiedId; name: string; handle?: string }>;
+}
+
 export interface HandlerManagerRef {
-  current: { manager?: Pick<WireApplicationManager, "sendMessage" | "sendAsset"> } | null;
+  current: { manager?: ManagerHandle } | null;
 }
 
 async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8Array> {
@@ -31,6 +38,17 @@ async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8A
  */
 export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger: Logger): WireOutboundPort {
   return {
+    async getUserProfile(userId: QualifiedId): Promise<UserProfile | null> {
+      const h = handlerRef.current;
+      if (!h?.manager) return null;
+      try {
+        const profile = await h.manager.getUser(userId);
+        return { id: profile.id, name: profile.name, handle: profile.handle };
+      } catch {
+        return null;
+      }
+    },
+
     async sendPlainText(
       conversationId: QualifiedId,
       text: string,

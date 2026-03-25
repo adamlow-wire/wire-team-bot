@@ -763,6 +763,19 @@ export class WireEventRouter extends WireEventsHandler {
       role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
     })));
 
+    // Resolve display names for all non-bot members via the user API.
+    // Fire-and-forget: failures are non-fatal; names will be populated before any @mention lookup.
+    void Promise.allSettled(
+      members
+        .filter((m) => m.userId.id !== this.deps.botUserId.id)
+        .map(async (m) => {
+          const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
+          if (profile?.name) {
+            this.deps.memberCache.updateMemberName(convId, m.userId as QualifiedId, profile.name);
+          }
+        }),
+    );
+
     const nonBotMembers = members.filter((m) => m.userId.id !== this.deps.botUserId.id);
     const isPersonalMode = nonBotMembers.length === 1;
     this.personalModeCache.set(channelId, isPersonalMode);
@@ -817,6 +830,18 @@ export class WireEventRouter extends WireEventsHandler {
       role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
     })));
     await this.updatePersonalMode(conversationId as QualifiedId);
+
+    // Resolve names for newly joined members.
+    void Promise.allSettled(
+      members
+        .filter((m) => m.userId.id !== this.deps.botUserId.id)
+        .map(async (m) => {
+          const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
+          if (profile?.name) {
+            this.deps.memberCache.updateMemberName(conversationId as QualifiedId, m.userId as QualifiedId, profile.name);
+          }
+        }),
+    );
   }
 
   async onUserLeftConversation(conversationId: QualifiedId, members: QualifiedId[]): Promise<void> {

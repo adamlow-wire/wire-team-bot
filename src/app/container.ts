@@ -268,7 +268,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     pipeline,
     orgId: config.wire.userDomain,
   });
-  handlerRef.current = router as HandlerManagerRef["current"];
+  handlerRef.current = router as unknown as HandlerManagerRef["current"];
 
   // Schedule recurring jobs (all self-reschedule after firing)
   scheduler.schedule({ id: "staleness_check",    type: "staleness_check",    runAt: new Date(Date.now() + 6 * 60 * 60 * 1000), payload: {} });

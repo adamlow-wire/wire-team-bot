@@ -38,4 +38,12 @@ export class InMemoryMemberCache implements ConversationMemberCache {
   clearConversation(conversationId: QualifiedId): void {
     this.cache.delete(key(conversationId));
   }
+
+  updateMemberName(conversationId: QualifiedId, userId: QualifiedId, name: string): void {
+    const k = key(conversationId);
+    const members = this.cache.get(k);
+    if (!members) return;
+    const idx = members.findIndex((m) => key(m.userId) === key(userId));
+    if (idx !== -1) members[idx] = { ...members[idx]!, name };
+  }
 }
