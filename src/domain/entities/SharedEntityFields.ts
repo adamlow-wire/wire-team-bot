@@ -12,7 +12,6 @@ export interface SharedEntityFields {
   authorId: QualifiedId;
   authorName: string;
   rawMessageId: string;
-  rawMessage: string;
   timestamp: Date;
   updatedAt: Date;
   tags: string[];

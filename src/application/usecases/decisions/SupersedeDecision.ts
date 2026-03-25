@@ -11,7 +11,6 @@ export interface SupersedeDecisionInput {
   authorId: QualifiedId;
   authorName: string;
   rawMessageId: string;
-  rawMessage: string;
   replyToMessageId?: string;
 }
 
@@ -34,7 +33,6 @@ export class SupersedeDecision {
     const newDecision: Decision = {
       id: newId,
       summary: input.newSummary,
-      rawMessage: input.rawMessage,
       rawMessageId: input.rawMessageId,
       context: [],
       authorId: input.authorId,

@@ -1,51 +1,156 @@
-import type { GeneralAnswerService, KnowledgeContext, ConversationMemberContext } from "../../application/ports/GeneralAnswerPort";
-import type { LLMConfig } from "./LLMConfigAdapter";
+/**
+ * GeneralAnswerService — uses the `respond` model slot (or `complexSynthesis` when
+ * complexity > threshold). Prompt structure per spec §6.4:
+ *
+ *   ## Relevant Decisions
+ *   ## Relevant Actions
+ *   ## Related Context  (entity relationships, signals)
+ *   ## Summaries        (future — Phase 4)
+ *   ## User's Question
+ *
+ * Jeeves persona rules (spec §7.1):
+ *   - Never use exclamation marks
+ *   - "I'm afraid" not "Sorry"
+ *   - "Shall I" not "Do you want me to"
+ *   - "One notes that" when diplomatically pointing out issues
+ *   - When citing: reference channel + approximate date, NOT verbatim quotes
+ *   - Cannot find → "I'm afraid I have no record of that particular matter."
+ */
+
+import type { GeneralAnswerService, ConversationMemberContext } from "../../application/ports/GeneralAnswerPort";
+import type { RetrievalResult } from "../../application/ports/RetrievalPort";
+import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const BASE_SYSTEM_PROMPT = `You are Jeeves, a discreet and highly capable team assistant embedded in Wire, a secure messaging platform. You speak with the measured, understated confidence of a skilled British butler — helpful, precise, and never flustered. Use concise, clear English. Avoid hollow affirmations ("Certainly!", "Of course!", "Great question!"). Never repeat the question back. Get directly to the point.
+const SYSTEM_PROMPT = `You are Jeeves, a capable and discreet team assistant embedded in Wire, a secure messaging platform. You are British, professional, and direct — no fuss, no small talk.
 
-You assist the team with:
-- Tasks, actions, decisions, and reminders — detected automatically from conversation or recorded explicitly
-- Answering questions using the team's stored knowledge base, citing entry IDs (e.g. KB-0001) inline
-- Secret mode: when activated, you stop listening entirely and nothing is sent to any AI service
+Persona rules:
+- Never use exclamation marks
+- Use "I'm afraid" rather than "Sorry"
+- Use "Shall I" rather than "Do you want me to"
+- Keep answers concise; use markdown where it genuinely aids clarity
+- Avoid hollow affirmations ("Certainly!", "Of course!", "Great question!")
+- Never repeat the question back; get directly to the point
 
-When knowledge base entries are provided below, treat them as your primary source of truth. Cite the entry ID inline when drawing on a specific entry. If the entries do not fully cover the question, say so and supplement with general knowledge where appropriate. If no entries are provided, answer from general knowledge and acknowledge you have no specific team knowledge on the topic.
+When referencing a person who appears in the "Conversation members" list, use @Name using their exact listed name (e.g. @Oliver Brown). Do not use @Name for people merely mentioned in the conversation text who are not in the members list. Never invent, expand, or guess surnames — use names exactly as provided.
 
-Use markdown where it genuinely aids clarity. Keep answers appropriately brief.`;
+Answering questions — priority order:
+1. Use the ## Recent conversation section first. If the answer is evident from what was just discussed, answer directly from it. Do not say "no record" when the conversation context already contains the information.
+2. Use ## Relevant Decisions, ## Relevant Actions, ## Related Context if provided — these are structured records retrieved from the team's history.
+3. If neither the conversation context nor retrieval results cover the question, answer from general knowledge and note you have no specific team records on the topic.
+
+Critical behaviour rules — these override everything else:
+- NEVER say "Shall I check", "Would you like me to look", or any variant of asking permission before retrieving information. The user is asking because they want the answer. Retrieve and respond immediately.
+- NEVER end your response with a question offering to do something. Either do it or state the result.
+- Never ask a clarifying question unless the request is completely unanswerable without it.
+- If a follow-up message is a short affirmation ("yes", "please", "go ahead", "do it"), treat it as confirmation of the most recent thing discussed and act on it.
+
+Citing sources:
+- Reference the approximate time or context ("earlier in this conversation", "in a prior discussion"), never verbatim quotes
+
+When asked what you know or what is recorded:
+- If there are no retrieval results and no recent conversation context, say clearly that nothing has been recorded in this channel yet
+- Reserve "I'm afraid I have no record of that particular matter" only for specific entity lookups where a result was expected but genuinely not found
+- Never say "no record" when the answer is visible in the ## Recent conversation section
+
+When asked about your capabilities:
+- Describe your purpose: you track decisions, actions, and reminders; you answer questions using the channel's conversation history and extracted team knowledge`;
+
+/**
+ * Remove trailing sentences where Jeeves offers to do something rather than
+ * just answering. These are model artifacts ("Shall I create a reminder?",
+ * "Would you like me to check?") that contradict the persona rule of acting
+ * rather than asking permission.
+ *
+ * Only strips the final sentence if it is a short offer-question. Leaves the
+ * substantive answer intact.
+ */
+const OFFER_PATTERN = /\b(shall i|would you like|do you want|should i|may i|can i)\b/i;
+
+/**
+ * Returns true if the text is an offer-question Jeeves should not be making
+ * ("Shall I check?", "Would you like me to retrieve?", etc.)
+ */
+function isOfferQuestion(text: string): boolean {
+  const t = text.trim();
+  return t.endsWith("?") && t.length < 150 && OFFER_PATTERN.test(t);
+}
+
+/**
+ * Remove trailing sentences where Jeeves offers to do something rather than
+ * just answering. If the ENTIRE response is an offer-question, returns empty
+ * string so the caller can retry with a stronger prompt.
+ */
+function stripTrailingOffer(text: string): string {
+  const trimmed = text.trim();
+  // Whole response is just an offer-question — signal caller to retry
+  if (isOfferQuestion(trimmed)) return "";
+
+  const sentences = trimmed.split(/(?<=[.?!])\s+/);
+  if (sentences.length <= 1) return trimmed;
+
+  const last = sentences[sentences.length - 1]!.trim();
+  if (isOfferQuestion(last)) {
+    return sentences.slice(0, -1).join("  \n").trim();
+  }
+  return trimmed;
+}
 
 export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
-  constructor(private readonly config: LLMConfig, private readonly logger: Logger) {}
+  constructor(
+    private readonly llm: LLMClientFactory,
+    private readonly logger: Logger,
+  ) {}
 
   async answer(
     question: string,
     conversationContext: string[],
-    knowledgeContext: KnowledgeContext[],
+    retrievalResults: RetrievalResult[],
     members?: ConversationMemberContext[],
     conversationPurpose?: string,
+    complexity?: number,
   ): Promise<string> {
-    if (!this.config.enabled) {
-      return "I'm afraid I'm unable to answer general questions at present — no capable model is configured.";
-    }
-
-    const url = `${this.config.baseUrl}/chat/completions`;
-
     const purposeBlock = conversationPurpose
       ? `## This channel\n${conversationPurpose}\n\n`
       : "";
 
     const memberBlock =
       members && members.length > 0
-        ? `## Conversation members\n${members.map((m) => m.name ? `- ${m.name} (${m.id})` : `- ${m.id}`).join("\n")}\n\n`
+        ? `## Conversation members\n${members
+            .map((m) => (m.name ? `- ${m.name} (${m.id})` : `- ${m.id}`))
+            .join("\n")}\n\n`
         : "";
 
-    const kbBlock =
-      knowledgeContext.length > 0
-        ? `## Knowledge Base\n${knowledgeContext
+    // Group retrieval results by type per spec §6.4
+    const decisions = retrievalResults.filter((r) => r.type === "decision");
+    const actions = retrievalResults.filter((r) => r.type === "action");
+    const other = retrievalResults.filter(
+      (r) => r.type !== "decision" && r.type !== "action",
+    );
+
+    const decisionsBlock =
+      decisions.length > 0
+        ? `## Relevant Decisions\n${decisions
             .map(
-              (k) =>
-                `[${k.id}] ${k.summary} _(${k.confidence}, ${k.updatedAt.toISOString().slice(0, 10)})_\n${k.detail.slice(0, 300)}${k.detail.length > 300 ? "…" : ""}`,
+              (r) =>
+                `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`,
             )
-            .join("\n\n")}\n\n`
+            .join("\n")}\n\n`
+        : "";
+
+    const actionsBlock =
+      actions.length > 0
+        ? `## Relevant Actions\n${actions
+            .map(
+              (r) =>
+                `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`,
+            )
+            .join("\n")}\n\n`
+        : "";
+
+    const relatedBlock =
+      other.length > 0
+        ? `## Related Context\n${other.map((r) => `- ${r.content}`).join("\n")}\n\n`
         : "";
 
     const contextBlock =
@@ -53,44 +158,52 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
         ? `## Recent conversation\n${conversationContext.map((t) => `> ${t}`).join("\n")}\n\n`
         : "";
 
-    const body = {
-      model: this.config.model,
-      messages: [
-        { role: "system", content: BASE_SYSTEM_PROMPT },
-        { role: "user", content: `${purposeBlock}${memberBlock}${kbBlock}${contextBlock}${question}` },
-      ],
-      max_tokens: 800,
-      temperature: 0.7,
-    };
+    const userContent = `${purposeBlock}${memberBlock}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
-
-    let res: Response;
     try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.config.apiKey}` },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
+      const result = await this.llm.chatCompletion(
+        "respond",
+        [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userContent },
+        ],
+        {
+          max_tokens: 800,
+          temperature: 0.7,
+          complexity,
+          escalateToSlot: "complexSynthesis",
+        },
+      );
+
+      if (result.usedFallback) {
+        this.logger.warn("OpenAIGeneralAnswerAdapter: used fallback model", {
+          model: result.model,
+        });
+      }
+
+      const stripped = stripTrailingOffer(result.content.trim());
+      if (stripped) return stripped;
+
+      // The model returned only a permission-asking question. Retry once with a
+      // direct instruction to answer without asking.
+      const retry = await this.llm.chatCompletion(
+        "respond",
+        [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userContent },
+          { role: "assistant", content: result.content.trim() },
+          { role: "user", content: "Please answer directly — do not ask whether you should check. Just provide the answer now." },
+        ],
+        { max_tokens: 800, temperature: 0.3 },
+      );
+      return stripTrailingOffer(retry.content.trim()) || "I wasn't able to generate a response.";
     } catch (err) {
       if ((err as Error).name === "AbortError") {
-        this.logger.warn("General answer LLM request timed out");
+        this.logger.warn("OpenAIGeneralAnswerAdapter: request timed out");
         return "I'm afraid I wasn't able to respond in time — the request timed out.";
       }
-      throw err;
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      this.logger.warn("General answer LLM request failed", { status: res.status, err: errText });
+      this.logger.warn("OpenAIGeneralAnswerAdapter: request failed", { err: String(err) });
       return "I wasn't able to generate a response just now.";
     }
-
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    return data.choices?.[0]?.message?.content?.trim() ?? "I wasn't able to generate a response.";
   }
 }

@@ -13,7 +13,6 @@ export interface CreateActionFromExplicitInput {
   creatorId: QualifiedId;
   authorName: string;
   rawMessageId: string;
-  rawMessage: string;
   description: string;
   assigneeReference?: string;
   deadlineText?: string;
@@ -45,7 +44,6 @@ export class CreateActionFromExplicit {
     const action: Action = {
       id,
       description: input.description,
-      rawMessage: input.rawMessage,
       rawMessageId: input.rawMessageId,
       assigneeId,
       assigneeName,

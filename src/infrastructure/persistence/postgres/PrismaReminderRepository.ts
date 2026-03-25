@@ -30,7 +30,6 @@ export class PrismaReminderRepository implements ReminderRepository {
         authorDom: reminder.authorId.domain,
         authorName: reminder.authorName,
         rawMessageId: reminder.rawMessageId,
-        rawMessage: reminder.rawMessage,
         timestamp: reminder.timestamp,
         updatedAt: reminder.updatedAt,
         tags: reminder.tags,
@@ -101,7 +100,6 @@ export class PrismaReminderRepository implements ReminderRepository {
     authorDom: string;
     authorName: string;
     rawMessageId: string;
-    rawMessage: string;
     timestamp: Date;
     updatedAt: Date;
     tags: string[];
@@ -125,7 +123,6 @@ export class PrismaReminderRepository implements ReminderRepository {
       authorId: toQualifiedId(row.authorId, row.authorDom),
       authorName: row.authorName,
       rawMessageId: row.rawMessageId,
-      rawMessage: row.rawMessage,
       timestamp: row.timestamp,
       updatedAt: row.updatedAt,
       tags: row.tags,

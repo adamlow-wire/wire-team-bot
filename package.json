@@ -7,6 +7,8 @@
     "build": "tsc",
     "start": "node dist/app/main.js",
     "dev": "ts-node src/app/main.ts",
+    "cli": "node dist/app/cli.js",
+    "test:e2e": "npx tsx tests/e2e/runner.ts",
     "lint": "eslint src tests --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,6 +21,7 @@
     "@prisma/client": "^6.0.0",
     "chrono-node": "^2.9.0",
     "dotenv": "^16.4.5",
+    "prisma": "^6.0.0",
     "reflect-metadata": "^0.1.13",
     "wire-apps-js-sdk": "file:./wire-apps-js-sdk"
   },
@@ -26,7 +29,6 @@
     "@typescript-eslint/eslint-plugin": "*",
     "@typescript-eslint/parser": "*",
     "eslint": "*",
-    "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
