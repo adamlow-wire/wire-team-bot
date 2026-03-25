@@ -14,11 +14,11 @@ import type { Logger } from "../../application/ports/Logger";
 
 const SYSTEM_PROMPT = `You are the Tier 2 knowledge extractor for Jeeves, a discreet British team assistant.
 
-Extract structured knowledge from the conversation. You will receive a sliding window of recent messages and the triggering message.
+Extract structured knowledge from the TRIGGERING MESSAGE ONLY. Use the conversation window purely as context to resolve ambiguous references (pronouns, "it", "that", "this", unnamed actors) — do not extract new facts from window messages as those have already been processed.
 
 CRITICAL: Never include verbatim quotes. Synthesise and summarise only. The source text is discarded after extraction.
 
-Extract:
+Extract from the triggering message:
 - decisions: firm conclusions or choices made ("we agreed to...", "we're going with...", "decided that...")
 - actions: clear commitments with an owner ("Alice will...", "Bob to...") — not vague intentions
 - entities: named things (person, service, project, team, tool, concept)
@@ -70,8 +70,9 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
       ? `Known entities in channel (do not re-extract unless information changes): ${knownEntities.slice(0, 30).join(", ")}\n`
       : "";
 
-    const windowText = window.map((m) => `[${m.authorId}] ${m.text}`).join("\n");
-    const currentLine = `[${currentMessage.authorId}] ${currentMessage.text}`;
+    const windowText = window.map((m) => `[${m.authorName ?? m.authorId}] ${m.text}`).join("\n");
+    const senderLabel = currentMessage.authorName ?? currentMessage.authorId;
+    const currentLine = `[${senderLabel}] ${currentMessage.text}`;
 
     const userContent = [
       purposeLine + contextTypeLine + knownLine,

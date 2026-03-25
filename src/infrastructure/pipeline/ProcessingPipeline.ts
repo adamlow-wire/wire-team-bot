@@ -82,7 +82,7 @@ export class ProcessingPipeline {
 
     // ── Tier 1: Classify ────────────────────────────────────────────────────
     const window = this.deps.slidingWindow.getWindow(channelId);
-    const windowTexts = window.map((m) => `[${m.authorId}] ${m.text}`);
+    const windowTexts = window.map((m) => `[${m.authorName ?? m.authorId}] ${m.text}`);
 
     let classifyResult;
     try {
@@ -112,7 +112,7 @@ export class ProcessingPipeline {
     }
 
     // ── Tier 2: Extract ─────────────────────────────────────────────────────
-    const currentMsg = { messageId, authorId: senderId.id, text, timestamp };
+    const currentMsg = { messageId, authorId: senderId.id, authorName: senderName || undefined, text, timestamp };
 
     let knownEntities: string[] = [];
     try {
