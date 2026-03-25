@@ -159,7 +159,12 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
         ? `## Recent conversation\n${conversationContext.map((t) => `> ${t}`).join("\n")}\n\n`
         : "";
 
-    const dataSummary = `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
+    const zeroWarnings: string[] = [];
+    if (actions.length === 0) zeroWarnings.push("ZERO actions exist in the database — do not invent any");
+    if (decisions.length === 0) zeroWarnings.push("ZERO decisions exist in the database — do not invent any");
+    const dataSummary = zeroWarnings.length > 0
+      ? `## Data summary\n${zeroWarnings.map(w => `- ${w}`).join("\n")}\n\n`
+      : `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
 
     const userContent = `${purposeBlock}${memberBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
 
