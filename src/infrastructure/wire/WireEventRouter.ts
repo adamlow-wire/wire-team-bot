@@ -1,5 +1,5 @@
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
-import type { Conversation, ConversationMember, TextMessage, ButtonActionMessage } from "wire-apps-js-sdk";
+import type { Conversation, ConversationMember, TextMessage, ButtonActionMessage, MessageEditMessage } from "wire-apps-js-sdk";
 import { WireEventsHandler, ButtonActionConfirmationMessage } from "wire-apps-js-sdk";
 import type { LogDecision } from "../../application/usecases/decisions/LogDecision";
 import type { CreateActionFromExplicit } from "../../application/usecases/actions/CreateActionFromExplicit";
@@ -192,7 +192,11 @@ export class WireEventRouter extends WireEventsHandler {
     const lowered = text.trim().toLowerCase();
     const channelState = this.channelStateCache.get(channelId) ?? "active";
 
-    const members = this.deps.memberCache.getMembers(convId).map((m) => ({
+    const cachedMembers = this.deps.memberCache.getMembers(convId);
+    const senderEntry = cachedMembers.find((m) => m.userId.id === sender.id);
+    const senderDisplayName = senderEntry?.name || undefined;
+
+    const members = cachedMembers.map((m) => ({
       id: m.userId.id,
       domain: m.userId.domain,
       name: m.name,
@@ -201,6 +205,7 @@ export class WireEventRouter extends WireEventsHandler {
     this.deps.slidingWindow.push(channelId, {
       messageId: wireMessage.id,
       authorId: sender.id,
+      authorName: senderDisplayName,
       text,
       timestamp: new Date(),
     });
@@ -249,7 +254,7 @@ export class WireEventRouter extends WireEventsHandler {
         channelId,
         conversationId: convId,
         senderId: sender,
-        senderName: "",
+        senderName: senderDisplayName ?? "",
         text,
         timestamp: new Date(),
         orgId,
@@ -597,6 +602,7 @@ export class WireEventRouter extends WireEventsHandler {
       this.deps.slidingWindow.push(channelId, {
         messageId: botMsgId,
         authorId: this.deps.botUserId.id,
+        authorName: "Jeeves",
         text: `[Jeeves] ${answer}`,
         timestamp: new Date(),
       });
@@ -747,6 +753,11 @@ export class WireEventRouter extends WireEventsHandler {
   // ─────────────────────────────────────────────────────────────────────────
   // Button actions
   // ─────────────────────────────────────────────────────────────────────────
+
+  async onMessageEdited(_wireMessage: MessageEditMessage): Promise<void> {
+    // Edits are intentionally ignored — re-processing an edited message would
+    // re-extract actions/decisions from the sliding window and create duplicates.
+  }
 
   async onButtonActionReceived(wireMessage: ButtonActionMessage): Promise<void> {
     const convId = wireMessage.conversationId as QualifiedId;

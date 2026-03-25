@@ -12,6 +12,7 @@
 export interface WindowMessage {
   messageId: string;
   authorId: string;
+  authorName?: string;
   text: string;
   timestamp: Date;
 }
