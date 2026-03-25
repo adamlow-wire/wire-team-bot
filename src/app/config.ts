@@ -113,11 +113,11 @@ function loadJeevesConfig(): JeevesLLMConfig {
     contradictionThreshold: envFloat("JEEVES_CONTRADICTION_THRESHOLD", 0.78),
     embedDims: envInt("JEEVES_EMBED_DIMS", 2560),
     slots: {
-      classify:        slot("JEEVES_MODEL_CLASSIFY",       "JEEVES_FALLBACK_CLASSIFY",       "granite4-tiny-h:7b",   "qwen3-2507-think:4b"),
+      classify:        slot("JEEVES_MODEL_CLASSIFY",       "JEEVES_FALLBACK_CLASSIFY",       "qwen3-2507:30b-a3b",   "glm-4.7-flash:30b"),
       extract:         slot("JEEVES_MODEL_EXTRACT",        "JEEVES_FALLBACK_EXTRACT",        "qwen3-2507:30b-a3b",   "glm-4.7-flash:30b"),
       embed:           slot("JEEVES_MODEL_EMBED",          "JEEVES_FALLBACK_EMBED",          "qwen3-embedding:4b",   "qwen3-embedding:4b"),
       summarise:       slot("JEEVES_MODEL_SUMMARISE",      "JEEVES_FALLBACK_SUMMARISE",      "qwen3-2507:30b-a3b",   "glm-4.7-flash:30b"),
-      queryAnalyse:    slot("JEEVES_MODEL_QUERY_ANALYSE",  "JEEVES_FALLBACK_QUERY_ANALYSE",  "granite4-tiny-h:7b",   "qwen3-2507-think:4b"),
+      queryAnalyse:    slot("JEEVES_MODEL_QUERY_ANALYSE",  "JEEVES_FALLBACK_QUERY_ANALYSE",  "qwen3-2507:30b-a3b",   "glm-4.7-flash:30b"),
       respond:         slot("JEEVES_MODEL_RESPOND",        "JEEVES_FALLBACK_RESPOND",        "qwen3-2507:30b-a3b",   "glm-4.7-flash:30b"),
       complexSynthesis:slot("JEEVES_MODEL_COMPLEX",        "JEEVES_FALLBACK_COMPLEX",        "qwen3-next:80b",       "qwen3-2507:30b-a3b"),
     },
