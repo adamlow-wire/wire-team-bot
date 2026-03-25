@@ -21,6 +21,7 @@
     "@prisma/client": "^6.0.0",
     "chrono-node": "^2.9.0",
     "dotenv": "^16.4.5",
+    "prisma": "^6.0.0",
     "reflect-metadata": "^0.1.13",
     "wire-apps-js-sdk": "file:./wire-apps-js-sdk"
   },
@@ -28,7 +29,6 @@
     "@typescript-eslint/eslint-plugin": "*",
     "@typescript-eslint/parser": "*",
     "eslint": "*",
-    "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
