@@ -7,6 +7,8 @@
     "build": "tsc",
     "start": "node dist/app/main.js",
     "dev": "ts-node src/app/main.ts",
+    "cli": "node dist/app/cli.js",
+    "test:e2e": "npx tsx tests/e2e/runner.ts",
     "lint": "eslint src tests --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",

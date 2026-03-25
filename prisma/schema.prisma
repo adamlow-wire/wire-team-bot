@@ -205,8 +205,8 @@ model Embedding {
   authorId       String?   @map("author_id")
   createdAt      DateTime  @map("created_at")
   topicTags      String[]  @map("topic_tags")
-  // vector column managed directly via raw SQL migration (HNSW index)
-  // embedding vector(1024) — omitted from Prisma model, accessed via $queryRaw
+  // vector column managed directly via raw SQL migration (exact cosine; 2560 dims > HNSW 2000 limit)
+  // embedding vector(2560) — omitted from Prisma model, accessed via $queryRaw
 
   @@map("embeddings")
 }

@@ -18,7 +18,7 @@ function createConsoleLogger(level: LogLevel, bindings: Record<string, unknown> 
   const min = numericLevel;
   const log = (l: string, msg: string, data?: Record<string, unknown>) => {
     const out = { level: l, msg, time: new Date().toISOString(), ...bindings, ...data };
-    process.stdout.write(JSON.stringify(out) + "\n");
+    process.stderr.write(JSON.stringify(out) + "\n");
   };
   return {
     child(childBindings: Record<string, unknown>) {

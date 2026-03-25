@@ -139,6 +139,61 @@ Retrieval is always scoped to the requesting channel. `MultiPathRetrievalEngine`
 - **Run:** `npm test` (Vitest). **Type-check:** `npx tsc --noEmit`.
 - All new use cases and non-trivial logic must have corresponding tests. Match existing test structure.
 
+### 5.1 CLI harness — end-to-end validation without Wire client
+
+`src/app/cli.ts` drives the full bot stack (real DB, real LLM calls, real pipeline) from stdin/stdout. Use it to validate behaviour end-to-end before claiming a feature works.
+
+**Always build first:** `npm run build && npm run cli`
+
+**Seeded members:** Alice (default), Bob, Carol — prefix a line with `Name: ` to send as that user.
+
+**Interactive:**
+```
+npm run build && npm run cli
+> decision: we will use Postgres
+[Jeeves] Decision logged — DEC-0001 ...
+> @jeeves what decisions have we made?
+[Jeeves] One decision on record ...
+```
+
+**Scripted (preferred for agents — stdout is clean, logs go to stderr):**
+```bash
+printf "decision: we will use Postgres\nBob: action: Alice to write the migration\n@jeeves what actions are open?\n" \
+  | npm run cli
+```
+
+**Agent validation checklist — run these before marking a task done:**
+
+| Scenario | Input | Expected output contains |
+|---|---|---|
+| Log a decision | `decision: <summary>` | `DEC-` reference |
+| Log an action | `action: <description>` | `ACT-` reference |
+| Assign action | `action: <desc> for Bob` | Bob's name in confirmation |
+| Search decisions | `decisions about <topic>` | matching decision or "no record" |
+| Remind | `remind me tomorrow to <desc>` | confirmation with time |
+| Answer from context | say facts, then `@jeeves <question about those facts>` | answer drawn from recent conversation |
+| Follow-up | `@jeeves <question>`, then `@jeeves yes` / `go ahead` | coherent follow-up, not "no record" |
+| Unknown command | `@jeeves <open question>` | non-empty answer, no crash |
+
+**E2E test suite — LLM-as-judge (preferred for agent validation):**
+
+Scenarios use natural language inputs. Each assertion is plain English, evaluated by the LLM judge (`tests/e2e/judge.ts`) rather than regex. The judge uses `JEEVES_JUDGE_MODEL` (falls back to `JEEVES_MODEL_CLASSIFY`).
+
+```bash
+npm run build && npm run test:e2e                              # run all scenarios
+npm run build && npx tsx tests/e2e/runner.ts --filter TC-DEC  # decisions only
+npx tsx tests/e2e/runner.ts --verbose                         # show bot output + judge reasoning
+```
+
+To add a scenario, add an entry to `tests/e2e/scenarios.ts` with natural language `input` and a plain-English `assert` string — no regexes needed.
+
+Multi-step scenarios use `captureAs: "DEC"|"ACT"|"REM"` to extract reference IDs, then `{{DEC}}`/`{{ACT}}`/`{{REM}}` in subsequent inputs to inject them.
+
+**Tips:**
+- Set `LOG_LEVEL=debug` to see pipeline and retrieval trace output on stderr: `LOG_LEVEL=debug npm run cli`
+- The CLI uses a fixed channel `cli-channel@cli.local` — data persists across runs in your local DB
+- If the DB is stale from a previous test run, `npx prisma migrate reset --force && npm run build` gives a clean slate
+
 ---
 
 ## 6. Quick reference
