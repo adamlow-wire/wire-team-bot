@@ -82,13 +82,13 @@ All slots share one `JEEVES_LLM_BASE_URL` / `JEEVES_LLM_API_KEY`. Configured via
 
 | Slot | Env var | Default model |
 |---|---|---|
-| `classify` | `JEEVES_MODEL_CLASSIFY` | `qwen3-2507:4b` |
-| `extract` | `JEEVES_MODEL_EXTRACT` | `qwen3-2507:30b-a3b` |
+| `classify` | `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` |
+| `extract` | `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` |
 | `embed` | `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` |
-| `summarise` | `JEEVES_MODEL_SUMMARISE` | `qwen3-2507:30b-a3b` |
-| `queryAnalyse` | `JEEVES_MODEL_QUERY_ANALYSE` | `granite4-tiny-h:7b` |
-| `respond` | `JEEVES_MODEL_RESPOND` | `qwen3-2507:30b-a3b` |
-| `complexSynthesis` | `JEEVES_MODEL_COMPLEX` | `qwen3-next:80b` |
+| `summarise` | `JEEVES_MODEL_SUMMARISE` | `qwen3-next:80b` |
+| `queryAnalyse` | `JEEVES_MODEL_QUERY_ANALYSE` | `qwen3-next:80b` |
+| `respond` | `JEEVES_MODEL_RESPOND` | `qwen3-next:80b` |
+| `complexSynthesis` | `JEEVES_MODEL_COMPLEX` | `gpt-oss:120b` |
 
 **`LLM_PASSIVE_*` / `LLM_CAPABLE_*`** are **not** deprecated. They power `OpenAIConversationIntelligenceAdapter`, which is the v1 foreground intent router still active for explicit commands (`create_decision`, `create_action`, `create_reminder`, etc.). They will be retired when v1 routing is fully replaced by the v2 pipeline.
 
@@ -236,6 +236,24 @@ npm run test:e2e -- --json                          # machine-readable JSON resu
 - Empty bot output on a pipeline test (TC-PIPE-*) almost always means the classifier scored the message as low-signal — check the classify tier
 - If you suspect the judge is wrong (not the bot), run `--verbose` to see the raw bot output and judge reasoning side by side, then adjust the assertion in `scenarios.ts`
 - `npx prisma migrate reset --force && npm run build` gives a completely clean DB if needed
+
+### 5.2 Simulation — multi-day channel replay
+
+The simulation tool replays a realistic 3-day engineering-team conversation through the full CLI stack and reports which decisions, actions, and reminders were extracted. Unlike the e2e test suite (which tests individual scenarios in isolation), the simulation tests the pipeline under realistic sustained load with mixed signal quality.
+
+```bash
+npm run build && npm run simulate           # replay conversation, print extraction report
+npm run simulate:review                     # annotate the latest report as a golden baseline
+```
+
+**Report output:** `tests/simulation/simulation-report.json` — lists every exchange, bot response, and extracted IDs. If `tests/simulation/golden.json` exists, precision/recall is computed against it.
+
+**Golden baseline:** run `npm run simulate:review` to walk through each exchange and mark which extractions are correct. The resulting `golden.json` is the ground-truth reference for future runs.
+
+**When to use:**
+- After changes to `OpenAIClassifierAdapter`, `OpenAIExtractionAdapter`, or the processing pipeline — verifies that passive extraction quality has not regressed.
+- When tuning classifier/extractor prompts — compare precision/recall against the golden baseline.
+- Not a substitute for the e2e test suite: use `npm run test:e2e` to verify routing, retrieval, and answer quality.
 
 ---
 
