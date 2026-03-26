@@ -9,7 +9,7 @@ export class InMemoryMemberCache implements ConversationMemberCache {
   private cache = new Map<string, CachedMember[]>();
 
   setMembers(conversationId: QualifiedId, members: CachedMember[]): void {
-    this.cache.set(key(conversationId), [...members]);
+    this.cache.set(key(conversationId), members.map(stampIfNamed));
   }
 
   addMembers(conversationId: QualifiedId, members: CachedMember[]): void {
@@ -17,7 +17,7 @@ export class InMemoryMemberCache implements ConversationMemberCache {
     const current = this.cache.get(k) ?? [];
     const byId = new Map(current.map((m) => [key(m.userId), m]));
     for (const m of members) {
-      byId.set(key(m.userId), m);
+      byId.set(key(m.userId), stampIfNamed(m));
     }
     this.cache.set(k, [...byId.values()]);
   }
@@ -46,4 +46,13 @@ export class InMemoryMemberCache implements ConversationMemberCache {
     const idx = members.findIndex((m) => key(m.userId) === key(userId));
     if (idx !== -1) members[idx] = { ...members[idx]!, name, nameResolvedAt: new Date() };
   }
+}
+
+/**
+ * If a member already has a name when inserted, stamp nameResolvedAt so the
+ * TTL-based lazy resolver does not treat it as infinitely stale and launch a
+ * redundant background fetch on the very next message.
+ */
+function stampIfNamed(m: CachedMember): CachedMember {
+  return m.name && !m.nameResolvedAt ? { ...m, nameResolvedAt: new Date() } : m;
 }
