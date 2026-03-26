@@ -6,7 +6,7 @@
  * On failure (timeout, malformed JSON): logs error and returns a fallback discussion signal.
  */
 
-import type { ExtractionPort, ExtractResult, ExtractedDecision, ExtractedAction, ExtractedEntity, ExtractedRelationship, ExtractedSignal, EntityType, SignalType } from "../../application/ports/ExtractionPort";
+import type { ExtractionPort, ExtractResult, ExtractedDecision, ExtractedAction, ExtractedEntity, ExtractedRelationship, ExtractedSignal, ExtractedCompletion, EntityType, SignalType, KnownAction } from "../../application/ports/ExtractionPort";
 import type { ChannelContext } from "../../application/ports/ClassifierPort";
 import type { WindowMessage } from "../buffer/SlidingWindowBuffer";
 import type { LLMClientFactory } from "./LLMClientFactory";
@@ -16,11 +16,20 @@ const SYSTEM_PROMPT = `You are the Tier 2 knowledge extractor for Jeeves, a disc
 
 Extract structured knowledge from the TRIGGERING MESSAGE ONLY. Use the conversation window purely as context to resolve ambiguous references (pronouns, "it", "that", "this", unnamed actors) — do not extract new facts from window messages as those have already been processed.
 
+Window messages annotated with "→ extracted:" show what Jeeves already recorded from that message. Use these annotations to understand what is already known — do not re-extract the same information.
+
 CRITICAL: Never include verbatim quotes. Synthesise and summarise only. The source text is discarded after extraction.
 
+── COMPLETIONS ──────────────────────────────────────────────────────────────
+If the triggering message announces that a Known open action has been completed (past tense: "I've sent", "we signed", "it's done", "all sorted"), do NOT create a new action. Instead add an entry to "completions" referencing the action ID. Completion language is not a new commitment.
+
+── SUPERSEDES ───────────────────────────────────────────────────────────────
+If the triggering message is a personal commitment ("I'll handle it", "I will do that") and the same task already exists in Known open actions (unassigned or under a different owner), set "supersedes" to that action's ID. The pipeline will close the old one and create the new owned version.
+
 Extract from the triggering message:
-- decisions: firm conclusions or choices made ("we agreed to...", "we're going with...", "decided that...")
-- actions: clear commitments with an owner ("Alice will...", "Bob to...") — not vague intentions
+- decisions: firm conclusions or choices made ("we agreed to...", "we're going with...", "decided that...") — not hypotheticals or questions
+- actions: clear commitments with an owner ("Alice will...", "Bob to...", "I'll handle it") — not vague intentions
+- completions: announcements that a Known open action is finished (see above)
 - entities: named things (person, service, project, team, tool, concept)
 - relationships: typed edges between entities
 - signals: lightweight notes about the conversation (discussion | question | blocker | update | concern)
@@ -32,7 +41,8 @@ Valid signal types: discussion, question, blocker, update, concern
 Return ONLY valid JSON — no markdown, no explanation:
 {
   "decisions": [{"summary":"<synthesised>","rationale":"<why if clear>","decided_by":["<name>"],"confidence":<0-1>,"tags":["<tag>"]}],
-  "actions": [{"description":"<synthesised>","owner_name":"<name>","deadline":"<expression or null>","confidence":<0-1>,"tags":["<tag>"]}],
+  "actions": [{"description":"<synthesised>","owner_name":"<name>","deadline":"<expression or null>","confidence":<0-1>,"tags":["<tag>"],"supersedes":"<ACT-ID or null>"}],
+  "completions": [{"action_id":"<ACT-ID>","note":"<brief synthesised note or null>"}],
   "entities": [{"name":"<name>","entity_type":"<type>","aliases":["<alt>"],"metadata":{}}],
   "relationships": [{"source_name":"<name>","target_name":"<name>","relationship":"<type>","context":"<brief>","confidence":<0-1>}],
   "signals": [{"signal_type":"<type>","summary":"<1-2 sentence synthesised note>","tags":["<tag>"],"confidence":<0-1>}]
@@ -47,6 +57,7 @@ const VALID_RELATIONSHIPS = ["owns", "depends_on", "works_on", "blocks", "report
 const EMPTY_RESULT: ExtractResult = {
   decisions: [],
   actions: [],
+  completions: [],
   entities: [],
   relationships: [],
   signals: [],
@@ -63,19 +74,48 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     window: WindowMessage[],
     context: ChannelContext,
     knownEntities: string[],
-    knownActions: string[],
+    knownActions: KnownAction[],
   ): Promise<ExtractResult> {
     const purposeLine = context.purpose ? `Channel purpose: ${context.purpose}\n` : "";
     const contextTypeLine = context.contextType ? `Channel type: ${context.contextType}\n` : "";
     const knownLine = knownEntities.length > 0
       ? `Known entities in channel (do not re-extract unless information changes): ${knownEntities.slice(0, 30).join(", ")}\n`
       : "";
+
+    // Build a map from messageId → annotation string for annotating the window.
+    // Sanitise assigneeName: if it looks like a UUID (unresolved sender), show "unassigned".
+    const sanitiseOwner = (name: string | undefined) =>
+      name && !UUID_RE.test(name) ? name : "unassigned";
+
+    const msgAnnotations = new Map<string, string>();
+    for (const a of knownActions) {
+      if (a.rawMessageId) {
+        const existing = msgAnnotations.get(a.rawMessageId);
+        const entry = `${a.id}: ${a.description} (owner: ${sanitiseOwner(a.assigneeName)}, open)`;
+        msgAnnotations.set(a.rawMessageId, existing ? `${existing}; ${entry}` : entry);
+      }
+    }
+
+    // Format known actions with IDs and ownership so the LLM can reference them precisely
     const knownActionsLine = knownActions.length > 0
-      ? `Known open actions (do not re-extract if substantially equivalent): ${knownActions.slice(0, 10).join(" | ")}\n`
+      ? `Known open actions (do not re-extract; use action IDs for supersedes/completions):\n${
+          knownActions.slice(0, 10).map(a =>
+            `  ${a.id}: ${a.description} (owner: ${sanitiseOwner(a.assigneeName)})`
+          ).join("\n")
+        }\n`
       : "";
 
-    const windowText = window.map((m) => `[${m.authorName ?? m.authorId}] ${m.text}`).join("\n");
-    const senderLabel = currentMessage.authorName ?? currentMessage.authorId;
+    // Annotate window messages that already produced extractions.
+    // Never expose raw UUIDs as speaker labels — use "unknown" if the display
+    // name hasn't resolved yet, so the LLM cannot adopt a UUID as an owner name.
+    const windowText = window.map((m) => {
+      const label = m.authorName || "unknown";
+      const annotation = msgAnnotations.get(m.messageId);
+      const suffix = annotation ? `  → extracted: ${annotation}` : "";
+      return `[${label}] ${m.text}${suffix}`;
+    }).join("\n");
+
+    const senderLabel = currentMessage.authorName || "unknown";
     const currentLine = `[${senderLabel}] ${currentMessage.text}`;
 
     const userContent = [
@@ -118,6 +158,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
 
     const decisions = this.parseDecisions(parsed.decisions);
     const actions = this.parseActions(parsed.actions);
+    const completions = this.parseCompletions(parsed.completions, knownActions);
     const entities = this.parseEntities(parsed.entities);
     const relationships = this.parseRelationships(parsed.relationships);
     const signals = this.parseSignals(parsed.signals);
@@ -126,12 +167,13 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
       channelId: context.channelId,
       decisions: decisions.length,
       actions: actions.length,
+      completions: completions.length,
       entities: entities.length,
       relationships: relationships.length,
       signals: signals.length,
     });
 
-    return { decisions, actions, entities, relationships, signals };
+    return { decisions, actions, completions, entities, relationships, signals };
   }
 
   private parseDecisions(raw: unknown): ExtractedDecision[] {
@@ -162,6 +204,9 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
       const r = item as Record<string, unknown>;
       const description = typeof r.description === "string" ? r.description.trim() : "";
       if (!description) return [];
+      const supersedes = typeof r.supersedes === "string" && r.supersedes !== "null"
+        ? r.supersedes.trim()
+        : undefined;
       return [{
         description,
         ownerName: typeof r.owner_name === "string" ? r.owner_name.trim() : undefined,
@@ -170,6 +215,27 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
         tags: Array.isArray(r.tags)
           ? r.tags.filter((x): x is string => typeof x === "string")
           : [],
+        supersedes,
+      }];
+    });
+  }
+
+  /**
+   * Parse completions, validating that each referenced actionId exists in knownActions.
+   * Unknown IDs are silently dropped to prevent hallucinated completions from closing
+   * unrelated actions.
+   */
+  private parseCompletions(raw: unknown, knownActions: KnownAction[]): ExtractedCompletion[] {
+    if (!Array.isArray(raw)) return [];
+    const knownIds = new Set(knownActions.map(a => a.id));
+    return raw.flatMap((item) => {
+      if (typeof item !== "object" || item === null) return [];
+      const r = item as Record<string, unknown>;
+      const actionId = typeof r.action_id === "string" ? r.action_id.trim() : "";
+      if (!actionId || !knownIds.has(actionId)) return [];
+      return [{
+        actionId,
+        note: typeof r.note === "string" && r.note !== "null" ? r.note.trim() : undefined,
       }];
     });
   }
@@ -239,6 +305,8 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     });
   }
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function clamp(n: number): number {
   return Math.min(1, Math.max(0, isNaN(n) ? 0.5 : n));
