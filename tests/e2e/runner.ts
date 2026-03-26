@@ -16,6 +16,7 @@
  */
 
 import { spawn }   from "child_process";
+import fs          from "fs";
 import path        from "path";
 import { judge }   from "./judge";
 import { scenarios } from "./scenarios";
@@ -28,6 +29,7 @@ const filter  = args.find(a => a.startsWith("--filter="))?.split("=")[1]
              ?? (args.includes("--filter") ? args[args.indexOf("--filter") + 1] : null);
 const verbose = args.includes("--verbose");
 const bail    = args.includes("--bail");
+const jsonOut = args.includes("--json");
 
 /**
  * Unique identifier for this suite run.  Injected into every spawned CLI
@@ -300,7 +302,31 @@ function runMultiLine(inputs: string[], env: Record<string, string>): Promise<st
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+// ── JSON result types (also used by --json output mode) ──────────────────────
+
+interface ScenarioResult {
+  id: string;
+  description: string;
+  passed: boolean;
+  elapsedMs: number;
+  failures: Array<{ step: string; assertion: string; judgeReason: string; botOutput: string }>;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 async function main() {
+  // Pre-flight: catch common setup problems and give the agent a clear action.
+  if (!fs.existsSync(CLI)) {
+    console.error(`\n  ✗  CLI binary not found: ${CLI}`);
+    console.error(`     Build first:  npm run build\n`);
+    process.exit(1);
+  }
+  if (!process.env.JEEVES_LLM_BASE_URL) {
+    console.error(`\n  ✗  JEEVES_LLM_BASE_URL is not set`);
+    console.error(`     Add it to your .env file — see AGENTS.md §2.4\n`);
+    process.exit(1);
+  }
+
   const toRun = filter
     ? scenarios.filter(s => s.id.includes(filter) || s.description.toLowerCase().includes(filter.toLowerCase()))
     : scenarios;
@@ -310,31 +336,63 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nJeeves E2E — running ${toRun.length} scenario(s)  [run: ${suiteRunId}]\n${"─".repeat(70)}`);
+  if (!jsonOut) {
+    console.log(`\nJeeves E2E — running ${toRun.length} scenario(s)  [run: ${suiteRunId}]\n${"─".repeat(70)}`);
+  }
 
   let passed = 0;
   let failed = 0;
+  const jsonResults: ScenarioResult[] = [];
 
   for (const scenario of toRun) {
-    process.stdout.write(`  ${scenario.id.padEnd(16)} ${scenario.description.padEnd(50)} `);
+    if (!jsonOut) {
+      process.stdout.write(`  ${scenario.id.padEnd(16)} ${scenario.description.padEnd(50)} `);
+    }
     const scenarioStart = Date.now();
     const result = await runScenario(scenario);
-    const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
+    const elapsedMs = Date.now() - scenarioStart;
+    const elapsed = (elapsedMs / 1000).toFixed(1);
+
+    // Collect per-failure details including the actual bot output for that step
+    const failures: ScenarioResult["failures"] = result.failures.map(f => ({
+      step:        f.step,
+      assertion:   f.assertion,
+      judgeReason: f.reason,
+      // Match the failure's step text to its output segment
+      botOutput:   result.stepOutputs.find((_, i) =>
+        result.stepOutputs[i] !== undefined &&
+        f.step === (result.stepOutputs[i] ?? "").slice(0, f.step.length)
+      ) ?? result.stepOutputs.join("\n").trim(),
+    }));
 
     if (result.passed) {
-      console.log(`✓ PASS  (${elapsed}s)`);
+      if (!jsonOut) console.log(`✓ PASS  (${elapsed}s)`);
       passed++;
     } else {
-      console.log(`✗ FAIL  (${elapsed}s)`);
-      failed++;
-      for (const f of result.failures) {
-        console.log(`    └ [${f.step}]`);
-        console.log(`      assert: ${f.assertion}`);
-        console.log(`      reason: ${f.reason}`);
+      if (!jsonOut) {
+        console.log(`✗ FAIL  (${elapsed}s)`);
+        for (const f of result.failures) {
+          console.log(`    └ step:   ${f.step}`);
+          console.log(`      assert: ${f.assertion}`);
+          console.log(`      reason: ${f.reason}`);
+        }
+        // Always show bot output on failure — essential for diagnosing what went wrong
+        const rawOutput = result.stepOutputs.join("\n").trim();
+        if (rawOutput) {
+          const lines = rawOutput.split("\n").filter(Boolean);
+          console.log(`    Bot output (${lines.length} line(s)):`);
+          for (const line of lines) console.log(`      │ ${line}`);
+        } else {
+          console.log(`    Bot output: (empty — the bot produced no stdout)`);
+          console.log(`    Tip: run with LOG_LEVEL=debug to see pipeline trace on stderr`);
+        }
       }
+      failed++;
     }
 
-    if (verbose || !result.passed) {
+    if (jsonOut) {
+      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, failures });
+    } else if (verbose && result.passed) {
       const lines = result.stepOutputs.join("\n").trim().split("\n").filter(Boolean);
       if (lines.length > 0) {
         console.log(`    Output (${lines.length} line(s)):`);
@@ -343,13 +401,17 @@ async function main() {
     }
 
     if (bail && failed > 0) {
-      console.log("\n  --bail: stopping after first failure.");
+      if (!jsonOut) console.log("\n  --bail: stopping after first failure.");
       break;
     }
   }
 
-  console.log(`\n${"─".repeat(70)}`);
-  console.log(`  ${passed} passed, ${failed} failed\n`);
+  if (jsonOut) {
+    console.log(JSON.stringify({ runId: suiteRunId, passed, failed, scenarios: jsonResults }, null, 2));
+  } else {
+    console.log(`\n${"─".repeat(70)}`);
+    console.log(`  ${passed} passed, ${failed} failed\n`);
+  }
   process.exit(failed > 0 ? 1 : 0);
 }
 
