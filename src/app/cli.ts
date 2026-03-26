@@ -299,6 +299,13 @@ async function main() {
     await router.onTextMessageReceived(msg as Parameters<typeof router.onTextMessageReceived>[0]);
   }
 
+  // Drain any in-flight pipeline jobs before closing the DB connection.
+  // Without this, background-extracted decisions/actions (TC-PIPE) are lost
+  // because the Prisma connection closes before the async writes commit.
+  await processingQueue.waitForIdle(15_000).catch(() => {
+    process.stderr.write("CLI: pipeline drain timed out — some extractions may not have persisted\n");
+  });
+
   await prisma.$disconnect();
 }
 

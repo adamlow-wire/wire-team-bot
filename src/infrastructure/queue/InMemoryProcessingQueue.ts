@@ -62,6 +62,29 @@ export class InMemoryProcessingQueue<T = unknown> {
     return this.running;
   }
 
+  /**
+   * Resolves when both the queue and all in-flight workers are idle.
+   * Rejects after `timeoutMs` (default 30 s) to prevent indefinite hangs.
+   */
+  waitForIdle(timeoutMs = 30_000): Promise<void> {
+    if (this.running === 0 && this.queue.length === 0) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const deadline = setTimeout(
+        () => reject(new Error("InMemoryProcessingQueue.waitForIdle timed out")),
+        timeoutMs,
+      );
+      const poll = () => {
+        if (this.running === 0 && this.queue.length === 0) {
+          clearTimeout(deadline);
+          resolve();
+        } else {
+          setTimeout(poll, 100);
+        }
+      };
+      setTimeout(poll, 100);
+    });
+  }
+
   private drain(): void {
     if (!this.worker) return;
     while (this.running < MAX_CONCURRENCY && this.queue.length > 0) {
