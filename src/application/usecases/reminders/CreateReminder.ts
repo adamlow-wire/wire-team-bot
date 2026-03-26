@@ -72,9 +72,13 @@ export class CreateReminder {
       details: { description: saved.description, triggerAt: saved.triggerAt },
     });
 
+    const triggerFormatted = saved.triggerAt.toLocaleString("en-GB", {
+      weekday: "long", day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Reminder **${saved.id}** set for **${saved.triggerAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}**: ${saved.description}`,
+      `Reminder **${saved.id}** set for **${triggerFormatted}**: ${saved.description}`,
       { replyToMessageId: input.rawMessageId },
     );
 

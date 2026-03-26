@@ -34,7 +34,7 @@ export class ListMyReminders {
       .sort((a, b) => a.triggerAt.getTime() - b.triggerAt.getTime())
       .map(
         (r) =>
-          `- **${r.id}** — ${r.description} _(${r.triggerAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })})_`,
+          `- **${r.id}** — ${r.description} _(${r.triggerAt.toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })})_`,
       );
 
     await this.wireOutbound.sendPlainText(
