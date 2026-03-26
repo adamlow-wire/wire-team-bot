@@ -22,6 +22,9 @@ wire-apps-js-sdk/sample/storage/
 # Local SQLite storage used by the SDK
 storage/
 
+# Simulation run artifacts
+tests/simulation/simulation-report.json
+
 # Editor / OS noise
 .DS_Store
 Thumbs.db
