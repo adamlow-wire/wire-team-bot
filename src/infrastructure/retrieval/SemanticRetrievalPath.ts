@@ -63,7 +63,7 @@ export class SemanticRetrievalPath {
         if (hit.sourceType === "decision") {
           const d = await this.decisionRepo.findById(hit.sourceId);
           if (!d || d.deleted) continue;
-          const decidedBy = d.decidedBy?.join(", ") ?? d.authorName ?? "unknown";
+          const decidedBy = d.decidedBy?.join(", ") || d.authorName || "unknown";
           const date = d.decidedAt ?? d.timestamp;
           results.push({
             id: d.id,

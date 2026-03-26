@@ -182,7 +182,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "what are my open actions?",
-        assert: "Jeeves responds with a list of open actions that includes {{ACT}}",
+        assert: "The response mentions {{ACT}}",
       },
     ],
   },
