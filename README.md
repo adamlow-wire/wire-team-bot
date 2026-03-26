@@ -145,13 +145,13 @@ Jeeves uses seven purpose-specific model slots, all sharing one OpenAI-compatibl
 
 | Slot | Purpose | Default model | Env var |
 |---|---|---|---|
-| `classify` | Tier 1: is this message high-signal? | `qwen3-2507:4b` | `JEEVES_MODEL_CLASSIFY` |
-| `extract` | Tier 2: extract decisions/actions/entities | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_EXTRACT` |
+| `classify` | Tier 1: is this message high-signal? | `qwen3-next:80b` | `JEEVES_MODEL_CLASSIFY` |
+| `extract` | Tier 2: extract decisions/actions/entities | `qwen3-next:80b` | `JEEVES_MODEL_EXTRACT` |
 | `embed` | Tier 3: compute embedding vectors | `qwen3-embedding:4b` | `JEEVES_MODEL_EMBED` |
-| `summarise` | Daily/weekly/on-demand channel summaries | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_SUMMARISE` |
-| `queryAnalyse` | Parse question into retrieval plan | `granite4-tiny-h:7b` | `JEEVES_MODEL_QUERY_ANALYSE` |
-| `respond` | Generate Jeeves-voice answers | `qwen3-2507:30b-a3b` | `JEEVES_MODEL_RESPOND` |
-| `complexSynthesis` | Escalation for complex multi-source queries | `qwen3-next:80b` | `JEEVES_MODEL_COMPLEX` |
+| `summarise` | Daily/weekly/on-demand channel summaries | `qwen3-next:80b` | `JEEVES_MODEL_SUMMARISE` |
+| `queryAnalyse` | Parse question into retrieval plan | `qwen3-next:80b` | `JEEVES_MODEL_QUERY_ANALYSE` |
+| `respond` | Generate Jeeves-voice answers | `qwen3-next:80b` | `JEEVES_MODEL_RESPOND` |
+| `complexSynthesis` | Escalation for complex multi-source queries | `gpt-oss:120b` | `JEEVES_MODEL_COMPLEX` |
 
 Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, the slot retries once then falls back.
 
@@ -212,15 +212,15 @@ Add the bot user to any group conversation. Jeeves will ask for a brief channel 
 | `JEEVES_LLM_BASE_URL` | *(from `LLM_CAPABLE_BASE_URL`)* | Shared endpoint for all model slots |
 | `JEEVES_LLM_API_KEY` | *(from `LLM_CAPABLE_API_KEY`)* | Shared API key |
 | `JEEVES_LLM_TIMEOUT_MS` | `60000` | Per-call timeout in milliseconds |
-| `JEEVES_MODEL_CLASSIFY` | `qwen3-2507:4b` | Tier 1 classification model |
-| `JEEVES_MODEL_EXTRACT` | `qwen3-2507:30b-a3b` | Tier 2 extraction model |
+| `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` | Tier 1 classification model |
+| `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` | Tier 2 extraction model |
 | `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` | Embedding model |
-| `JEEVES_MODEL_SUMMARISE` | `qwen3-2507:30b-a3b` | Summarisation model |
-| `JEEVES_MODEL_QUERY_ANALYSE` | `granite4-tiny-h:7b` | Query analysis model |
-| `JEEVES_MODEL_RESPOND` | `qwen3-2507:30b-a3b` | Response generation model |
-| `JEEVES_MODEL_COMPLEX` | `qwen3-next:80b` | Complex synthesis escalation model |
+| `JEEVES_MODEL_SUMMARISE` | `qwen3-next:80b` | Summarisation model |
+| `JEEVES_MODEL_QUERY_ANALYSE` | `qwen3-next:80b` | Query analysis model |
+| `JEEVES_MODEL_RESPOND` | `qwen3-next:80b` | Response generation model |
+| `JEEVES_MODEL_COMPLEX` | `gpt-oss:120b` | Complex synthesis escalation model |
 | `JEEVES_FALLBACK_*` | *(see config.ts)* | Fallback for each slot on 503/timeout |
-| `JEEVES_EMBED_DIMS` | `1024` | Embedding vector dimensions — must match your model |
+| `JEEVES_EMBED_DIMS` | `2560` | Embedding vector dimensions — must match your model |
 | `JEEVES_COMPLEXITY_THRESHOLD` | `0.7` | Query complexity above which `respond` escalates to `complexSynthesis` |
 | `JEEVES_EXTRACT_CONFIDENCE_MIN` | `0.6` | Minimum extraction confidence to persist a result |
 | `JEEVES_CONTRADICTION_THRESHOLD` | `0.78` | Cosine similarity to trigger contradiction detection |
@@ -312,6 +312,11 @@ npm run dev                   # start with ts-node watch
 
 npm test                      # run unit + contract tests (Vitest)
 npx tsc --noEmit              # type-check
+
+npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite (~48 scenarios)
+npm run test:e2e -- --filter TC-DEC         # run a subset of scenarios
+npm run build && npm run simulate           # multi-day channel replay — extraction quality report
+npm run simulate:review                     # annotate report as golden baseline (precision/recall)
 ```
 
 Database migrations live in `prisma/migrations/`. The schema is in `prisma/schema.prisma`.
