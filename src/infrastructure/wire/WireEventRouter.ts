@@ -117,15 +117,38 @@ export class WireEventRouter extends WireEventsHandler {
     });
 
 
-    const senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
+    let senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
 
-    // Lazily resolve (or re-resolve) the sender's display name if:
-    //   a) name is not yet in cache (e.g. first message after restart), or
-    //   b) cached name is older than NAME_TTL_MS (catches display-name changes).
+    // Name resolution strategy:
+    //   a) Name missing (not yet fetched, or sender not in cache): AWAIT the profile call so
+    //      that senderName is correct for the sliding window, pipeline job, and all command
+    //      handlers.  A single awaited call is far cheaper than downstream UUID corruption.
+    //   b) Name present but older than NAME_TTL_MS: fire-and-forget refresh — we already have
+    //      a valid name to use for this message; the next message gets the refreshed value.
     const nameAge = senderMember?.nameResolvedAt
       ? Date.now() - senderMember.nameResolvedAt.getTime()
       : Infinity;
-    if (senderMember && (!senderMember.name || nameAge > NAME_TTL_MS)) {
+    if (!senderMember?.name) {
+      try {
+        const profile = await this.deps.wireOutbound.getUserProfile(sender);
+        if (profile?.name) {
+          if (senderMember) {
+            this.deps.memberCache.updateMemberName(convId, sender, profile.name);
+          } else {
+            // Sender not in cache — may happen if the bot missed a join event.
+            this.deps.memberCache.addMembers(convId, [{
+              userId: sender,
+              role: "member",
+              name: profile.name,
+              nameResolvedAt: new Date(),
+            }]);
+          }
+          // Re-read so messageBuffer and handleTextMessage see the resolved name.
+          senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
+        }
+      } catch { /* non-fatal — proceed without name */ }
+    } else if (nameAge > NAME_TTL_MS) {
+      // Stale but present: background refresh only.
       void this.deps.wireOutbound.getUserProfile(sender).then((profile) => {
         if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name);
       });
@@ -860,9 +883,10 @@ export class WireEventRouter extends WireEventsHandler {
       role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
     })));
 
-    // Resolve display names for all non-bot members via the user API.
-    // Fire-and-forget: failures are non-fatal; names will be populated before any @mention lookup.
-    void Promise.allSettled(
+    // Resolve display names for all non-bot members before returning.
+    // Awaiting here ensures names are in cache before the first message from
+    // any member in this conversation is processed.
+    await Promise.allSettled(
       members
         .filter((m) => m.userId.id !== this.deps.botUserId.id)
         .map(async (m) => {
@@ -928,8 +952,8 @@ export class WireEventRouter extends WireEventsHandler {
     })));
     await this.updatePersonalMode(conversationId as QualifiedId);
 
-    // Resolve names for newly joined members.
-    void Promise.allSettled(
+    // Resolve names for newly joined members before returning.
+    await Promise.allSettled(
       members
         .filter((m) => m.userId.id !== this.deps.botUserId.id)
         .map(async (m) => {
