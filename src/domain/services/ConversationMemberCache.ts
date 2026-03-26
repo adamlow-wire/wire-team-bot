@@ -7,6 +7,8 @@ export interface CachedMember {
   role: ConversationRole;
   /** Display name as reported by the Wire SDK, if available. */
   name?: string;
+  /** When the name was last successfully fetched from the user API. Used for TTL-based refresh. */
+  nameResolvedAt?: Date;
 }
 
 /**

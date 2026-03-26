@@ -35,6 +35,7 @@ import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipel
 import { toChannelId } from "./channelId";
 
 const CONTEXT_WINDOW = 10;
+const NAME_TTL_MS = 24 * 60 * 60 * 1000; // re-fetch display names after 24 h to catch renames
 
 
 export interface WireEventRouterDeps {
@@ -118,8 +119,13 @@ export class WireEventRouter extends WireEventsHandler {
 
     const senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
 
-    // Lazily resolve the sender's display name if not yet in cache (e.g. existing conversations after restart).
-    if (senderMember && !senderMember.name) {
+    // Lazily resolve (or re-resolve) the sender's display name if:
+    //   a) name is not yet in cache (e.g. first message after restart), or
+    //   b) cached name is older than NAME_TTL_MS (catches display-name changes).
+    const nameAge = senderMember?.nameResolvedAt
+      ? Date.now() - senderMember.nameResolvedAt.getTime()
+      : Infinity;
+    if (senderMember && (!senderMember.name || nameAge > NAME_TTL_MS)) {
       void this.deps.wireOutbound.getUserProfile(sender).then((profile) => {
         if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name);
       });
@@ -794,6 +800,52 @@ export class WireEventRouter extends WireEventsHandler {
     } catch {
       // manager not available in tests — safe to ignore
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Startup hydration — called once after the SDK is initialised
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Pre-populate the member cache from the SDK's persisted SQLite store so that
+   * display names are available before the first message arrives after a restart.
+   *
+   * onAppAddedToConversation only fires when the bot is first added to a conversation,
+   * not on subsequent restarts. This method covers that gap by reading the SDK's local DB.
+   *
+   * Awaiting this before startListening() ensures no message arrives with an empty cache.
+   */
+  async hydrateFromSdkStore(
+    conversations: Array<{ id: string; domain: string }>,
+    getMembers: (conv: { id: string; domain: string }) => Array<{ user_id: string; user_domain: string; role: string }>,
+  ): Promise<void> {
+    await Promise.allSettled(
+      conversations.map(async (conv) => {
+        const convId: QualifiedId = { id: conv.id, domain: conv.domain };
+        // Skip if the cache was already populated by a live onAppAddedToConversation event.
+        if (this.deps.memberCache.getMembers(convId).length > 0) return;
+
+        const rawMembers = getMembers(conv);
+        const members: CachedMember[] = rawMembers
+          .filter((m) => m.user_id !== this.deps.botUserId.id)
+          .map((m) => ({
+            userId: { id: m.user_id, domain: m.user_domain } as QualifiedId,
+            role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
+          }));
+
+        this.deps.memberCache.setMembers(convId, members);
+
+        // Fetch names now so they're ready for the first arriving message.
+        await Promise.allSettled(
+          members.map(async (m) => {
+            const profile = await this.deps.wireOutbound.getUserProfile(m.userId);
+            if (profile?.name) {
+              this.deps.memberCache.updateMemberName(convId, m.userId, profile.name);
+            }
+          }),
+        );
+      }),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────

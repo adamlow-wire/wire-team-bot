@@ -286,7 +286,7 @@ export function createContainer(config: Config, logger: Logger): Container {
         if (!fs.existsSync(storageDir)) {
           fs.mkdirSync(storageDir, { recursive: true });
         }
-        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db")).then((sdk) => {
+        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db")).then(async (sdk) => {
           // Rehydrate pending reminders only after the Wire SDK is fully initialised.
           // Scheduling before this point causes overdue reminders to fire before the
           // crypto client is ready, crashing with "Cannot read properties of undefined".
@@ -308,6 +308,31 @@ export function createContainer(config: Config, logger: Logger): Container {
             .catch((err: unknown) => {
               logger.error("Failed to rehydrate pending reminders", { err: String(err) });
             });
+
+          // Hydrate the member cache from the SDK's persisted SQLite store before
+          // startListening() is called. This ensures display names are available for
+          // the first message after a restart (onAppAddedToConversation only fires on
+          // first-ever join, not on reconnect).
+          try {
+            const [{ ConversationRepository }, { ConversationMemberRepository }, { container: sdkContainer }] =
+              await Promise.all([
+                import("wire-apps-js-sdk/build/db/ConversationRepository.js") as Promise<{ ConversationRepository: new (...a: unknown[]) => { getAll(): Array<{ id: string; domain: string }> } }>,
+                import("wire-apps-js-sdk/build/db/ConversationMemberRepository.js") as Promise<{ ConversationMemberRepository: new (...a: unknown[]) => { getMembersByConversationId(id: string, domain: string): Array<{ user_id: string; user_domain: string; role: string }> } }>,
+                import("tsyringe"),
+              ]);
+            const convRepo = sdkContainer.resolve(ConversationRepository);
+            const memberRepo = sdkContainer.resolve(ConversationMemberRepository);
+            const allConvs = convRepo.getAll();
+            await router.hydrateFromSdkStore(allConvs, (conv) =>
+              memberRepo.getMembersByConversationId(conv.id, conv.domain),
+            );
+            if (allConvs.length > 0) {
+              logger.info("Member cache hydrated from SDK store", { conversations: allConvs.length });
+            }
+          } catch (err: unknown) {
+            logger.error("Failed to hydrate member cache from SDK store", { err: String(err) });
+          }
+
           return sdk;
         });
       }

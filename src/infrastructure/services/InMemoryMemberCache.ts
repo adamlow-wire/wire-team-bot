@@ -44,6 +44,6 @@ export class InMemoryMemberCache implements ConversationMemberCache {
     const members = this.cache.get(k);
     if (!members) return;
     const idx = members.findIndex((m) => key(m.userId) === key(userId));
-    if (idx !== -1) members[idx] = { ...members[idx]!, name };
+    if (idx !== -1) members[idx] = { ...members[idx]!, name, nameResolvedAt: new Date() };
   }
 }
