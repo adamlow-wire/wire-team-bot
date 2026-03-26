@@ -26,22 +26,39 @@ export class StructuredRetrievalPath {
     const convId = fromChannelId(scope.channelId);
     const results: RetrievalResult[] = [];
 
+    // Detect explicit DEC-/ACT- IDs in the query entities so we can look them
+    // up directly by ID rather than relying on substring matching.
+    const decisionIds = plan.entities.filter((e) => /^DEC-\d+$/i.test(e));
+    const actionIds   = plan.entities.filter((e) => /^ACT-\d+$/i.test(e));
+
     // ── Decisions ─────────────────────────────────────────────────────────────
-    // Include decisions unless the query is purely about actions/accountability
-    const skipDecisions = plan.intent === "accountability" && plan.entities.length > 0;
+    // Fetch all active channel decisions — no entity text filter.  Using
+    // entity keywords as a DB substring filter causes false negatives whenever
+    // the extracted entity doesn't literally appear in the decision summary.
+    // The LLM receives the full list and determines relevance itself.
+    const skipDecisions = plan.intent === "accountability" && decisionIds.length === 0;
     if (!skipDecisions) {
       try {
-        const searchText = plan.entities.length > 0 ? plan.entities.join(" ") : undefined;
         const decisions = await this.decisionRepo.query({
           conversationId: convId,
           statusIn: ["active"],
-          searchText,
           limit: MAX_RESULTS,
         });
 
+        const seen = new Set<string>();
         for (const d of decisions) {
           if (!matchesTimeRange(d.decidedAt ?? d.timestamp, plan)) continue;
           results.push(decisionToResult(d, scope.channelId));
+          seen.add(d.id);
+        }
+
+        // Explicit ID lookups — include even if status is not "active"
+        for (const id of decisionIds) {
+          if (seen.has(id)) continue;
+          try {
+            const d = await this.decisionRepo.findById(id);
+            if (d) results.push(decisionToResult(d, scope.channelId));
+          } catch { /* non-fatal */ }
         }
       } catch {
         // non-fatal — other paths may still contribute
@@ -50,7 +67,6 @@ export class StructuredRetrievalPath {
 
     // ── Actions ───────────────────────────────────────────────────────────────
     try {
-      const searchText = plan.entities.length > 0 ? plan.entities.join(" ") : undefined;
       const statusFilter =
         plan.intent === "accountability"
           ? (["open", "in_progress"] as Action["status"][])
@@ -59,13 +75,23 @@ export class StructuredRetrievalPath {
       const actions = await this.actionRepo.query({
         conversationId: convId,
         statusIn: statusFilter,
-        searchText,
         limit: MAX_RESULTS,
       });
 
+      const seen = new Set<string>();
       for (const a of actions) {
         if (!matchesTimeRange(a.timestamp, plan)) continue;
         results.push(actionToResult(a, scope.channelId));
+        seen.add(a.id);
+      }
+
+      // Explicit ID lookups
+      for (const id of actionIds) {
+        if (seen.has(id)) continue;
+        try {
+          const a = await this.actionRepo.findById(id);
+          if (a) results.push(actionToResult(a, scope.channelId));
+        } catch { /* non-fatal */ }
       }
     } catch {
       // non-fatal
