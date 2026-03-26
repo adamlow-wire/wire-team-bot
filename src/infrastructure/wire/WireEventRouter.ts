@@ -492,9 +492,12 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    // Exact list commands — use commandLowered so "@Jeeves (DEV) show reminders" routes
-    // the same as the bare plain-text equivalent.
-    if (commandLowered === "my actions" || commandLowered === "my action") {
+    // List commands — use commandLowered so "@Jeeves (DEV) show reminders" routes
+    // the same as the bare plain-text equivalent.  Natural-language variants are
+    // matched here so they are handled regardless of whether @Jeeves was mentioned.
+    if (commandLowered === "my actions" || commandLowered === "my action"
+        || /^(?:what\s+are\s+(?:my|all\s+my)|show\s+(?:me\s+)?my|list\s+my)\s+(?:open\s+|current\s+)?actions?\s*[?]?$/i.test(commandLowered)
+        || /^(?:do\s+i\s+have\s+(?:any\s+)?(?:open\s+)?actions?)\s*[?]?$/i.test(commandLowered)) {
       await this.deps.listMyActions.execute({ conversationId: convId, assigneeId: sender, replyToMessageId: wireMessage.id });
       return;
     }
@@ -507,8 +510,9 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
     if (commandLowered === "my reminders" || commandLowered === "show reminders" || commandLowered === "list reminders" || commandLowered === "reminders"
-        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+we\s+have)?[?]?$/i.test(commandLowered)
-        || /^(?:what|show|list)\s+(?:are\s+(?:the|our)\s+)?(?:open\s+)?reminders?[?]?$/i.test(commandLowered)) {
+        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+(?:we|i)\s+have)?[?]?$/i.test(commandLowered)
+        || /^(?:what\s+reminders\s+do\s+i\s+have)\s*[?]?$/i.test(commandLowered)
+        || /^(?:what|show|list)\s+(?:are\s+(?:the|our|my)\s+)?(?:open\s+|pending\s+)?reminders?\s*[?]?$/i.test(commandLowered)) {
       await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
       return;
     }
