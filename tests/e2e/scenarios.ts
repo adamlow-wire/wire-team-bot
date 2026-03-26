@@ -147,6 +147,110 @@ export const scenarios: Scenario[] = [
     ],
   },
 
+  // ── Feature 1c: Pipeline lifecycle flows ────────────────────────────────
+  // Multi-step, multi-speaker natural conversation flows.  These test that the
+  // pipeline correctly attributes actions to the speaker who commits (not the
+  // default sender), synthesises decisions from back-and-forth debate, resolves
+  // pronouns via the sliding window, and does not duplicate the same item when
+  // the same intent is restated.
+  //
+  // NOTE: the pipeline cannot auto-close an action from natural language today —
+  // only an explicit `ACT-xxx done` command closes an action.  TC-PIPE-07
+  // acknowledges this by verifying no *new* action is created when a completion
+  // is announced, without expecting the original action to disappear.
+
+  {
+    id: "TC-PIPE-03",
+    description: "Verbal commitment — action attributed to the person who committed",
+    steps: [
+      // All steps share one process so the sliding window carries both messages.
+      { input: "Alice: we need to send our contract template to the new supplier before Friday", shareProcess: true },
+      {
+        // Bob explicitly commits — pipeline should attribute the action to Bob.
+        input: "Bob: I'll take care of that, I'll get it sent over today",
+        shareProcess: true,
+      },
+      {
+        input: "@jeeves what are Bob's open actions?",
+        shareProcess: true,
+        assert: "Jeeves mentions an open action for Bob related to sending a contract or document to the supplier",
+      },
+    ],
+  },
+
+  {
+    id: "TC-PIPE-04",
+    description: "Decision synthesised from a multi-turn debate",
+    steps: [
+      { input: "Carol: we're still debating whether to go self-hosted or use a managed Postgres service", shareProcess: true },
+      { input: "Dave: the managed service costs more per month but you save on ops time and the SLA is better", shareProcess: true },
+      { input: "Carol: fair point — given our team size I think managed is the right call, let's go with that", shareProcess: true },
+      {
+        input: "@jeeves what did we decide about database hosting?",
+        shareProcess: true,
+        assert: "Jeeves describes a decision to use a managed Postgres service or managed database hosting",
+      },
+    ],
+  },
+
+  {
+    id: "TC-PIPE-05",
+    description: "Pronoun resolution — 'she'll handle it' attributed via sliding window",
+    steps: [
+      { input: "Alice is taking the lead on the GDPR data-retention audit", shareProcess: true },
+      {
+        // "she" and "it" should resolve to Alice and the audit via window context.
+        input: "she'll need to have it wrapped up before the end of the quarter",
+        shareProcess: true,
+      },
+      {
+        input: "@jeeves what is Alice responsible for?",
+        shareProcess: true,
+        assert: "Jeeves mentions the GDPR data-retention audit or similar as something Alice is responsible for or working on",
+      },
+    ],
+  },
+
+  {
+    id: "TC-PIPE-06",
+    description: "Action dedup — same commitment stated twice produces one action",
+    steps: [
+      // First mention — pipeline should extract one action.
+      "Alice: we need to update the API documentation before the next sprint review",
+      // Second mention restating the same intent — should NOT create a second action.
+      "Alice: just a reminder that the API docs still need updating for the new endpoints",
+      {
+        input: "@jeeves what are Alice's open actions?",
+        assert: "Jeeves lists Alice's open actions and mentions the API documentation update — it does not list the same task twice or mention two separate API documentation actions",
+      },
+    ],
+  },
+
+  {
+    id: "TC-PIPE-07",
+    description: "NDA lifecycle — verbal commitment → confirmation → completion announcement does not duplicate",
+    steps: [
+      // Stage 1: intent raised; Stage 2: Alice commits verbally.
+      { input: "Bob: we should send the client our NDA before we proceed any further", shareProcess: true },
+      { input: "Alice: I'll handle it — I'll email it over to them today", shareProcess: true },
+      {
+        // Pipeline should have extracted an action for Alice.
+        input: "@jeeves what are Alice's outstanding actions?",
+        shareProcess: true,
+        assert: "Jeeves mentions an open action for Alice related to the NDA or sending a document to the client",
+      },
+      // Stage 3: completion announced in natural language.
+      // NOTE: this does NOT auto-close the action (pipeline cannot close via NL today).
+      // The test verifies only that no *new* open action is created.
+      { input: "Alice: update everyone — I've sent the NDA to the client and they've signed and returned it", shareProcess: true },
+      {
+        input: "@jeeves team actions",
+        shareProcess: true,
+        assert: "Jeeves does not list a new open action about sending or receiving the NDA — the completion announcement should not have created an additional open action",
+      },
+    ],
+  },
+
   // ── Feature 2: Action Management ────────────────────────────────────────
 
   {
@@ -694,6 +798,32 @@ export const scenarios: Scenario[] = [
       {
         input: "@jeeves team actions",
         assert: "Jeeves reports no actions were extracted from the meeting small-talk — procedural chat about starting a meeting is not an action",
+      },
+    ],
+  },
+
+  {
+    id: "TC-NEG-ACT-05",
+    description: "First-person completion announcement is not logged as an open action",
+    steps: [
+      // Alice announces she has just finished something — this is a completion, not a new commitment.
+      "Alice: I've just finished writing the technical specifications, they're in the shared folder now",
+      {
+        input: "@jeeves what are Alice's open actions?",
+        assert: "Jeeves does not list an open action about writing technical specifications — a first-person announcement of completed work is not a new action",
+      },
+    ],
+  },
+
+  {
+    id: "TC-NEG-ACT-06",
+    description: "Team past-tense completion is not logged as an open action",
+    steps: [
+      // Collective past-tense completion — no ongoing commitment implied.
+      "we signed the vendor contract yesterday, everything is all sorted",
+      {
+        input: "@jeeves team actions",
+        assert: "Jeeves does not list an open action about signing a contract — a past-tense completion announcement is not a new open action",
       },
     ],
   },
