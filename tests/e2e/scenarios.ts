@@ -47,11 +47,15 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-DEC-03",
-    description: "List decisions — returns results or a sensible empty state",
+    description: "List decisions — includes the previously logged decision",
     steps: [
       {
+        input: "decision: we will standardise on kebab-case for all URL slugs",
+        captureAs: "DEC",
+      },
+      {
         input: "list decisions",
-        assert: "Jeeves either lists one or more decisions with DEC- references, or states that no decisions have been recorded",
+        assert: "Jeeves lists decisions and includes {{DEC}}",
       },
     ],
   },
@@ -138,7 +142,7 @@ export const scenarios: Scenario[] = [
       "Bob needs to update the deployment runbook before the next release",
       {
         input: "@jeeves what actions are outstanding?",
-        assert: "Jeeves lists open actions or states there are none — any coherent response about action status is acceptable",
+        assert: "Jeeves mentions Bob or the deployment runbook in the context of outstanding or open actions",
       },
     ],
   },
@@ -170,7 +174,7 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-ACT-03",
-    description: "List my actions — returns open actions or empty",
+    description: "List my actions — includes the previously logged action",
     steps: [
       {
         input: "action: Alice to update the runbook",
@@ -178,18 +182,22 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "what are my open actions?",
-        assert: "Jeeves lists open actions assigned to Alice, or states there are none",
+        assert: "Jeeves lists Alice's open actions and includes {{ACT}}",
       },
     ],
   },
 
   {
     id: "TC-ACT-04",
-    description: "List team actions — all open actions or empty",
+    description: "List team actions — includes the previously logged action",
     steps: [
       {
+        input: "action: Alice to review the infrastructure cost report",
+        captureAs: "ACT",
+      },
+      {
         input: "team actions",
-        assert: "Jeeves either lists all open team actions with ACT- references, or states there are no open actions",
+        assert: "Jeeves lists open team actions and includes {{ACT}}",
       },
     ],
   },
@@ -248,6 +256,107 @@ export const scenarios: Scenario[] = [
     ],
   },
 
+  // ── Feature 2b: Identity and attribution ────────────────────────────────
+  // Tests that "my actions / reminders / decisions" are correctly scoped to the
+  // caller, that named-member attribution works, and that team queries return
+  // everyone's items.  Steps use the "Name: message" CLI format to vary the
+  // sender.
+
+  {
+    id: "TC-ID-01",
+    description: "My actions returns caller's actions only — not other members'",
+    steps: [
+      {
+        // Alice (default sender) logs her own action
+        input: "action: Alice to update the security documentation",
+        captureAs: "ACT",
+      },
+      {
+        // Bob logs his own action
+        input: "Bob: action: Bob to refactor the payment module",
+      },
+      {
+        // Query as Alice — should see her action, not Bob's
+        input: "@jeeves what are my open actions?",
+        assert: "Jeeves lists Alice's open actions including {{ACT}} and does NOT include Bob's payment module action",
+      },
+    ],
+  },
+
+  {
+    id: "TC-ID-02",
+    description: "Actions for a named member returns that member's actions only",
+    steps: [
+      {
+        input: "action: Alice to prepare the sprint retrospective slides",
+      },
+      {
+        input: "Bob: action: Bob to deploy the hotfix to staging",
+        captureAs: "ACT",
+      },
+      {
+        input: "@jeeves what actions does Bob have?",
+        assert: "Jeeves lists Bob's open actions including {{ACT}} and does NOT include Alice's retrospective slides action",
+      },
+    ],
+  },
+
+  {
+    id: "TC-ID-03",
+    description: "Decision is attributed to the member who logged it",
+    steps: [
+      {
+        input: "Alice: decision: we will enforce semantic versioning for all internal packages",
+        captureAs: "DEC",
+        assert: "Jeeves confirms the decision was recorded with a DEC- reference",
+      },
+      {
+        input: "@jeeves who made {{DEC}}?",
+        assert: "Jeeves identifies Alice as the author or participant who made the decision",
+      },
+    ],
+  },
+
+  {
+    id: "TC-ID-04",
+    description: "My reminders returns only the caller's reminders — not others'",
+    steps: [
+      {
+        // Alice sets a reminder for herself
+        input: "Alice: remind me on Thursday to chase the vendor invoice",
+        captureAs: "REM",
+        assert: "Jeeves confirms the reminder was set with a REM- reference for Thursday",
+      },
+      {
+        // Bob sets a separate reminder for himself
+        input: "Bob: remind me on Friday to send the weekly report",
+      },
+      {
+        // Alice queries — should see only her own Thursday reminder
+        input: "@jeeves what reminders do I have?",
+        assert: "Jeeves lists Alice's reminders including {{REM}} for Thursday and does NOT include Bob's Friday report reminder",
+      },
+    ],
+  },
+
+  {
+    id: "TC-ID-05",
+    description: "Team actions lists all members' actions — not just the caller's",
+    steps: [
+      {
+        input: "action: Alice to write the API specification",
+        captureAs: "ACT",
+      },
+      {
+        input: "Bob: action: Bob to set up the CI pipeline",
+      },
+      {
+        input: "@jeeves team actions",
+        assert: "Jeeves lists open team actions including both Alice's API specification action ({{ACT}}) and Bob's CI pipeline action",
+      },
+    ],
+  },
+
   // ── Feature 3: Reminders ────────────────────────────────────────────────
 
   {
@@ -264,11 +373,15 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-REM-02",
-    description: "List reminders — returns list or empty",
+    description: "List reminders — includes the previously created reminder",
     steps: [
       {
+        input: "remind me next Tuesday to send the weekly status report",
+        captureAs: "REM",
+      },
+      {
         input: "what reminders do I have?",
-        assert: "Jeeves either lists upcoming reminders with REM- references, or states there are no reminders scheduled",
+        assert: "Jeeves lists reminders and includes {{REM}}",
       },
     ],
   },
