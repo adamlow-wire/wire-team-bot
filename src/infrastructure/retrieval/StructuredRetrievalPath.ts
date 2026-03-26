@@ -135,7 +135,7 @@ function decisionToResult(d: Decision, channelId: string): RetrievalResult {
 }
 
 function actionToResult(a: Action, channelId: string): RetrievalResult {
-  const owner = a.assigneeName || a.assigneeId.id;
+  const owner = a.assigneeName || "unassigned";
   const deadline = a.deadline ? a.deadline.toISOString().slice(0, 10) : "none";
   const content = [
     `ID: ${a.id}`,
