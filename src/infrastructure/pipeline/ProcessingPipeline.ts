@@ -12,7 +12,7 @@
  */
 
 import type { ClassifierPort, ChannelContext } from "../../application/ports/ClassifierPort";
-import type { ExtractionPort, ExtractedEntity } from "../../application/ports/ExtractionPort";
+import type { ExtractionPort, ExtractedEntity, KnownAction } from "../../application/ports/ExtractionPort";
 import type { EmbeddingService } from "../../application/ports/EmbeddingPort";
 import type { EntityRepository } from "../../domain/repositories/EntityRepository";
 import type { EmbeddingRepository } from "../../domain/repositories/EmbeddingRepository";
@@ -119,14 +119,20 @@ export class ProcessingPipeline {
       knownEntities = await this.deps.entityRepo.listNames(channelId);
     } catch { /* non-fatal — extraction continues without hints */ }
 
-    let knownActions: string[] = [];
+    let knownActions: KnownAction[] = [];
+    let openActions: Action[] = [];
     try {
-      const openActions = await this.deps.actionRepo.query({
+      openActions = await this.deps.actionRepo.query({
         conversationId,
         statusIn: ["open", "in_progress"],
         limit: 10,
       });
-      knownActions = openActions.map(a => a.description);
+      knownActions = openActions.map(a => ({
+        id: a.id,
+        description: a.description,
+        assigneeName: a.assigneeName,
+        rawMessageId: a.rawMessageId,
+      }));
     } catch { /* non-fatal — extraction continues without dedup hints */ }
 
     let extracted;
@@ -233,19 +239,54 @@ export class ProcessingPipeline {
       }
     }
 
+    // ── Completions — close existing actions announced as done ─────────────
+    for (const c of extracted.completions) {
+      const target = openActions.find(a => a.id === c.actionId);
+      if (!target) continue;
+      try {
+        await this.deps.actionRepo.update({
+          ...target,
+          status: "done",
+          completionNote: c.note ?? null,
+          updatedAt: now,
+        });
+        log.info("Pipeline: action completed via NL announcement", { actionId: target.id });
+      } catch (err) {
+        log.warn("Pipeline: completion update failed", { actionId: c.actionId, err: String(err) });
+      }
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────
     for (const a of extracted.actions) {
       if (a.confidence < this.deps.extractConfidenceMin) continue;
       try {
+        // If this action supersedes an existing one, close the old one first
+        if (a.supersedes) {
+          const toClose = openActions.find(oa => oa.id === a.supersedes);
+          if (toClose) {
+            await this.deps.actionRepo.update({
+              ...toClose,
+              status: "done",
+              completionNote: `Superseded by: ${a.description}`,
+              updatedAt: now,
+            });
+            log.info("Pipeline: action superseded", { closedId: toClose.id, newDescription: a.description });
+          }
+        }
+
         const id = await this.deps.actionRepo.nextId();
+        // Owner resolution: reject any UUID that leaked through from an unresolved
+        // sender label, then fall back to senderName (display name) or empty.
+        const resolvedOwner = looksLikeUuid(a.ownerName) ? undefined : a.ownerName;
+        const resolvedSender = looksLikeUuid(senderName) ? "" : senderName;
         // Owner resolution: use sender as creator; ownerName may not map to a QualifiedId at MVP
         const action: Action = {
           id,
           conversationId,
           creatorId: senderId,
-          authorName: senderName,
+          authorName: resolvedSender,
           assigneeId: senderId,
-          assigneeName: a.ownerName || senderName || "",
+          assigneeName: resolvedOwner || resolvedSender || "",
           rawMessageId: messageId,
           description: a.description,
           deadline: null,  // natural language deadline deferred to Phase 3 (NLP parsing)
@@ -443,4 +484,9 @@ export class ProcessingPipeline {
       }
     }
   }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function looksLikeUuid(s: string | undefined): boolean {
+  return !!s && UUID_RE.test(s);
 }
