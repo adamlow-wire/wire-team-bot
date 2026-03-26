@@ -65,7 +65,7 @@ export class ProcessingPipeline {
 
   async process(job: MessageJob): Promise<void> {
     const { channelId, conversationId, senderId, senderName, text, timestamp, orgId, messageId } = job;
-    const log = this.deps.logger.child({ channelId, messageId });
+    const log = this.deps.logger.child({ channelId, messageId, senderName: senderName || undefined });
 
     // Get channel context for the classifier and extractor
     let channelCtx: ChannelContext;
@@ -95,9 +95,10 @@ export class ProcessingPipeline {
       return;
     }
 
-    log.debug("Pipeline: Tier 1 result", {
+    log.info("Pipeline: Tier 1 classify", {
       categories: classifyResult.categories,
       is_high_signal: classifyResult.is_high_signal,
+      confidence: classifyResult.confidence,
     });
 
     if (!classifyResult.is_high_signal) {
@@ -145,9 +146,10 @@ export class ProcessingPipeline {
       return;
     }
 
-    log.debug("Pipeline: Tier 2 result", {
+    log.info("Pipeline: Tier 2 extract", {
       decisions: extracted.decisions.length,
       actions: extracted.actions.length,
+      completions: extracted.completions.length,
       entities: extracted.entities.length,
       signals: extracted.signals.length,
     });

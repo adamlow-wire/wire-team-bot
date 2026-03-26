@@ -110,13 +110,6 @@ export class WireEventRouter extends WireEventsHandler {
     const convId = wireMessage.conversationId as QualifiedId;
     const sender = wireMessage.sender as QualifiedId;
     const channelId = toChannelId(convId);
-    const log = this.deps.logger.child({
-      conversationId: convId.id,
-      senderId: sender.id,
-      messageId: wireMessage.id,
-    });
-
-
     let senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
 
     // Name resolution strategy:
@@ -153,6 +146,14 @@ export class WireEventRouter extends WireEventsHandler {
         if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name);
       });
     }
+
+    // Child logger is created after name resolution so senderName is always available.
+    const log = this.deps.logger.child({
+      conversationId: convId.id,
+      senderId: sender.id,
+      senderName: senderMember?.name || undefined,
+      messageId: wireMessage.id,
+    });
 
     this.deps.messageBuffer.push(convId, {
       messageId: wireMessage.id,
@@ -281,6 +282,7 @@ export class WireEventRouter extends WireEventsHandler {
     // the extraction pipeline creates duplicate entities in the database.
     const isExplicitCommand = /^(?:decision|action):\s/i.test(text.trim());
     if (!isExplicitCommand && this.deps.processingQueue && this.deps.pipeline) {
+      log.info("Message: enqueued for pipeline processing");
       const orgId = this.deps.orgId ?? convId.domain;
       const job: MessageJob = {
         messageId: wireMessage.id,
@@ -619,6 +621,7 @@ export class WireEventRouter extends WireEventsHandler {
 
     // ── @Jeeves mention or follow-up — answer question ────────────────────────
     if (botMentionedEarly || isFollowUp) {
+      log.info("Message: dispatched to answerQuestion", { isFollowUp });
       const config = await this.deps.conversationConfig.get(convId);
       const recentContext = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW).slice(0, -1).map((m) =>
         m.senderName ? `${m.senderName}: ${m.text}` : m.text,
