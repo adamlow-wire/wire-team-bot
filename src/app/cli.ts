@@ -83,7 +83,11 @@ import { MultiPathRetrievalEngine } from "../infrastructure/retrieval/MultiPathR
 // ── Fixed identities ──────────────────────────────────────────────────────────
 
 const DOMAIN = "cli.local";
-const CHANNEL_ID_RAW: QualifiedId = { id: "cli-channel", domain: DOMAIN };
+// Allow E2E tests to inject a unique channel ID per scenario for DB isolation.
+const CHANNEL_ID_RAW: QualifiedId = {
+  id: process.env.E2E_CHANNEL_ID ?? "cli-channel",
+  domain: DOMAIN,
+};
 const BOT_ID: QualifiedId = { id: "jeeves", domain: DOMAIN };
 
 /** Seeded roster — members available to send messages as. */
@@ -91,6 +95,7 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
   { name: "Alice", id: { id: "alice", domain: DOMAIN } },
   { name: "Bob",   id: { id: "bob",   domain: DOMAIN } },
   { name: "Carol", id: { id: "carol", domain: DOMAIN } },
+  { name: "Dave",  id: { id: "dave",  domain: DOMAIN } },
 ];
 
 // ── Stub outbound port ────────────────────────────────────────────────────────

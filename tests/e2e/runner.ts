@@ -4,10 +4,15 @@
  * Each step spawns `node dist/app/cli.js` with piped input and captures stdout.
  * Step and scenario assertions are evaluated by an LLM judge rather than regex.
  *
+ * Isolation: every scenario receives a unique E2E_CHANNEL_ID so its data is
+ * scoped to its own DB conversation.  Re-running the suite uses a fresh
+ * suiteRunId so there is no cross-run contamination.
+ *
  * Usage:
  *   npm run test:e2e
  *   npm run test:e2e -- --filter TC-DEC     # run only decision tests
  *   npm run test:e2e -- --verbose           # show full output + judge reasoning
+ *   npm run test:e2e -- --bail              # stop after first failure
  */
 
 import { spawn }   from "child_process";
@@ -22,6 +27,14 @@ const args    = process.argv.slice(2);
 const filter  = args.find(a => a.startsWith("--filter="))?.split("=")[1]
              ?? (args.includes("--filter") ? args[args.indexOf("--filter") + 1] : null);
 const verbose = args.includes("--verbose");
+const bail    = args.includes("--bail");
+
+/**
+ * Unique identifier for this suite run.  Injected into every spawned CLI
+ * process as part of E2E_CHANNEL_ID so each scenario's DB writes are
+ * isolated from other scenarios and from previous suite runs.
+ */
+const suiteRunId = Date.now().toString(36);
 
 // ── Public types (imported by scenarios.ts) ───────────────────────────────────
 
@@ -75,6 +88,19 @@ interface StepFailure {
   reason: string;
 }
 
+/**
+ * Build the per-scenario env so every CLI process for scenario `id` writes to
+ * an isolated DB conversation.  The suiteRunId suffix prevents cross-run
+ * contamination when the suite is run multiple times against the same database.
+ */
+function scenarioEnv(scenarioId: string): Record<string, string> {
+  return {
+    ...process.env as Record<string, string>,
+    LOG_LEVEL: "warn",
+    E2E_CHANNEL_ID: `e2e-${scenarioId}-${suiteRunId}`,
+  };
+}
+
 async function runScenario(
   scenario: Scenario,
 ): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[] }> {
@@ -85,26 +111,33 @@ async function runScenario(
   const captures: Record<string, string> = {};
   const stepOutputs: string[] = [];
   const failures: StepFailure[] = [];
+  const env = scenarioEnv(scenario.id);
 
   let pendingSharedInputs: string[] = [];
   let pendingSharedSteps: Step[] = [];
 
   const flushShared = async () => {
     if (pendingSharedInputs.length === 0) return;
-    const outputs = await runMultiLine(pendingSharedInputs);
+    const outputs = await runMultiLine(pendingSharedInputs, env);
     for (let i = 0; i < pendingSharedSteps.length; i++) {
       const stepOut = outputs[i] ?? "";
       stepOutputs.push(stepOut);
       const step = pendingSharedSteps[i]!;
       if (step.captureAs) {
-        const pat = ID_PATTERNS[step.captureAs];
-        const match = pat?.exec(stepOut);
-        if (match) captures[step.captureAs] = match[0];
+        const match = ID_PATTERNS[step.captureAs]?.exec(stepOut);
+        if (match) {
+          captures[step.captureAs] = match[0];
+        } else {
+          process.stderr.write(
+            `  ⚠  captureAs "${step.captureAs}" found no ID in response for: "${step.input.slice(0, 60)}"\n`,
+          );
+        }
       }
       if (step.assert) {
-        const result = await judge(stepOut, step.assert);
+        const assertion = applyCaptures(step.assert, captures);
+        const result = await judge(stepOut, assertion);
         if (!result.pass) {
-          failures.push({ step: step.input.slice(0, 60), assertion: step.assert, reason: result.reason });
+          failures.push({ step: step.input.slice(0, 60), assertion, reason: result.reason });
         } else if (verbose) {
           process.stdout.write(`    [judge] PASS — ${result.reason}\n`);
         }
@@ -126,23 +159,29 @@ async function runScenario(
     // Flush any pending shared steps before running a new isolated step
     await flushShared();
 
-    const output = await runOneLine(resolvedInput);
+    const output = await runOneLine(resolvedInput, env);
     stepOutputs.push(output);
 
     // Capture a reference ID from this step's output if requested
     if (step.captureAs) {
-      const pat = ID_PATTERNS[step.captureAs];
-      const match = pat?.exec(output);
-      if (match) captures[step.captureAs] = match[0];
+      const match = ID_PATTERNS[step.captureAs]?.exec(output);
+      if (match) {
+        captures[step.captureAs] = match[0];
+      } else {
+        process.stderr.write(
+          `  ⚠  captureAs "${step.captureAs}" found no ID in response for: "${resolvedInput.slice(0, 60)}"\n`,
+        );
+      }
     }
 
-    // Per-step assertion
+    // Per-step assertion — substitute captured IDs into the assertion text too
     if (step.assert) {
-      const result = await judge(output, step.assert);
+      const assertion = applyCaptures(step.assert, captures);
+      const result = await judge(output, assertion);
       if (!result.pass) {
         failures.push({
           step: resolvedInput.slice(0, 60),
-          assertion: step.assert,
+          assertion,
           reason: result.reason,
         });
       } else if (verbose) {
@@ -183,11 +222,11 @@ async function runScenario(
  *   2200ms — close stdin (signals EOF to the CLI readline loop)
  *   7000ms — force-kill if still running (scheduler timers keep Node alive)
  */
-function runOneLine(input: string): Promise<string> {
+function runOneLine(input: string, env: Record<string, string>): Promise<string> {
   return new Promise((resolve) => {
     const proc = spawn("node", [CLI], {
       cwd: ROOT,
-      env: { ...process.env, LOG_LEVEL: "warn" },
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -214,15 +253,19 @@ function runOneLine(input: string): Promise<string> {
 }
 
 /**
- * Spawns one CLI process, sends multiple lines sequentially (1s apart), and
- * returns the stdout segments captured between each write. Used for follow-up
+ * Spawns one CLI process, sends multiple lines sequentially (3.5 s apart), and
+ * returns the stdout segments captured between each write.  Used for follow-up
  * / context-dependent exchanges where conversation state must persist.
+ *
+ * The 3.5 s gap and 2.8 s segment-advance give the bot up to 2.8 s to respond
+ * before output is attributed to the next message.  This is more conservative
+ * than the previous 2 s / 3 s values to reduce response-bleed on slower models.
  */
-function runMultiLine(inputs: string[]): Promise<string[]> {
+function runMultiLine(inputs: string[], env: Record<string, string>): Promise<string[]> {
   return new Promise((resolve) => {
     const proc = spawn("node", [CLI], {
       cwd: ROOT,
-      env: { ...process.env, LOG_LEVEL: "warn" },
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -232,18 +275,18 @@ function runMultiLine(inputs: string[]): Promise<string[]> {
       if (currentIdx < segments.length) segments[currentIdx] += d.toString();
     });
 
-    const killTimer = setTimeout(() => proc.kill("SIGKILL"), inputs.length * 4000 + 3000);
+    const killTimer = setTimeout(() => proc.kill("SIGKILL"), inputs.length * 5000 + 3000);
 
-    // Send each line with a 2s gap so the bot can respond before the next arrives
+    // Send each line with a 3.5 s gap; advance the segment pointer after 2.8 s
+    // so responses don't bleed into the next segment.
     let delay = 300;
     for (let i = 0; i < inputs.length; i++) {
       const idx = i;
       setTimeout(() => {
         proc.stdin.write(inputs[idx]! + "\n");
-        // After writing, wait 2s for the response then advance the segment pointer
-        setTimeout(() => { currentIdx = idx + 1; }, 2000);
+        setTimeout(() => { currentIdx = idx + 1; }, 2800);
       }, delay);
-      delay += 3000;
+      delay += 3500;
     }
     // Close stdin after all lines have been sent and responses collected
     setTimeout(() => proc.stdin.end(), delay);
@@ -267,20 +310,22 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nJeeves E2E — running ${toRun.length} scenario(s)\n${"─".repeat(70)}`);
+  console.log(`\nJeeves E2E — running ${toRun.length} scenario(s)  [run: ${suiteRunId}]\n${"─".repeat(70)}`);
 
   let passed = 0;
   let failed = 0;
 
   for (const scenario of toRun) {
     process.stdout.write(`  ${scenario.id.padEnd(16)} ${scenario.description.padEnd(50)} `);
+    const scenarioStart = Date.now();
     const result = await runScenario(scenario);
+    const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
 
     if (result.passed) {
-      console.log("✓ PASS");
+      console.log(`✓ PASS  (${elapsed}s)`);
       passed++;
     } else {
-      console.log("✗ FAIL");
+      console.log(`✗ FAIL  (${elapsed}s)`);
       failed++;
       for (const f of result.failures) {
         console.log(`    └ [${f.step}]`);
@@ -295,6 +340,11 @@ async function main() {
         console.log(`    Output (${lines.length} line(s)):`);
         for (const line of lines) console.log(`      │ ${line}`);
       }
+    }
+
+    if (bail && failed > 0) {
+      console.log("\n  --bail: stopping after first failure.");
+      break;
     }
   }
 
