@@ -85,7 +85,7 @@ export class SemanticRetrievalPath {
         } else if (hit.sourceType === "action") {
           const a = await this.actionRepo.findById(hit.sourceId);
           if (!a || a.deleted) continue;
-          const owner = a.assigneeName || a.assigneeId.id;
+          const owner = a.assigneeName || "unassigned";
           results.push({
             id: a.id,
             type: "action",
