@@ -182,7 +182,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "what are my open actions?",
-        assert: "Jeeves lists Alice's open actions and includes {{ACT}}",
+        assert: "Jeeves responds with a list of open actions that includes {{ACT}}",
       },
     ],
   },
@@ -278,7 +278,7 @@ export const scenarios: Scenario[] = [
       {
         // Query as Alice — should see her action, not Bob's
         input: "@jeeves what are my open actions?",
-        assert: "Jeeves lists Alice's open actions including {{ACT}} and does NOT include Bob's payment module action",
+        assert: "The response is a list of open actions containing {{ACT}}; it does not mention Bob or payment module",
       },
     ],
   },

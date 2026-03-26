@@ -406,7 +406,7 @@ export class WireEventRouter extends WireEventsHandler {
     const supersedeMatch = commandText.match(/^decision:\s*(.+?)\s+supersedes\s+(DEC-\d+)\s*$/i);
     if (supersedeMatch) {
       await this.deps.supersedeDecision.execute({
-        conversationId: convId, authorId: sender, authorName: "",
+        conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
         newSummary: supersedeMatch[1].trim(), supersedesDecisionId: supersedeMatch[2],
         replyToMessageId: wireMessage.id,
@@ -422,7 +422,7 @@ export class WireEventRouter extends WireEventsHandler {
         ? [...new Map(contextMessages.map((m) => [m.senderId.id, m.senderId])).values()]
         : [sender];
       await this.deps.logDecision.execute({
-        conversationId: convId, authorId: sender, authorName: "",
+        conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
         summary: decisionMatch[1].trim(), contextMessages, participantIds,
       });
