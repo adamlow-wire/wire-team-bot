@@ -998,17 +998,19 @@ export class WireEventRouter extends WireEventsHandler {
 
   private matchesPauseCommand(lowered: string): boolean {
     const s = this.stripJeevesPrefix(lowered);
-    return /^(pause|step out)$/.test(s) || /^(pause|step out)$/.test(lowered);
+    return /^(pause|step out)(\s+please)?$/.test(s) || /^(pause|step out)(\s+please)?$/.test(lowered);
   }
 
   private matchesResumeCommand(lowered: string): boolean {
     const s = this.stripJeevesPrefix(lowered);
-    return /^(resume|come back)$/.test(s) || /^(resume|come back)$/.test(lowered);
+    return /^(resume|come back)(\s+please)?$/.test(s) || /^(resume|come back)(\s+please)?$/.test(lowered);
   }
 
   private matchesSecureCommand(lowered: string): boolean {
     const s = this.stripJeevesPrefix(lowered);
-    return /^(secure mode|ears off|secure)$/.test(s) || /^(secure mode|ears off)$/.test(lowered);
+    // "safe mode" is accepted as a natural-language alias for "secure mode".
+    return /^(secure mode|safe mode|ears off|secure|safe)(\s+please)?$/.test(s)
+        || /^(secure mode|safe mode|ears off)(\s+please)?$/.test(lowered);
   }
 
   private matchContextCommand(text: string): ContextCommandMatch | null {
