@@ -296,7 +296,7 @@ export function createContainer(config: Config, logger: Logger): Container {
         if (!fs.existsSync(storageDir)) {
           fs.mkdirSync(storageDir, { recursive: true });
         }
-        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db")).then(async (sdk) => {
+        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db"), logger).then(async (sdk) => {
           // Rehydrate pending reminders only after the Wire SDK is fully initialised.
           // Scheduling before this point causes overdue reminders to fire before the
           // crypto client is ready, crashing with "Cannot read properties of undefined".
