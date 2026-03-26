@@ -247,7 +247,11 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ── ACTIVE — enqueue background pipeline job ──────────────────────────────
-    if (this.deps.processingQueue && this.deps.pipeline) {
+    // Skip explicit command messages (decision:, action:) — those are persisted
+    // synchronously by the command handlers below.  Re-processing them through
+    // the extraction pipeline creates duplicate entities in the database.
+    const isExplicitCommand = /^(?:decision|action):\s/i.test(text.trim());
+    if (!isExplicitCommand && this.deps.processingQueue && this.deps.pipeline) {
       const orgId = this.deps.orgId ?? convId.domain;
       const job: MessageJob = {
         messageId: wireMessage.id,
