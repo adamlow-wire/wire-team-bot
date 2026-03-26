@@ -270,6 +270,14 @@ export class WireEventRouter extends WireEventsHandler {
     // ── ACTIVE — state-change commands ────────────────────────────────────────
     const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
 
+    // When addressed via @mention or Jeeves-prefix, strip the bot name so
+    // downstream pattern matching works on the bare command regardless of prefix.
+    // e.g. "@Jeeves (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
+    const isJeevesAddressed = botMentionedEarly || this.startsWithJeeves(lowered);
+    const commandLowered = isJeevesAddressed ? this.stripJeevesPrefix(lowered) : lowered;
+    // Original-case stripped text — used for content-preserving matches (decision:, action:, remind, IDs).
+    const commandText = isJeevesAddressed ? this.stripJeevesPrefix(text) : text;
+
     if (botMentionedEarly || this.startsWithJeeves(lowered)) {
       if (this.matchesPauseCommand(lowered)) {
         await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
@@ -321,7 +329,7 @@ export class WireEventRouter extends WireEventsHandler {
     // ── Fast-path: ID-based mutations ─────────────────────────────────────────
 
     // cancel REM-NNNN
-    const cancelReminderMatch = text.match(/^cancel\s+(REM-\d+)\s*$/i);
+    const cancelReminderMatch = commandText.match(/^cancel\s+(REM-\d+)\s*$/i);
     if (cancelReminderMatch) {
       await this.deps.cancelReminder.execute({
         reminderId: cancelReminderMatch[1], conversationId: convId, actorId: sender, replyToMessageId: wireMessage.id,
@@ -330,7 +338,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // snooze REM-NNNN <expression>
-    const snoozeReminderMatch = text.match(/^snooze\s+(REM-\d+)\s+(.+)$/i);
+    const snoozeReminderMatch = commandText.match(/^snooze\s+(REM-\d+)\s+(.+)$/i);
     if (snoozeReminderMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       await this.deps.snoozeReminder.execute({
@@ -343,7 +351,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ACT-NNNN reassign / assign ACT-NNNN to <name>
-    const actReassignMatch = text.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
+    const actReassignMatch = commandText.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
     if (actReassignMatch) {
       const actionId = (actReassignMatch[1] ?? actReassignMatch[3])!;
       const newAssignee = (actReassignMatch[2] ?? actReassignMatch[4])!.trim();
@@ -354,7 +362,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ACT-NNNN status or status ACT-NNNN
-    const actDoneMatch = text.match(/^(?:(ACT-\d+)\s+(done|cancelled|in[_\s]progress|close|complete|cancel)|(done|close|complete|cancel|cancelled|in[_\s]progress)\s+(ACT-\d+))\s*(.*)$/i);
+    const actDoneMatch = commandText.match(/^(?:(ACT-\d+)\s+(done|cancelled|in[_\s]progress|close|complete|cancel)|(done|close|complete|cancel|cancelled|in[_\s]progress)\s+(ACT-\d+))\s*(.*)$/i);
     if (actDoneMatch) {
       const actionId = (actDoneMatch[1] ?? actDoneMatch[4])!;
       const rawStatus = (actDoneMatch[2] ?? actDoneMatch[3])!.toLowerCase();
@@ -371,7 +379,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ACT-NNNN due <expression>
-    const actDeadlineMatch = text.match(/^(ACT-\d+)\s+due\s+(.+)$/i);
+    const actDeadlineMatch = commandText.match(/^(ACT-\d+)\s+due\s+(.+)$/i);
     if (actDeadlineMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       await this.deps.updateActionDeadline.execute({
@@ -382,7 +390,7 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    const revokeMatch = text.match(/^revoke\s+(DEC-\d+)\s*(.*)$/i);
+    const revokeMatch = commandText.match(/^revoke\s+(DEC-\d+)\s*(.*)$/i);
     if (revokeMatch) {
       await this.deps.revokeDecision.execute({
         conversationId: convId, actorId: sender,
@@ -391,7 +399,7 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    const supersedeMatch = text.match(/^decision:\s*(.+?)\s+supersedes\s+(DEC-\d+)\s*$/i);
+    const supersedeMatch = commandText.match(/^decision:\s*(.+?)\s+supersedes\s+(DEC-\d+)\s*$/i);
     if (supersedeMatch) {
       await this.deps.supersedeDecision.execute({
         conversationId: convId, authorId: sender, authorName: "",
@@ -403,7 +411,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // decision: <summary>
-    const decisionMatch = text.match(/^decision:\s*(.+)$/i);
+    const decisionMatch = commandText.match(/^decision:\s*(.+)$/i);
     if (decisionMatch) {
       const contextMessages = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW);
       const participantIds = contextMessages.length
@@ -418,7 +426,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // action: <description> [for <Name>] or action: <Name> to <description>
-    const actionMatch = text.match(/^action:\s*(.+)$/i);
+    const actionMatch = commandText.match(/^action:\s*(.+)$/i);
     if (actionMatch) {
       const raw = actionMatch[1].trim();
       const senderName = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id)?.name ?? "";
@@ -445,7 +453,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // decisions about / search decisions <query>
-    const decisionsSearchMatch = text.match(/^(?:decisions?\s+(?:about|on|for|regarding)|search\s+decisions?)\s+(.+)$/i);
+    const decisionsSearchMatch = commandText.match(/^(?:decisions?\s+(?:about|on|for|regarding)|search\s+decisions?)\s+(.+)$/i);
     if (decisionsSearchMatch) {
       await this.deps.searchDecisions.execute({
         conversationId: convId, searchText: decisionsSearchMatch[1].trim(), replyToMessageId: wireMessage.id,
@@ -455,10 +463,10 @@ export class WireEventRouter extends WireEventsHandler {
 
     // remind me <time-expression> to <description>
     // Also handles: "make/set/create/add a reminder for <time> that/to <desc>"
-    const remindMatch = text.match(/^remind(?:\s+me)?\s+(.+?)\s+to\s+(.+)$/i)
-                     ?? text.match(/^reminder\s+(.+?)\s+to\s+(.+)$/i)
-                     ?? text.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+for\s+(.+?)\s+(?:that|to)\s+(.+)$/i)
-                     ?? text.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+(.+?)\s+(?:that|to)\s+(.+)$/i);
+    const remindMatch = commandText.match(/^remind(?:\s+me)?\s+(.+?)\s+to\s+(.+)$/i)
+                     ?? commandText.match(/^reminder\s+(.+?)\s+to\s+(.+)$/i)
+                     ?? commandText.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+for\s+(.+?)\s+(?:that|to)\s+(.+)$/i)
+                     ?? commandText.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+(.+?)\s+(?:that|to)\s+(.+)$/i);
     if (remindMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       const parsed = this.deps.dateTimeService.parse(remindMatch[1].trim(), { timezone: config?.timezone ?? "UTC" });
@@ -477,53 +485,54 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // Retired TASK-* fast-paths — redirect to actions
-    if (/^(?:TASK-\d+\s+.+|(?:done|close|complete|cancel|cancelled|in[_\s]progress)\s+TASK-\d+)/i.test(text)) {
+    if (/^(?:TASK-\d+\s+.+|(?:done|close|complete|cancel|cancelled|in[_\s]progress)\s+TASK-\d+)/i.test(commandText)) {
       await this.deps.wireOutbound.sendPlainText(convId,
         "I'm afraid tasks have been consolidated into actions. Please use _ACT-NNNN_ identifiers going forward.",
         { replyToMessageId: wireMessage.id });
       return;
     }
 
-    // Exact list commands
-    if (lowered === "my actions" || lowered === "my action") {
+    // Exact list commands — use commandLowered so "@Jeeves (DEV) show reminders" routes
+    // the same as the bare plain-text equivalent.
+    if (commandLowered === "my actions" || commandLowered === "my action") {
       await this.deps.listMyActions.execute({ conversationId: convId, assigneeId: sender, replyToMessageId: wireMessage.id });
       return;
     }
-    if (lowered === "team actions" || lowered === "team action") {
+    if (commandLowered === "team actions" || commandLowered === "team action") {
       await this.deps.listTeamActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
-    if (lowered === "overdue actions" || lowered === "overdue" || lowered === "overdue tasks") {
+    if (commandLowered === "overdue actions" || commandLowered === "overdue" || commandLowered === "overdue tasks") {
       await this.deps.listOverdueActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
-    if (lowered === "my reminders" || lowered === "show reminders" || lowered === "list reminders" || lowered === "reminders"
-        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+we\s+have)?[?]?$/i.test(lowered)
-        || /^(?:what|show|list)\s+(?:are\s+(?:the|our)\s+)?(?:open\s+)?reminders?[?]?$/i.test(lowered)) {
-      await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
+    if (commandLowered === "my reminders" || commandLowered === "show reminders" || commandLowered === "list reminders" || commandLowered === "reminders"
+        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+we\s+have)?[?]?$/i.test(commandLowered)
+        || /^(?:what|show|list)\s+(?:are\s+(?:the|our)\s+)?(?:open\s+)?reminders?[?]?$/i.test(commandLowered)) {
+      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
       return;
     }
-    if (lowered === "list decisions" || lowered === "decisions" || lowered === "decisions list") {
+    if (commandLowered === "list decisions" || commandLowered === "decisions" || commandLowered === "decisions list") {
       await this.deps.listDecisions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
 
     // Retired task commands — redirect to action equivalents
-    if (/^(my tasks?|list my tasks?)$/.test(lowered)) {
+    if (/^(my tasks?|list my tasks?)$/.test(commandLowered)) {
       await this.deps.listMyActions.execute({ conversationId: convId, assigneeId: sender, replyToMessageId: wireMessage.id });
       return;
     }
-    if (/^(team tasks?|all tasks?|list team tasks?)$/.test(lowered)) {
+    if (/^(team tasks?|all tasks?|list team tasks?)$/.test(commandLowered)) {
       await this.deps.listTeamActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
       return;
     }
-    if (/^(knowledge|list knowledge|my knowledge|show knowledge)$/.test(lowered)) {
+    if (/^(knowledge|list knowledge|my knowledge|show knowledge)$/.test(commandLowered)) {
       await this.deps.wireOutbound.sendPlainText(convId,
         "I'm afraid the knowledge base has been reorganised. Ask me a question directly and I shall do my best to assist.",
         { replyToMessageId: wireMessage.id });
       return;
     }
-    if (/^(?:forget|update)\s+KB-\d+/i.test(text)) {
+    if (/^(?:forget|update)\s+KB-\d+/i.test(commandText)) {
       await this.deps.wireOutbound.sendPlainText(convId,
         "I'm afraid knowledge entries are no longer managed that way. The knowledge system is being rebuilt — do ask me questions directly in the meantime.",
         { replyToMessageId: wireMessage.id });
@@ -898,7 +907,9 @@ export class WireEventRouter extends WireEventsHandler {
   }
 
   private stripJeevesPrefix(lowered: string): string {
-    return lowered.replace(/^@?jeeves[,:]?\s*/i, "").trim();
+    // Strip @Jeeves or Jeeves, optionally followed by a parenthetical display-name
+    // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
+    return lowered.replace(/^@?jeeves(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
   }
 
   private matchesPauseCommand(lowered: string): boolean {
