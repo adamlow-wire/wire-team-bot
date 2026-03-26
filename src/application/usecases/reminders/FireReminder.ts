@@ -38,6 +38,16 @@ export class FireReminder {
 
     const convId = reminder.conversationId;
     const text = `**Reminder:** ${reminder.description}`;
-    await this.wireOutbound.sendPlainText(convId, text);
+    try {
+      await this.wireOutbound.sendPlainText(convId, text);
+    } catch (err: unknown) {
+      // The reminder is already marked fired — swallow the send error so a stale
+      // MLS conversation (e.g. an e2e test artefact) does not crash the scheduler.
+      console.error("[FireReminder] Failed to send reminder message", {
+        reminderId: input.reminderId,
+        convId,
+        err: String(err),
+      });
+    }
   }
 }

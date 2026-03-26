@@ -195,39 +195,49 @@ export function createContainer(config: Config, logger: Logger): Container {
     logger,
   );
 
+  // Every branch uses .catch() so a single job failure never becomes an unhandled
+  // rejection that crashes the process.
   scheduler.setHandler((job: ScheduledJob) => {
     if (job.type === "reminder" && typeof (job.payload as { reminderId?: string }).reminderId === "string") {
-      void fireReminder.execute({ reminderId: (job.payload as { reminderId: string }).reminderId });
+      const reminderId = (job.payload as { reminderId: string }).reminderId;
+      void fireReminder.execute({ reminderId }).catch((err: unknown) => {
+        logger.error("FireReminder job failed", { reminderId, err: String(err) });
+      });
     }
     if (job.type === "secret_inactivity") {
       const convId = (job.payload as { convId: { id: string; domain: string } }).convId;
-      void router.handleSecretModeInactivityCheck(convId);
+      void router.handleSecretModeInactivityCheck(convId).catch((err: unknown) => {
+        logger.error("SecretInactivity job failed", { convId: convId.id, err: String(err) });
+      });
     }
     if (job.type === "daily_summary_all") {
-      // Generate daily summaries for all active channels, then self-reschedule
       const periodEnd = new Date();
       const periodStart = new Date(periodEnd.getTime() - 24 * 60 * 60 * 1000);
       void channelConfigRepo.listByState("active").then((channels) => {
         for (const ch of channels) {
-          void generateSummary.execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "daily", periodStart, periodEnd });
+          void generateSummary
+            .execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "daily", periodStart, periodEnd })
+            .catch((err: unknown) => logger.error("DailySummary job failed", { channelId: ch.channelId, err: String(err) }));
         }
-      });
+      }).catch((err: unknown) => logger.error("DailySummary job failed to list channels", { err: String(err) }));
       scheduler.schedule({ id: "daily_summary_all", type: "daily_summary_all", runAt: nextDailyAt8UTC(), payload: {} });
     }
     if (job.type === "weekly_summary_all") {
-      // Generate weekly summaries for all active channels, then self-reschedule
       const periodEnd = new Date();
       const periodStart = new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
       void channelConfigRepo.listByState("active").then((channels) => {
         for (const ch of channels) {
-          void generateSummary.execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "weekly", periodStart, periodEnd });
+          void generateSummary
+            .execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "weekly", periodStart, periodEnd })
+            .catch((err: unknown) => logger.error("WeeklySummary job failed", { channelId: ch.channelId, err: String(err) }));
         }
-      });
+      }).catch((err: unknown) => logger.error("WeeklySummary job failed to list channels", { err: String(err) }));
       scheduler.schedule({ id: "weekly_summary_all", type: "weekly_summary_all", runAt: nextMondayAt8UTC(), payload: {} });
     }
     if (job.type === "staleness_check") {
-      void checkStaleness.execute();
-      // Self-reschedule every 6 hours
+      void checkStaleness.execute().catch((err: unknown) => {
+        logger.error("StalenessCheck job failed", { err: String(err) });
+      });
       const nextRun = new Date(Date.now() + 6 * 60 * 60 * 1000);
       scheduler.schedule({ id: "staleness_check", type: "staleness_check", runAt: nextRun, payload: {} });
     }
@@ -293,7 +303,14 @@ export function createContainer(config: Config, logger: Logger): Container {
           void remindersRepo
             .query({ statusIn: ["pending"] })
             .then((pending) => {
-              for (const r of pending) {
+              // Filter out reminders from e2e test conversations (domain "cli.local").
+              // These have no real MLS group and would crash on send after rehydration.
+              const testArtefacts = pending.filter((r) => r.conversationId?.domain === "cli.local");
+              const real = pending.filter((r) => r.conversationId?.domain !== "cli.local");
+              if (testArtefacts.length > 0) {
+                logger.warn("Skipped rehydration of e2e test reminder artefacts", { count: testArtefacts.length });
+              }
+              for (const r of real) {
                 scheduler.schedule({
                   id: `rem-${r.id}`,
                   type: "reminder",
@@ -301,8 +318,8 @@ export function createContainer(config: Config, logger: Logger): Container {
                   payload: { reminderId: r.id },
                 });
               }
-              if (pending.length > 0) {
-                logger.info("Rehydrated pending reminders from DB", { count: pending.length });
+              if (real.length > 0) {
+                logger.info("Rehydrated pending reminders from DB", { count: real.length });
               }
             })
             .catch((err: unknown) => {
