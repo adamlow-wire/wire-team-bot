@@ -145,7 +145,7 @@ Retrieval is always scoped to the requesting channel. `MultiPathRetrievalEngine`
 
 **Always build first:** `npm run build && npm run cli`
 
-**Seeded members:** Alice (default), Bob, Carol — prefix a line with `Name: ` to send as that user.
+**Seeded members:** Alice (default), Bob, Carol, Dave — prefix a line with `Name: ` to send as that user.
 
 **Interactive:**
 ```
@@ -177,22 +177,65 @@ printf "decision: we will use Postgres\nBob: action: Alice to write the migratio
 
 **E2E test suite — LLM-as-judge (preferred for agent validation):**
 
-Scenarios use natural language inputs. Each assertion is plain English, evaluated by the LLM judge (`tests/e2e/judge.ts`) rather than regex. The judge uses `JEEVES_JUDGE_MODEL` (falls back to `JEEVES_MODEL_CLASSIFY`).
+Scenarios are in `tests/e2e/scenarios.ts`. Each step has a natural-language `input` and a plain-English `assert` string evaluated by an LLM judge (`tests/e2e/judge.ts`). No regexes. The judge uses `JEEVES_JUDGE_MODEL` (falls back to `JEEVES_MODEL_CLASSIFY`).
 
 ```bash
-npm run build && npm run test:e2e                              # run all scenarios
-npm run build && npx tsx tests/e2e/runner.ts --filter TC-DEC  # decisions only
-npx tsx tests/e2e/runner.ts --verbose                         # show bot output + judge reasoning
+npm run build && npm run test:e2e                    # run all ~48 scenarios
+npm run test:e2e -- --filter TC-DEC                 # run matching scenarios only
+npm run test:e2e -- --filter TC-DEC-03              # single scenario by exact ID
+npm run test:e2e -- --bail                          # stop after first failure
+npm run test:e2e -- --verbose                       # show bot output for passing tests too
+npm run test:e2e -- --json                          # machine-readable JSON results
 ```
 
-To add a scenario, add an entry to `tests/e2e/scenarios.ts` with natural language `input` and a plain-English `assert` string — no regexes needed.
+**DB isolation:** every scenario runs against its own scoped conversation (`E2E_CHANNEL_ID=e2e-<id>-<runId>`), so scenarios never see each other's data and re-running the suite always starts clean.
 
-Multi-step scenarios use `captureAs: "DEC"|"ACT"|"REM"` to extract reference IDs, then `{{DEC}}`/`{{ACT}}`/`{{REM}}` in subsequent inputs to inject them.
+**Multi-step scenarios** use `captureAs: "DEC"|"ACT"|"REM"` to capture a reference ID from the bot's response, then `{{DEC}}`/`{{ACT}}`/`{{REM}}` in subsequent `input` or `assert` fields to inject that ID. The assertion text also has IDs substituted in before reaching the judge.
+
+**Multi-sender steps** use the `Name: message` CLI format — e.g. `"Bob: action: Bob to deploy the hotfix"` — to test identity and attribution.
+
+---
+
+**Agent self-fix loop:**
+
+1. **Run the suite and identify failures:**
+   ```bash
+   npm run build && npm run test:e2e -- --bail
+   ```
+   On failure, the runner always prints:
+   - The failing step's input
+   - The assertion (with captured IDs already substituted)
+   - The judge's plain-English reason for failure
+   - The bot's full stdout (or `(empty)` with a debug tip if there was no output)
+
+2. **Iterate on a single failing scenario:**
+   ```bash
+   npm run test:e2e -- --filter TC-DEC-03
+   ```
+   This is fast (~10–15 s per scenario) and avoids waiting for the full suite.
+
+3. **Diagnose by failure pattern:**
+
+   | Bot output | Likely cause | Where to look |
+   |---|---|---|
+   | `(empty)` | Router didn't dispatch or use case threw | `WireEventRouter.ts` dispatch block, use case `execute()` |
+   | Wrong ID format | Use case response message doesn't include ID | Use case `wireOutbound.sendPlainText()` call |
+   | Wrong assignee/owner | Identity not threaded through | Check `assigneeId` / `targetId` plumbing in router → use case |
+   | Correct content, wrong person | `listMyActions` / `listMyReminders` not filtering by caller | `WireEventRouter.ts` — confirm `sender` is passed as `assigneeId` / `targetId` |
+   | Bot output looks right but judge fails | Assertion wording too strict, or judge got confused | Try `--verbose` to see the raw exchange; tighten or loosen the assertion in `scenarios.ts` |
+   | Consistent empty output on pipeline tests (TC-PIPE-*) | Classifier scored message as low-signal | Check `OpenAIClassifierAdapter`; try `LOG_LEVEL=debug` to see tier 1/2 trace |
+
+4. **After fixing, verify the specific scenario passes, then run the full suite:**
+   ```bash
+   npm run test:e2e -- --filter TC-DEC-03   # verify fix
+   npm run test:e2e                          # full regression
+   ```
 
 **Tips:**
-- Set `LOG_LEVEL=debug` to see pipeline and retrieval trace output on stderr: `LOG_LEVEL=debug npm run cli`
-- The CLI uses a fixed channel `cli-channel@cli.local` — data persists across runs in your local DB
-- If the DB is stale from a previous test run, `npx prisma migrate reset --force && npm run build` gives a clean slate
+- `LOG_LEVEL=debug npm run cli` shows full pipeline and retrieval trace on stderr
+- Empty bot output on a pipeline test (TC-PIPE-*) almost always means the classifier scored the message as low-signal — check the classify tier
+- If you suspect the judge is wrong (not the bot), run `--verbose` to see the raw bot output and judge reasoning side by side, then adjust the assertion in `scenarios.ts`
+- `npx prisma migrate reset --force && npm run build` gives a completely clean DB if needed
 
 ---
 

@@ -46,31 +46,45 @@ export async function judge(botResponse: string, assertion: string): Promise<Jud
         content: `Bot response:\n${botResponse}\n\nAssertion: ${assertion}`,
       },
     ],
-    max_tokens: 80,
+    max_tokens: 150,
     temperature: 0,
   };
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Judge LLM request failed: HTTP ${res.status}`);
+  // Retry once on transient network/server errors
+  let res: Response;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (res.ok) break;
+      if (res.status < 500 || attempt === 1) {
+        throw new Error(`Judge LLM request failed: HTTP ${res.status}`);
+      }
+      // 5xx — wait briefly then retry
+      await new Promise(r => setTimeout(r, 1500));
+    } catch (err) {
+      if (attempt === 1) throw err;
+      await new Promise(r => setTimeout(r, 1500));
+      continue;
+    }
   }
 
-  const json = await res.json() as { choices: Array<{ message: { content: string } }> };
+  const json = await res!.json() as { choices: Array<{ message: { content: string } }> };
   const raw = json.choices[0]?.message?.content?.trim() ?? "";
 
   // Strip <think>...</think> blocks (qwen3 thinking mode)
   const cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
-  const pass = /^PASS/i.test(cleaned);
+  // Match PASS/FAIL only when followed by punctuation or whitespace — avoids
+  // false positives if the model writes prose that opens with the word "PASS".
+  const pass = /^PASS[:\s–\-]/i.test(cleaned);
   const reason = cleaned.replace(/^(PASS|FAIL)\s*[:–\-]?\s*/i, "").trim();
 
   return { pass, reason, raw: cleaned };
