@@ -201,20 +201,37 @@ interface GoldenEntry {
 }
 
 interface GoldenFile {
-  approvedAt: string;
-  decisions: GoldenEntry[];
-  actions: GoldenEntry[];
-  reminders: GoldenEntry[];
+  approvedAt?: string;
+  decisions?: GoldenEntry[];
+  actions?: GoldenEntry[];
+  reminders?: GoldenEntry[];
   missed?: Array<{ type: string }>;
 }
 
 function printGoldenComparison(report: SimulationReport, golden: GoldenFile) {
+  const decisions = Array.isArray(golden.decisions) ? golden.decisions : [];
+  const actions   = Array.isArray(golden.actions) ? golden.actions : [];
+  const reminders = Array.isArray(golden.reminders) ? golden.reminders : [];
+  const missed    = Array.isArray(golden.missed) ? golden.missed : [];
+
+  const hasAnyBaseline =
+    decisions.length > 0 ||
+    actions.length > 0 ||
+    reminders.length > 0 ||
+    missed.length > 0;
+
+  if (!hasAnyBaseline) {
+    console.log("No annotated golden baseline found.");
+    console.log("Annotate the latest run with:  npm run simulate:review\n");
+    return;
+  }
+
   const HEAD = "═".repeat(62);
   const SEP  = "─".repeat(62);
 
   console.log(HEAD);
   console.log("  COMPARISON VS GOLDEN BASELINE");
-  console.log(`  (approved: ${golden.approvedAt})`);
+  console.log(`  (approved: ${golden.approvedAt ?? "unapproved"})`);
   console.log(HEAD);
   console.log("");
 
@@ -237,12 +254,12 @@ function printGoldenComparison(report: SimulationReport, golden: GoldenFile) {
     return { correct, fp, newItems, precision, recall };
   };
 
-  const decMissed = (golden.missed ?? []).filter(m => m.type === "decision").length;
-  const actMissed = (golden.missed ?? []).filter(m => m.type === "action").length;
+  const decMissed = missed.filter(m => m.type === "decision").length;
+  const actMissed = missed.filter(m => m.type === "action").length;
 
-  const dec = score(report.allDecisionIds, golden.decisions, decMissed);
-  const act = score(report.allActionIds,   golden.actions,   actMissed);
-  const rem = score(report.allReminderIds, golden.reminders, 0);
+  const dec = score(report.allDecisionIds, decisions, decMissed);
+  const act = score(report.allActionIds,   actions,   actMissed);
+  const rem = score(report.allReminderIds, reminders, 0);
 
   const pct = (n: number) => `${Math.round(n * 100)}%`.padStart(5);
 
@@ -254,9 +271,9 @@ function printGoldenComparison(report: SimulationReport, golden: GoldenFile) {
   console.log("");
 
   const allNew = [
-    ...report.allDecisionIds.filter(id => !golden.decisions.find(e => e.id === id)),
-    ...report.allActionIds.filter(id => !golden.actions.find(e => e.id === id)),
-    ...report.allReminderIds.filter(id => !golden.reminders.find(e => e.id === id)),
+    ...report.allDecisionIds.filter(id => !decisions.find(e => e.id === id)),
+    ...report.allActionIds.filter(id => !actions.find(e => e.id === id)),
+    ...report.allReminderIds.filter(id => !reminders.find(e => e.id === id)),
   ];
   if (allNew.length > 0) {
     console.log(`  IDs not yet in golden: ${allNew.join(", ")}`);
