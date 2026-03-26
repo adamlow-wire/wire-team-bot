@@ -63,7 +63,7 @@ export class OpenAISummarisationAdapter implements SummarisationPort {
         ? `## Actions\n${actions
             .map(
               (a) =>
-                `[${a.id}] ${a.description} — ${a.assigneeName || a.assigneeId.id} (${a.status})` +
+                `[${a.id}] ${a.description} — ${resolveOwner(a)} (${a.status})` +
                 (a.deadline ? ` due ${a.deadline.toISOString().slice(0, 10)}` : ""),
             )
             .join("\n")}`
@@ -171,4 +171,10 @@ function fallback(decisions: Decision[], actions: Action[], signals: SignalInput
     sentiment: "routine",
     messageCount: signals.length,
   };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function resolveOwner(a: Action): string {
+  const name = a.assigneeName;
+  return name && !UUID_RE.test(name) ? name : "unassigned";
 }

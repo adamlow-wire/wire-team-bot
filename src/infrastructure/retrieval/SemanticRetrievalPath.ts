@@ -13,6 +13,7 @@ import type { Logger } from "../../application/ports/Logger";
 
 const MAX_SIMILAR = 10;
 const MIN_SIMILARITY = 0.55;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface EmbeddingService {
   embed(text: string): Promise<number[] | null>;
@@ -85,7 +86,8 @@ export class SemanticRetrievalPath {
         } else if (hit.sourceType === "action") {
           const a = await this.actionRepo.findById(hit.sourceId);
           if (!a || a.deleted) continue;
-          const owner = a.assigneeName || "unassigned";
+          const rawOwner = a.assigneeName && !UUID_RE.test(a.assigneeName) ? a.assigneeName : "";
+          const owner = rawOwner || "unassigned";
           results.push({
             id: a.id,
             type: "action",

@@ -34,7 +34,7 @@ export class ListTeamActions {
       lines.push("No open actions in this conversation.");
     } else {
       for (const [, actions] of byAssignee) {
-        const name = actions[0].assigneeName || actions[0].assigneeId.id;
+        const name = resolveOwner(actions[0]);
         lines.push(`**${name}**`);
         for (const a of actions) {
           lines.push(
@@ -50,4 +50,10 @@ export class ListTeamActions {
 
     return list;
   }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function resolveOwner(a: Action): string {
+  const name = a.assigneeName;
+  return name && !UUID_RE.test(name) ? name : "unassigned";
 }

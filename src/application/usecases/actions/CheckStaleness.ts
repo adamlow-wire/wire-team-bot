@@ -1,6 +1,13 @@
+import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { Logger } from "../../ports/Logger";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function resolveOwner(a: Action): string {
+  const name = a.assigneeName;
+  return name && !UUID_RE.test(name) ? name : "unassigned";
+}
 
 /** Actions not updated within this window are considered stale for nudge purposes. */
 const LAST_CHECK_THRESHOLD_MS = 24 * 60 * 60 * 1000;
@@ -64,7 +71,7 @@ export class CheckStaleness {
       const convId = channelActions[0]!.conversationId;
 
       for (const action of channelActions) {
-        const owner = action.assigneeName || action.assigneeId.id;
+        const owner = resolveOwner(action);
         const deadlineStr = action.deadline
           ? action.deadline.toISOString().slice(0, 10)
           : null;

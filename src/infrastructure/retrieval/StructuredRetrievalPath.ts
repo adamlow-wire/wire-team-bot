@@ -134,8 +134,11 @@ function decisionToResult(d: Decision, channelId: string): RetrievalResult {
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function actionToResult(a: Action, channelId: string): RetrievalResult {
-  const owner = a.assigneeName || "unassigned";
+  const rawOwner = a.assigneeName && !UUID_RE.test(a.assigneeName) ? a.assigneeName : "";
+  const owner = rawOwner || "unassigned";
   const deadline = a.deadline ? a.deadline.toISOString().slice(0, 10) : "none";
   const content = [
     `ID: ${a.id}`,
