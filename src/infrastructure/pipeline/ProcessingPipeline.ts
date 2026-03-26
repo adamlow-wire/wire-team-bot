@@ -119,9 +119,19 @@ export class ProcessingPipeline {
       knownEntities = await this.deps.entityRepo.listNames(channelId);
     } catch { /* non-fatal — extraction continues without hints */ }
 
+    let knownActions: string[] = [];
+    try {
+      const openActions = await this.deps.actionRepo.query({
+        conversationId,
+        statusIn: ["open", "in_progress"],
+        limit: 10,
+      });
+      knownActions = openActions.map(a => a.description);
+    } catch { /* non-fatal — extraction continues without dedup hints */ }
+
     let extracted;
     try {
-      extracted = await this.deps.extraction.extract(currentMsg, window, channelCtx, knownEntities);
+      extracted = await this.deps.extraction.extract(currentMsg, window, channelCtx, knownEntities, knownActions);
     } catch (err) {
       log.error("Pipeline: Tier 2 extraction failed — writing fallback signal", { err: String(err) });
       await this.writeSignal(channelId, orgId, messageId, timestamp, "discussion",
@@ -235,7 +245,7 @@ export class ProcessingPipeline {
           creatorId: senderId,
           authorName: senderName,
           assigneeId: senderId,
-          assigneeName: a.ownerName ?? senderName,
+          assigneeName: a.ownerName || senderName || "",
           rawMessageId: messageId,
           description: a.description,
           deadline: null,  // natural language deadline deferred to Phase 3 (NLP parsing)

@@ -69,5 +69,6 @@ export interface ExtractionPort {
     window: WindowMessage[],
     context: ChannelContext,
     knownEntities: string[],
+    knownActions: string[],
   ): Promise<ExtractResult>;
 }

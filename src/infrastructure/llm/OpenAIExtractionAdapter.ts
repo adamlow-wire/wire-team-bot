@@ -63,11 +63,15 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     window: WindowMessage[],
     context: ChannelContext,
     knownEntities: string[],
+    knownActions: string[],
   ): Promise<ExtractResult> {
     const purposeLine = context.purpose ? `Channel purpose: ${context.purpose}\n` : "";
     const contextTypeLine = context.contextType ? `Channel type: ${context.contextType}\n` : "";
     const knownLine = knownEntities.length > 0
       ? `Known entities in channel (do not re-extract unless information changes): ${knownEntities.slice(0, 30).join(", ")}\n`
+      : "";
+    const knownActionsLine = knownActions.length > 0
+      ? `Known open actions (do not re-extract if substantially equivalent): ${knownActions.slice(0, 10).join(" | ")}\n`
       : "";
 
     const windowText = window.map((m) => `[${m.authorName ?? m.authorId}] ${m.text}`).join("\n");
@@ -75,7 +79,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     const currentLine = `[${senderLabel}] ${currentMessage.text}`;
 
     const userContent = [
-      purposeLine + contextTypeLine + knownLine,
+      purposeLine + contextTypeLine + knownLine + knownActionsLine,
       "Conversation window (oldest first):",
       windowText || "(none)",
       "",
