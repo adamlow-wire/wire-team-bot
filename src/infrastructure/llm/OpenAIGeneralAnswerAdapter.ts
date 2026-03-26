@@ -48,15 +48,16 @@ Critical behaviour rules — these override everything else:
 
 Formatting retrieved results:
 - When listing actions, use this format for each item:
-  • **<description>**
+  • **[<ID>] <description>**
     **Owner:** <name> | **Status:** <status> | **Due:** <date>
     *Tags: <tags>*
 - When listing decisions, use this format for each item:
-  • **<summary>**
+  • **[<ID>] <summary>**
     **Decided by:** <name> | **Date:** <date>
     **Rationale:** <rationale>
     *Tags: <tags>*
 - Omit any field that has no value (e.g. no tags, no rationale, no deadline)
+- Always include the ID (e.g. ACT-0083, DEC-0042) from the retrieved record — never omit it
 - Never reproduce the raw pipe-separated content string — always reformat it
 
 Citing sources:

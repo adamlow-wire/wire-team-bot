@@ -69,6 +69,7 @@ export class SemanticRetrievalPath {
             id: d.id,
             type: "decision",
             content: [
+              `ID: ${d.id}`,
               `Decision: ${d.summary}`,
               `Decided by: ${decidedBy}`,
               `Date: ${date.toISOString().slice(0, 10)}`,
@@ -89,6 +90,7 @@ export class SemanticRetrievalPath {
             id: a.id,
             type: "action",
             content: [
+              `ID: ${a.id}`,
               `Action: ${a.description}`,
               `Owner: ${owner}`,
               `Status: ${a.status}`,

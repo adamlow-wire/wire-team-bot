@@ -113,6 +113,7 @@ function decisionToResult(d: Decision, channelId: string): RetrievalResult {
   const decidedBy = d.decidedBy?.join(", ") ?? d.authorName ?? "unknown";
   const date = d.decidedAt ?? d.timestamp;
   const content = [
+    `ID: ${d.id}`,
     `Decision: ${d.summary}`,
     `Decided by: ${decidedBy}`,
     `Date: ${date.toISOString().slice(0, 10)}`,
@@ -137,6 +138,7 @@ function actionToResult(a: Action, channelId: string): RetrievalResult {
   const owner = a.assigneeName || a.assigneeId.id;
   const deadline = a.deadline ? a.deadline.toISOString().slice(0, 10) : "none";
   const content = [
+    `ID: ${a.id}`,
     `Action: ${a.description}`,
     `Owner: ${owner}`,
     `Status: ${a.status}`,
