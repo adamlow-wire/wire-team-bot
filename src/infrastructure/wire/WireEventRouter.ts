@@ -500,7 +500,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (lowered === "my reminders" || lowered === "show reminders" || lowered === "list reminders" || lowered === "reminders"
         || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+we\s+have)?[?]?$/i.test(lowered)
         || /^(?:what|show|list)\s+(?:are\s+(?:the|our)\s+)?(?:open\s+)?reminders?[?]?$/i.test(lowered)) {
-      await this.deps.listMyReminders.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
+      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
       return;
     }
     if (lowered === "list decisions" || lowered === "decisions" || lowered === "decisions list") {
