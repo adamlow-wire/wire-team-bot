@@ -147,6 +147,14 @@ function parsePlan(raw: Record<string, unknown>): QueryPlan {
 
   if (paths.length === 0) paths.push(...DEFAULT_PLAN.paths);
 
+  // Structured path is always required — it is the cheapest and most reliable
+  // source (SQL lookups of decisions/actions).  The LLM query planner sometimes
+  // omits it in favour of semantic/summary paths, causing zero-result retrieval
+  // when data exists.  Inject it unconditionally when absent.
+  if (!paths.some((p) => p.path === "structured")) {
+    paths.unshift({ path: "structured", params: {} });
+  }
+
   // Auto-inject summary path for temporal/institutional intents when not already present
   if (
     (intent === "temporal_context" || intent === "institutional") &&
