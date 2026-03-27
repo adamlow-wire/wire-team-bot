@@ -46,6 +46,8 @@ Net effect across a typical active channel: roughly token-neutral once deduplica
 | 10 | Extraction acknowledgment | When background pipeline extracts a decision or action implicitly, send a lightweight acknowledgment with a dismiss option. Dismissed items are marked `status: dismissed` not deleted. |
 | 11 | ORM | Keep Prisma. No change from v2.0 decision. |
 | 12 | Privacy model | Unchanged. Redis keys for message content have 60s TTL. mem0 self-hosted. Tool calls are structured writes, not raw text persistence. |
+| 13 | Organisation seed context | A human-managed YAML file (`jeeves-seed.yaml`) mounted via Docker volume at startup. Seeded facts are marked `source: seed` and are immune to background extraction overwrite. Standing decisions cannot be auto-superseded by contradiction detection. |
+| 14 | File handling | Lazy extraction. When a file is shared in channel, store metadata only (no download). Process only when a user explicitly asks. Extracted content follows extract-and-forget — never persisted. |
 
 ---
 
@@ -271,7 +273,153 @@ After:  "Done — I've removed the earlier decision to use MySQL.
 
 ---
 
-## 6. Component Boundaries
+## 6. New Features
+
+### 6.1 Organisation Seed Context
+
+Teams have standing knowledge that predates Jeeves: architectural decisions, key people, terminology, standing policies. Without seeding, Jeeves starts blind and takes weeks to build useful context from channel observation alone.
+
+**Design**: A human-managed YAML file (`jeeves-seed.yaml`) that operators maintain alongside `docker-compose.yml`. Mounted read-only into the container. Loaded and upserted on every startup — idempotent.
+
+**File format**:
+
+```yaml
+# jeeves-seed.yaml — Organisation context for Jeeves
+# Edit this file and restart the bot to update seeded knowledge.
+# Changes are idempotent — no duplicates created on restart.
+version: 1
+
+organisation:
+  name: "Acme Engineering"
+  description: "50-person SaaS company building B2B analytics tools"
+  timezone: "Europe/London"
+
+# People — aids name disambiguation and attribution
+people:
+  - name: "Alice Chen"
+    aliases: ["Alice", "AC"]
+    role: "CTO"
+  - name: "Bob Smith"
+    aliases: ["Bob"]
+    role: "Engineering Manager"
+
+# Standing decisions — permanent org policy, never auto-superseded
+decisions:
+  - summary: "PostgreSQL is our primary data store"
+    tags: ["infrastructure", "database"]
+  - summary: "All production deployments require two engineer sign-offs"
+    tags: ["process", "deployment"]
+
+# Glossary — helps Jeeves understand org-specific terminology
+terminology:
+  - term: "MRR"
+    definition: "Monthly Recurring Revenue — our primary business metric"
+  - term: "PDR"
+    definition: "Product Design Review — weekly Thursday meeting"
+```
+
+**Docker Compose**:
+```yaml
+services:
+  jeeves:
+    volumes:
+      - ./jeeves-seed.yaml:/jeeves/seed.yaml:ro
+    environment:
+      JEEVES_SEED_FILE: /jeeves/seed.yaml  # unset = no seeding, no error
+```
+
+**Startup behaviour**:
+1. If `JEEVES_SEED_FILE` is unset, skip silently.
+2. Parse and validate YAML. On schema error, log clearly and abort startup (do not start with partial seed).
+3. Upsert all entities into Prisma with `source: 'seed'` and `orgId` from config.
+4. Standing decisions are upserted with `standing: true` — the contradiction detector and background extraction pipeline skip them.
+5. People are upserted into the Entity table with `type: 'person'` and aliases stored for disambiguation.
+6. Terminology is upserted as `type: 'terminology'` entities — surfaced during query analysis to help interpret org-specific language.
+7. On Phase 3+: seed facts are also pushed to mem0 on startup.
+
+**Invariants**:
+- Seeded decisions cannot be auto-superseded by background extraction or contradiction detection.
+- Seeded people entities are candidates for assignee disambiguation but lower priority than channel-observed attributions.
+- Re-running with the same file: no changes. Re-running with an updated file: modified entries updated, removed entries are NOT deleted (they may have been referenced by channel decisions — mark `source_note: 'removed_from_seed'` only).
+
+**New Prisma fields**:
+```prisma
+// Add to Decision, Entity
+source        String?   // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
+standing      Boolean   @default(false)  // true = immune to contradiction detection
+sourceNote    String?   // human note e.g. 'removed_from_seed'
+```
+
+---
+
+### 6.2 File Handling
+
+Files shared in team channels often contain decisions, requirements, or context that should be available to Jeeves — but auto-processing every file would be expensive, potentially irrelevant, and privacy-invasive. The design is **lazy**: Jeeves is aware a file exists but processes it only when asked.
+
+**Awareness on share**:
+When Wire delivers a file attachment event:
+```
+Jeeves: I can see "Q1-roadmap.pdf" was shared by Alice. Ask me to summarise it
+        or extract decisions from it whenever you're ready.
+```
+No download occurs. Only metadata is stored.
+
+**Prisma model**:
+```prisma
+model SharedFile {
+  id              String    @id @default(uuid())
+  channelId       String
+  orgId           String
+  filename        String
+  mimeType        String
+  sharedBy        String    // Wire userId (opaque)
+  sharedAt        DateTime
+  wireAssetKey    String?   // Wire asset key — used for lazy download
+  processedCount  Int       @default(0)
+  lastProcessedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([channelId, sharedAt])
+}
+```
+
+**On-demand processing** — triggered by user asking Jeeves about a file:
+
+| User asks | Jeeves does |
+|---|---|
+| "Summarise that document" | Download → extract text → run `summarise` slot → return summary. Text discarded after response. |
+| "What decisions are in the spec?" | Download → extract text → run extraction → present findings in chat. Text discarded. Nothing committed to memory unless user confirms. |
+| "Remember the decisions from that doc" | Download → extract text → run extraction → commit to decisions table with `source: 'file:Q1-roadmap.pdf'`. Text discarded. |
+| "What files have been shared this week?" | Query `SharedFile` table. No download needed. |
+
+**Supported types** (Phase 1 of file handling):
+- PDF → `pdf-parse`
+- DOCX → `mammoth`
+- TXT / MD → direct read
+
+Unsupported type: `"I can see that file was shared but I'm afraid I can only read PDF, Word, and plain text files at the moment."`
+
+**Privacy**:
+- File content is never persisted. Downloaded into process memory, text extracted, source discarded immediately after processing.
+- `wireAssetKey` stored in DB is an opaque Wire reference — not the file content.
+- Wire file download uses the bot's existing authenticated Wire session.
+
+**New port** (`src/application/ports/FileExtractorPort.ts`):
+```ts
+interface FileExtractorPort {
+  extractText(assetKey: string, mimeType: string): Promise<string>
+  isSupported(mimeType: string): boolean
+}
+```
+
+**New use cases**:
+- `AcknowledgeSharedFile` — stores metadata, sends awareness message
+- `SummariseFile` — extract + summarise slot + respond
+- `ExtractFromFile` — extract + present (with optional commit)
+
+---
+
+## 7. Component Boundaries
 
 Clear division of responsibility between new components. These boundaries must not be blurred during implementation.
 
@@ -401,7 +549,153 @@ CREATE UNIQUE INDEX decision_content_hash_channel_idx
 
 ---
 
-## 10. New Dependencies
+## 10. Tool Maximisation
+
+Each off-the-shelf component chosen for a specific reason. This section documents how to use each one to its full potential — not just as a drop-in replacement but extracting the value that motivated the choice.
+
+### Vercel AI SDK (`ai`)
+
+**Core pattern**: `generateObject()` for all structured LLM outputs, `generateText({ tools })` for the respond path.
+
+```ts
+// All LLM outputs use generateObject — never JSON.parse
+const { object } = await generateObject({
+  model: slots.extract,
+  schema: ExtractionOutputSchema,   // Zod schema — auto-retried on validation failure
+  prompt: buildExtractionPrompt(window, context),
+})
+
+// Respond path uses tool calling
+const { text } = await generateText({
+  model: slots.respond,
+  tools: channelScopedTools(scope),
+  maxSteps: 5,                      // cap agentic loop depth
+  prompt: buildRespondPrompt(question, retrievedContext),
+})
+```
+
+**What to use beyond the basics**:
+- `experimental_telemetry`: emit per-call token usage as structured spans — feeds the token monitoring requirement from Phase 1
+- `wrapLanguageModel`: add a logging middleware layer to every slot without touching each adapter
+- Provider abstraction: all seven slots use `createOpenAICompatible()` — swapping model providers (Ollama → vLLM → Anthropic) requires changing only `src/app/config.ts`, not adapters
+- `generateObject` retries: configure `maxRetries: 2` — on Zod validation failure the SDK re-prompts with the validation error, dramatically improving local model reliability
+
+### Zod
+
+**Core pattern**: schemas live in `src/domain/schemas/` and are the single source of truth for both TypeScript types and LLM output validation.
+
+```ts
+// src/domain/schemas/extraction.ts
+export const DecisionSchema = z.object({
+  summary: z.string().min(5).max(500),
+  rationale: z.string().optional(),
+  decidedBy: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1),
+  tags: z.array(z.string()).default([]),
+})
+export type Decision = z.infer<typeof DecisionSchema>  // no separate type needed
+```
+
+**What to use beyond the basics**:
+- `.transform()` for post-validation normalisation (lowercase tags, trim whitespace) — keeps data clean without extra code
+- `.refine()` for cross-field rules (e.g., `standing: true` requires `source: 'seed'`)
+- Discriminated unions for intent types: `z.discriminatedUnion('type', [...])` gives the classifier a closed set with no "catch-all" escape
+- `z.infer` everywhere — eliminates duplicate type definitions between schemas and TypeScript interfaces
+
+### BullMQ
+
+**Core pattern**: three separate queues with different priorities and retry policies.
+
+```ts
+// Three queues — never mix concerns
+const extractionQueue = new Queue('extraction', { connection })  // high priority, short TTL
+const scheduledQueue  = new Queue('scheduled',  { connection })  // low priority, cron
+const reminderQueue   = new Queue('reminders',  { connection })  // delayed jobs, user-facing
+```
+
+**What to use beyond the basics**:
+- **Job deduplication**: `jobId: \`${channelId}:${messageId}\`` prevents double-processing if the same message is enqueued twice (e.g., bot restart during processing)
+- **BullMQ Flows**: chain Tier1 → Tier2 → Tier3 as a parent/children flow — Tier3 embed only runs if Tier2 extract succeeds; failed flows are visible as a unit
+- **Dead-letter queue**: failed jobs after max retries move to `dl-extraction` — inspectable without re-running, important for debugging local model failures
+- **Job payloads**: contain only `{ channelId, messageId, timestamp }` — never message text. Text is read from the sliding window buffer in-process at execution time
+
+### mem0 (self-hosted)
+
+**Core pattern**: called on every decision/action write, not in the retrieval path.
+
+```ts
+// On decision creation
+await mem0Client.add([{
+  role: 'user',
+  content: decision.summary,
+}], {
+  user_id: scope.channelId,          // scope per channel
+  metadata: {
+    type: 'decision',
+    orgId: scope.orgId,
+    confidence: decision.confidence,
+    source: decision.source,
+    standing: decision.standing,     // standing=true → skip contradiction check
+  },
+})
+```
+
+**What to use beyond the basics**:
+- mem0's `search()` before writing — explicitly check for contradictions rather than relying on passive detection: gives control over the threshold and lets us suppress for standing decisions
+- `metadata.standing: true` filter — exclude seeded standing decisions from contradiction candidates
+- Configure mem0 to use the same Ollama embed endpoint as the `embed` slot — consistent vector space, no embedding drift between mem0's index and pgvecto.rs
+- mem0's response includes `memories` that were updated/deleted — use this to drive the declarative contradiction message (§5.3), not a separate similarity search
+
+### LlamaIndex TypeScript (`llamaindex`)
+
+**Core pattern**: `RouterQueryEngine` selects retrievers per intent; `QueryFusionRetriever` runs and merges them.
+
+```ts
+const engine = new RouterQueryEngine({
+  selector: new LLMSingleSelector({ llm: slots.queryAnalyse }),
+  queryEngineTools: [
+    { engine: structuredQueryEngine, description: "decisions and actions by filter" },
+    { engine: semanticQueryEngine,   description: "semantic similarity search" },
+    { engine: graphQueryEngine,      description: "entity relationships" },
+    { engine: summaryQueryEngine,    description: "channel summaries" },
+  ],
+})
+```
+
+**What to use beyond the basics**:
+- `QueryFusionRetriever` with `mode: RECIPROCAL_RERANK` — built-in RRF, replaces the hand-coded merge; configure `similarityTopK` and `numQueries` to tune recall vs. cost
+- `SentenceTransformerRerank` (wrapping `@xenova/transformers`) as a post-retrieval step — reorders by cross-encoder score before token budget cut
+- `TokenTextSplitter` for the token budget — accurate tiktoken-based counting, replaces the "4 chars per token" estimate
+- LlamaIndex's `NodeParser` pipeline for file content in §6.2 — chunk documents into nodes before extraction, so "remember the decisions from that doc" works on large files without exceeding context window
+- `MetadataFilter` on all retrievers — enforces `channelId` + `orgId` scope at the retrieval layer, not just in SQL
+
+### pgvecto.rs
+
+**Core pattern**: drop-in pgvector replacement — same `<=>` cosine operator, same SQL.
+
+**What to use beyond the basics**:
+- **Sparse vectors** (`svector`): add a sparse BM25-style vector alongside the dense embedding — hybrid dense+sparse retrieval in a single query, no separate keyword index needed
+- **`halfvec`**: store 2560-dim qwen3-embedding:4b vectors as half-precision (saves ~50% storage, negligible quality loss)
+- **HNSW tuning**: `m=16, ef_construction=64` — default is conservative; these values give better recall at the channel data scales expected
+- **Indexing on `(org_id, embedding)`**: partition HNSW by org to avoid cross-org nearest-neighbour leakage at the vector layer (defence in depth alongside SQL scope)
+
+### `@xenova/transformers` (cross-encoder)
+
+**Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2` — 22MB, good quality/size tradeoff, CPU-viable.
+
+**What to use beyond the basics**:
+- Pre-download in Dockerfile at build time — zero cold start:
+  ```dockerfile
+  RUN node -e "const {pipeline}=require('@xenova/transformers'); \
+    pipeline('text-ranking','cross-encoder/ms-marco-MiniLM-L-6-v2')"
+  ```
+- Load at bot startup into a module-level singleton — one load, many uses
+- Score threshold: discard results with cross-encoder score < -5 (raw logit scale) — prevents low-quality results from making the cut just because the initial retrieval was thin
+- Run in a Node.js worker thread — keeps re-ranking off the main event loop, avoids latency spikes during heavy channel activity
+
+---
+
+## 11. New Dependencies
 
 | Package | Purpose | Notes |
 |---|---|---|
@@ -409,10 +703,13 @@ CREATE UNIQUE INDEX decision_content_hash_channel_idx
 | `zod` | Schema validation for all LLM outputs | Likely already transitive dep |
 | `bullmq` | Job queue + scheduling | Replaces InMemoryProcessingQueue + InProcessScheduler |
 | `ioredis` | Redis client for BullMQ | New |
-| `mem0ai` | Memory management + contradiction resolution | Self-hosted mode |
+| `mem0ai` | Write-path contradiction resolution | Self-hosted mode; Ollama-compatible |
 | `llamaindex` | Retrieval pipeline orchestration | Replaces MultiPathRetrievalEngine |
-| `@xenova/transformers` | Local cross-encoder re-ranker | Runs on-prem, no external calls |
-| `pgvecto.rs` | Postgres extension (docker image swap) | Drop-in for pgvector |
+| `@xenova/transformers` | Local cross-encoder re-ranker | Pre-downloaded in Docker image |
+| `pgvecto.rs` | Postgres extension (docker image swap) | Drop-in for pgvector; adds sparse vectors |
+| `js-yaml` | Parse `jeeves-seed.yaml` at startup | Seed context feature |
+| `pdf-parse` | Extract text from PDF files | File handling feature |
+| `mammoth` | Extract text from DOCX files | File handling feature |
 
 **Removed dependencies** (or reduced to thin wrappers):
 - Custom `LLMClientFactory` — deleted
@@ -438,9 +735,12 @@ Stop silent failures. Users can trust what the bot captures.
 - [ ] Replace `InMemoryProcessingQueue` with BullMQ (job payloads contain no raw message text)
 - [ ] Replace `InProcessScheduler` with BullMQ delayed jobs + cron
 - [ ] Replace pgvector extension with pgvecto.rs (docker image swap + smoke test HNSW index)
+- [ ] Implement `SeedLoader` — parse `jeeves-seed.yaml`, upsert decisions/entities/terminology with `source: 'seed'` and `standing: true` where applicable
+- [ ] Add `JEEVES_SEED_FILE` env var; unset = skip silently; YAML schema error = abort startup
+- [ ] Add `source`, `standing`, `sourceNote` fields to Decision and Entity (Prisma migration)
 - [ ] All existing tests pass
 
-**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts.
+**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts. Bot starts with org context on day one.
 
 ---
 
@@ -481,8 +781,15 @@ Users interact and correct in plain English. No structured commands.
 - [ ] Tests: rate limiting — 11th mutation tool call in an hour is rejected
 - [ ] Tests: contradiction → single merged record + declarative message (no unanswered question)
 - [ ] Tests: Undo after 5 minutes → no-op with message
+- [ ] Implement `FileExtractorPort` + Wire file event handler (`AcknowledgeSharedFile`)
+- [ ] Implement `SharedFile` Prisma model + migration
+- [ ] Implement `SummariseFile` and `ExtractFromFile` use cases (pdf-parse, mammoth)
+- [ ] File handling respects extract-and-forget (text discarded after processing)
+- [ ] Tests: file shared → metadata stored, awareness message sent, no download
+- [ ] Tests: "summarise that doc" → download, summarise, text discarded
+- [ ] Tests: "remember decisions from that doc" → download, extract, commit with source ref
 
-**User-visible**: No commands to learn. Corrections in plain English. Contradictions resolved automatically.
+**User-visible**: No commands to learn. Corrections in plain English. Contradictions resolved automatically. Files handled on demand.
 
 ---
 
