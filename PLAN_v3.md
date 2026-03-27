@@ -764,6 +764,29 @@ Use `@huggingface/transformers` — the actively maintained successor to the dep
 
 ## 13. Phased Delivery
 
+### Planning approach
+
+Each phase below contains a high-level task checklist sufficient to understand scope and sequencing. **Detailed implementation planning for each phase happens at the start of that phase**, once the previous phase's code state is known. Do not write sub-task breakdowns or file-level implementation plans upfront — the code state at the end of Phase N always affects what Phase N+1 needs to do.
+
+The pattern for starting each phase:
+1. Read the current code state (relevant files, recent commits)
+2. Read the phase checklist below
+3. Produce a detailed implementation plan for that phase only, as a working document
+4. Execute against that plan, updating checkboxes as work completes
+
+### Test strategy note
+
+The existing 55 e2e scenarios test explicit command flows (`decision: ...`, `action: ...`, etc.) that will be removed in Phase 3. The test suite must be evolved alongside the code:
+
+- **Phase 1**: All existing tests must pass. No new test patterns needed.
+- **Phase 2**: Add deduplication-specific scenarios (same message via two paths → one record). Existing command tests still valid.
+- **Phase 3**: Replace explicit-command scenarios with natural language equivalents. Each removed command scenario gets a replacement NL scenario covering the same underlying behaviour. Net scenario count should be comparable. The e2e runner and judge infrastructure does not change — only the input style.
+- **Phase 4–5**: Add retrieval quality scenarios (re-ranking observable, empty retrieval response, correction echoes).
+
+This is a **TODO for the start of Phase 3**: produce a scenario migration map (old TC-* → new TC-NL-*) before writing any Phase 3 code.
+
+---
+
 ### Phase 1 — Reliability Foundation (~2 weeks)
 
 Stop silent failures. Users can trust what the bot captures.
@@ -840,7 +863,7 @@ Users interact and correct in plain English. No structured commands.
 
 Right answers, not first answers.
 
-**Pre-requisite before starting**: `@xenova/transformers` model selected, size/memory validated, baked into Docker image.
+**Pre-requisite before starting**: `@huggingface/transformers` cross-encoder model selected, size/memory validated on target hardware, baked into Docker image (Open Question §15 Q2 resolved).
 
 - [ ] Pre-download cross-encoder model into Docker image at build time; load at startup
 - [ ] Replace `MultiPathRetrievalEngine` with LlamaIndex TS `QueryFusionRetriever` (pgvecto.rs adapter)
