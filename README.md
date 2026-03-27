@@ -33,7 +33,7 @@ Nothing that could reconstruct a conversation is retained.
 - **No inbound ports** — the bot connects outbound to Wire; nothing listens on a public interface.
 - **Postgres bound to Docker network** — not reachable from outside the host.
 - **Ollama not exposed** — only the bot container can reach it.
-- **All inference on-premises** by default. Set `JEEVES_LLM_BASE_URL` to a local Ollama endpoint and no message content ever leaves your network.
+- **Designed for on-premises deployment** — point both `JEEVES_LLM_BASE_URL` and `LLM_CAPABLE_BASE_URL` at a local Ollama instance and no message content ever leaves your network.
 
 ---
 
@@ -48,18 +48,22 @@ src/
   application/
     usecases/        # Business logic (decisions, actions, reminders, general)
     ports/           # Interfaces: GeneralAnswerPort, RetrievalPort, ClassifierPort, etc.
-    services/        # ConversationMessageBuffer
+    services/        # ConversationMessageBuffer (Q&A context, 50 msgs default)
   infrastructure/
-    buffer/          # SlidingWindowBuffer (in-memory ring buffer, 30 msgs)
+    buffer/          # SlidingWindowBuffer (extraction context, 30 msgs hard limit)
     llm/             # LLMClientFactory + per-slot model adapters
     pipeline/        # ProcessingPipeline (Tier 1→2→3 orchestration)
     queue/           # InMemoryProcessingQueue (async worker pool, max 5 concurrent)
     persistence/     # Prisma/Postgres repositories
     retrieval/       # MultiPathRetrievalEngine + four retrieval paths
     scheduler/       # InProcessScheduler (setTimeout-based, self-rescheduling)
-    services/        # Member cache, user resolution
+    services/        # InMemoryMemberCache — display name resolution
     wire/            # WireEventRouter + WireOutboundAdapter
 ```
+
+There are two distinct in-memory buffers:
+- **`SlidingWindowBuffer`** (30 messages, hard limit) — per-channel ring buffer fed to the Tier 2 extractor as conversation context for each LLM call.
+- **`ConversationMessageBuffer`** (50 messages default, max 500, configurable via `MESSAGE_BUFFER_SIZE`) — per-conversation buffer that provides recent message history to the Q&A answer generator.
 
 ### Processing pipeline (per message)
 
@@ -85,11 +89,13 @@ Tier 1: Classify ── OpenAIClassifierAdapter
           ├─ EntityRelationship rows
           ├─ ConversationSignal rows
           └─ Contradiction check (similarity search → classify: "does B contradict A?")
-               │
+                 │  if contradicted → notify channel
                ▼
         Tier 3: Embed ── JeevesEmbeddingAdapter (async, fire-and-forget)
           └─ EmbeddingRepository  (source text discarded after vector computed)
 ```
+
+All extracted items are stored immediately if confidence ≥ `JEEVES_EXTRACT_CONFIDENCE_MIN`. If a new decision appears to contradict an existing one, Jeeves posts a notice to the channel after storing both.
 
 ### Retrieval engine (per question)
 
@@ -125,17 +131,17 @@ OpenAIGeneralAnswerAdapter
 | `daily_summary_all` | 08:00 UTC daily | Generates daily rolling summary for all active channels |
 | `weekly_summary_all` | Monday 08:00 UTC | Generates weekly summary for all active channels |
 
-All jobs self-reschedule after firing via `InProcessScheduler`.
+All jobs self-reschedule after firing via `InProcessScheduler`. Schedules are UTC and not currently configurable via env var.
 
 ### Channel state machine
 
 ```
-ACTIVE  ──► @Jeeves pause / step out ──────►  PAUSED
-  ▲          @Jeeves secure mode / ears off ► SECURE (flushes sliding window)
-  └────────── @Jeeves resume ◄──────────────────────
+ACTIVE  ──► @Jeeves pause / step out ────────────────►  PAUSED
+  ▲          @Jeeves secure mode / safe mode / ears off ► SECURE (flushes sliding window)
+  └────────── @Jeeves resume / come back ◄──────────────────────
 ```
 
-State is persisted to `channel_config`. SECURE records a `secure_range` timestamp so surrounding context is excluded from future inference.
+State is persisted to `channel_config`. SECURE records a `secure_range` timestamp so surrounding context is excluded from future inference. If the channel goes quiet while in SECURE mode, Jeeves will send a reminder after `SECRET_MODE_INACTIVITY_MS` (default 30 min) prompting the team to resume.
 
 ---
 
@@ -203,7 +209,7 @@ Add the bot user to any group conversation. Jeeves will ask for a brief channel 
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `postgres://wirebot:wirebot@db:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string |
+| `DATABASE_URL` | `postgres://wirebot:wirebot@localhost:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string. The docker-compose stack overrides this to `postgres:5432` automatically. |
 
 ### Jeeves LLM (v2 — seven-slot config)
 
@@ -243,9 +249,9 @@ These power the foreground intent router (`create_decision`, `create_action`, et
 | Variable | Default | Description |
 |---|---|---|
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `MESSAGE_BUFFER_SIZE` | `50` | Recent messages in memory per conversation (max 500) |
+| `MESSAGE_BUFFER_SIZE` | `50` | Recent messages kept per conversation for Q&A context (max 500). Does not affect the Tier 2 extraction window, which is always 30. |
 | `STORAGE_DIR` | `storage` | Wire SDK local crypto store directory |
-| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of silence before prompting to exit secure mode (default 30 min) |
+| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Jeeves prompts the team to resume (minimum 60 000) |
 
 ---
 
@@ -292,13 +298,17 @@ Reports channel state (active/paused/secure), entity counts, last summary date.
 
 ### Passive capture
 
-Jeeves monitors conversations for decisions and facts worth capturing. When it detects one with high confidence, it asks before storing anything. Low-confidence signals are stored as `ConversationSignal` records (searchable, not surfaced directly).
+Jeeves silently monitors conversations for decisions and facts worth capturing. When it detects a high-signal message (confidence ≥ `JEEVES_EXTRACT_CONFIDENCE_MIN`), the extracted decisions, actions, and entities are stored immediately — no confirmation is requested. Low-confidence signals are stored as `ConversationSignal` records (searchable, not surfaced directly).
+
+If a newly extracted decision appears to contradict an existing one, Jeeves posts a notice to the channel and asks whether to mark the earlier decision as superseded.
 
 ### Channel modes
 
 - `@Jeeves pause` / `step out` → **PAUSED**: Jeeves stops processing until resumed. Responds only to `@Jeeves resume`.
-- `@Jeeves secure mode` / `ears off` → **SECURE**: Same as PAUSED, but also flushes the sliding window buffer and records a secure period marker. Context from before/after the secure window is not used for inference.
+- `@Jeeves secure mode` / `safe mode` / `ears off` → **SECURE**: Same as PAUSED, but also flushes the sliding window buffer and records a secure period marker. Context from before/after the secure window is not used for inference. If the channel stays quiet, Jeeves will prompt to resume after `SECRET_MODE_INACTIVITY_MS` (default 30 min).
 - `@Jeeves resume` / `come back` → **ACTIVE**: Resume normal processing.
+
+All channel mode commands accept an optional trailing _"please"_.
 
 ---
 
@@ -313,7 +323,7 @@ npm run dev                   # start with ts-node watch
 npm test                      # run unit + contract tests (Vitest)
 npx tsc --noEmit              # type-check
 
-npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite (~48 scenarios)
+npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite (~55 scenarios)
 npm run test:e2e -- --filter TC-DEC         # run a subset of scenarios
 npm run build && npm run simulate           # multi-day channel replay — extraction quality report
 npm run simulate:review                     # annotate report as golden baseline (precision/recall)
