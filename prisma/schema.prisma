@@ -66,6 +66,11 @@ model Decision {
   decidedBy       String[]
   confidence      Float?
   extractionModel String?
+
+  // Phase 1 (v3.0) additions
+  source      String?  // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
+  standing    Boolean  @default(false) // true = immune to contradiction detection
+  sourceNote  String?  // e.g. 'removed_from_seed'
 }
 
 model Action {
@@ -98,6 +103,9 @@ model Action {
   lastStatusCheck   DateTime?
   actionConfidence  Float?
   relatedDecisionId String?
+
+  // Phase 1 (v3.0) additions
+  source      String?  // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
 }
 
 /// Atomic per-entity-type ID counter. nextVal is incremented via a single
@@ -167,6 +175,11 @@ model Entity {
   lastMentioned   DateTime? @map("last_mentioned")
   mentionCount    Int       @default(1) @map("mention_count")
   deleted         Boolean   @default(false)
+
+  // Phase 1 (v3.0) additions
+  source      String?  // 'seed' | 'extraction'
+  standing    Boolean  @default(false)
+  sourceNote  String?
 
   sourceRelationships EntityRelationship[] @relation("source")
   targetRelationships EntityRelationship[] @relation("target")

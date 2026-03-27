@@ -1,23 +1,24 @@
 /**
  * Pre-retrieval query analysis — uses the `queryAnalyse` model slot.
  * Parses the user's question into a QueryPlan that drives the MultiPathRetrievalEngine.
- * Falls back to a sensible default plan on LLM error or malformed JSON.
+ * Falls back to a sensible default plan on LLM error.
+ * Uses Vercel AI SDK generateObject() with Zod schema — no manual JSON parsing.
  */
 
+import { generateObject } from "ai";
 import type {
   QueryAnalysisPort,
   QueryPlan,
-  QueryPlanPath,
-  QueryIntent,
-  ResponseFormat,
   MemberContext,
 } from "../../application/ports/QueryAnalysisPort";
 import type { ChannelContext } from "../../application/ports/ClassifierPort";
-import type { LLMClientFactory } from "./LLMClientFactory";
+import type { VercelAISlotFactory } from "./VercelAISlotFactory";
 import type { Logger } from "../../application/ports/Logger";
+import { QueryPlanSchema } from "../../domain/schemas/queryAnalysis";
 
-const SYSTEM_PROMPT = `You are the query planner for Jeeves, a discreet British team assistant.
-Given a user's question, produce a JSON retrieval plan.
+function buildSystemPrompt(botName: string): string {
+  return `You are the query planner for ${botName}, a discreet team assistant.
+Given a user's question, produce a structured retrieval plan.
 
 Intents:
 - factual_recall: looking up a specific decision or action
@@ -37,16 +38,8 @@ Response formats: direct_answer | summary | list | comparison
 
 Complexity: 0.0 = simple lookup, 1.0 = multi-source synthesis required
 
-Return ONLY valid JSON — no markdown, no explanation:
-{
-  "intent": "<intent>",
-  "entities": ["<name1>"],
-  "timeRange": {"start": "<ISO8601 or null>", "end": "<ISO8601 or null>"} | null,
-  "channels": null,
-  "paths": [{"path": "<path>", "params": {}}],
-  "responseFormat": "<format>",
-  "complexity": <0.0-1.0>
-}`;
+Time ranges: use ISO8601 strings (e.g. "2026-01-01T00:00:00Z") or omit if not applicable.`;
+}
 
 const DEFAULT_PLAN: QueryPlan = {
   intent: "factual_recall",
@@ -63,8 +56,9 @@ const DEFAULT_PLAN: QueryPlan = {
 
 export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
   constructor(
-    private readonly llm: LLMClientFactory,
+    private readonly llm: VercelAISlotFactory,
     private readonly logger: Logger,
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async analyse(
@@ -78,106 +72,71 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
         : "";
     const purposeBlock = channelContext.purpose ? `Channel purpose: ${channelContext.purpose}\n` : "";
 
-    const userPrompt = `${purposeBlock}${memberBlock}Question: ${question}`;
+    const prompt = `${purposeBlock}${memberBlock}Question: ${question}`;
 
-    let raw: string;
     try {
-      const result = await this.llm.chatCompletion(
-        "queryAnalyse",
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        { max_tokens: 400, temperature: 0.1 },
-      );
-      raw = result.content;
+      const { object, usage } = await generateObject({
+        model: this.llm.getModel("queryAnalyse"),
+        schema: QueryPlanSchema,
+        system: buildSystemPrompt(this.botName),
+        prompt,
+        maxRetries: 2,
+      });
+
+      this.logger.info("Pipeline: query analysis", {
+        channelId: channelContext.channelId,
+        intent: object.intent,
+        paths: object.paths.map((p) => p.path),
+        complexity: object.complexity,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        slot: "queryAnalyse",
+      });
+
+      return postProcess(object);
     } catch (err) {
       this.logger.warn("QueryAnalysisAdapter: LLM call failed, using default plan", { err: String(err) });
       return DEFAULT_PLAN;
     }
-
-    try {
-      const json = stripJsonFence(raw);
-      const parsed = JSON.parse(json) as Record<string, unknown>;
-      return parsePlan(parsed);
-    } catch {
-      this.logger.warn("QueryAnalysisAdapter: malformed JSON, using default plan", { raw: raw.slice(0, 200) });
-      return DEFAULT_PLAN;
-    }
   }
 }
 
-function stripJsonFence(s: string): string {
-  return s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-}
+/**
+ * Applies business rules that the LLM should follow but may not always:
+ * - structured path is always required (cheapest, most reliable)
+ * - summary path is required for temporal_context and institutional intents
+ * - timeRange strings are converted to Date objects
+ */
+function postProcess(raw: import("../../domain/schemas/queryAnalysis").QueryPlanRaw): QueryPlan {
+  const paths = raw.paths.length > 0 ? [...raw.paths] : [...DEFAULT_PLAN.paths];
 
-const VALID_INTENTS = new Set<string>([
-  "factual_recall", "temporal_context", "cross_channel",
-  "accountability", "institutional", "dependency",
-]);
-const VALID_FORMATS = new Set<string>(["direct_answer", "summary", "list", "comparison"]);
-const VALID_PATHS = new Set<string>(["structured", "semantic", "graph", "summary"]);
-
-function parsePlan(raw: Record<string, unknown>): QueryPlan {
-  const intent: QueryIntent = VALID_INTENTS.has(raw.intent as string)
-    ? (raw.intent as QueryIntent)
-    : "factual_recall";
-
-  const entities: string[] = Array.isArray(raw.entities)
-    ? raw.entities.filter((e): e is string => typeof e === "string")
-    : [];
-
-  let timeRange: QueryPlan["timeRange"] = null;
-  if (raw.timeRange && typeof raw.timeRange === "object") {
-    const tr = raw.timeRange as Record<string, unknown>;
-    timeRange = {
-      start: tr.start && tr.start !== "null" ? new Date(tr.start as string) : undefined,
-      end: tr.end && tr.end !== "null" ? new Date(tr.end as string) : undefined,
-    };
-  }
-
-  const paths: QueryPlanPath[] = Array.isArray(raw.paths)
-    ? (raw.paths as Array<Record<string, unknown>>)
-        .filter((p) => VALID_PATHS.has(p.path as string))
-        .map((p) => ({
-          path: p.path as QueryPlanPath["path"],
-          params: (typeof p.params === "object" && p.params !== null ? p.params : {}) as Record<string, unknown>,
-        }))
-    : DEFAULT_PLAN.paths;
-
-  if (paths.length === 0) paths.push(...DEFAULT_PLAN.paths);
-
-  // Structured path is always required — it is the cheapest and most reliable
-  // source (SQL lookups of decisions/actions).  The LLM query planner sometimes
-  // omits it in favour of semantic/summary paths, causing zero-result retrieval
-  // when data exists.  Inject it unconditionally when absent.
   if (!paths.some((p) => p.path === "structured")) {
     paths.unshift({ path: "structured", params: {} });
   }
 
-  // Auto-inject summary path for temporal/institutional intents when not already present
   if (
-    (intent === "temporal_context" || intent === "institutional") &&
+    (raw.intent === "temporal_context" || raw.intent === "institutional") &&
     !paths.some((p) => p.path === "summary")
   ) {
     paths.push({ path: "summary", params: {} });
   }
 
-  const responseFormat: ResponseFormat = VALID_FORMATS.has(raw.responseFormat as string)
-    ? (raw.responseFormat as ResponseFormat)
-    : "direct_answer";
-
-  const complexity = typeof raw.complexity === "number"
-    ? Math.max(0, Math.min(1, raw.complexity))
-    : 0.5;
+  let timeRange: QueryPlan["timeRange"] = null;
+  if (raw.timeRange) {
+    const { start, end } = raw.timeRange;
+    timeRange = {
+      start: start ? new Date(start) : undefined,
+      end: end ? new Date(end) : undefined,
+    };
+  }
 
   return {
-    intent,
-    entities,
+    intent: raw.intent,
+    entities: raw.entities,
     timeRange,
-    channels: null,
+    channels: raw.channels,
     paths,
-    responseFormat,
-    complexity,
+    responseFormat: raw.responseFormat,
+    complexity: raw.complexity,
   };
 }

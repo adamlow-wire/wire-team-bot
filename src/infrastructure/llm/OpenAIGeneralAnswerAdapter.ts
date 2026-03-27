@@ -8,21 +8,25 @@
  *   ## Summaries        (future — Phase 4)
  *   ## User's Question
  *
- * Jeeves persona rules (spec §7.1):
+ * Persona rules (spec §7.1):
  *   - Never use exclamation marks
  *   - "I'm afraid" not "Sorry"
  *   - "Shall I" not "Do you want me to"
  *   - "One notes that" when diplomatically pointing out issues
  *   - When citing: reference channel + approximate date, NOT verbatim quotes
  *   - Cannot find → "I'm afraid I have no record of that particular matter."
+ *
+ * Uses Vercel AI SDK generateText() — plain text output, no schema required.
  */
 
+import { generateText } from "ai";
 import type { GeneralAnswerService, ConversationMemberContext } from "../../application/ports/GeneralAnswerPort";
 import type { RetrievalResult } from "../../application/ports/RetrievalPort";
-import type { LLMClientFactory } from "./LLMClientFactory";
+import type { VercelAISlotFactory } from "./VercelAISlotFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are Jeeves, a capable and discreet team assistant embedded in Wire, a secure messaging platform. You are British, professional, and direct — no fuss, no small talk.
+function buildSystemPrompt(botName: string): string {
+  return `You are ${botName}, a capable and discreet team assistant embedded in Wire, a secure messaging platform. You are professional and direct — no fuss, no small talk.
 
 Persona rules:
 - Never use exclamation marks
@@ -70,35 +74,22 @@ When asked what you know or what is recorded:
 
 When asked about your capabilities:
 - Describe your purpose: you track decisions, actions, and reminders; you answer questions using the channel's conversation history and extracted team knowledge`;
+}
 
 /**
- * Remove trailing sentences where Jeeves offers to do something rather than
+ * Remove trailing sentences where the bot offers to do something rather than
  * just answering. These are model artifacts ("Shall I create a reminder?",
- * "Would you like me to check?") that contradict the persona rule of acting
- * rather than asking permission.
- *
- * Only strips the final sentence if it is a short offer-question. Leaves the
- * substantive answer intact.
+ * "Would you like me to check?") that contradict the persona rule.
  */
 const OFFER_PATTERN = /\b(shall i|would you like|do you want|should i|may i|can i)\b/i;
 
-/**
- * Returns true if the text is an offer-question Jeeves should not be making
- * ("Shall I check?", "Would you like me to retrieve?", etc.)
- */
 function isOfferQuestion(text: string): boolean {
   const t = text.trim();
   return t.endsWith("?") && t.length < 150 && OFFER_PATTERN.test(t);
 }
 
-/**
- * Remove trailing sentences where Jeeves offers to do something rather than
- * just answering. If the ENTIRE response is an offer-question, returns empty
- * string so the caller can retry with a stronger prompt.
- */
 function stripTrailingOffer(text: string): string {
   const trimmed = text.trim();
-  // Whole response is just an offer-question — signal caller to retry
   if (isOfferQuestion(trimmed)) return "";
 
   const sentences = trimmed.split(/(?<=[.?!])\s+/);
@@ -113,8 +104,9 @@ function stripTrailingOffer(text: string): string {
 
 export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
   constructor(
-    private readonly llm: LLMClientFactory,
+    private readonly llm: VercelAISlotFactory,
     private readonly logger: Logger,
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async answer(
@@ -136,30 +128,21 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
             .join("\n")}\n\n`
         : "";
 
-    // Group retrieval results by type per spec §6.4
     const decisions = retrievalResults.filter((r) => r.type === "decision");
     const actions = retrievalResults.filter((r) => r.type === "action");
-    const other = retrievalResults.filter(
-      (r) => r.type !== "decision" && r.type !== "action",
-    );
+    const other = retrievalResults.filter((r) => r.type !== "decision" && r.type !== "action");
 
     const decisionsBlock =
       decisions.length > 0
         ? `## Relevant Decisions\n${decisions
-            .map(
-              (r) =>
-                `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`,
-            )
+            .map((r) => `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`)
             .join("\n")}\n\n`
         : "";
 
     const actionsBlock =
       actions.length > 0
         ? `## Relevant Actions\n${actions
-            .map(
-              (r) =>
-                `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`,
-            )
+            .map((r) => `- ${r.content} _(${r.sourceDate.toISOString().slice(0, 10)})_`)
             .join("\n")}\n\n`
         : "";
 
@@ -176,54 +159,53 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
     const zeroWarnings: string[] = [];
     if (actions.length === 0) zeroWarnings.push("ZERO actions exist in the database — do not invent any");
     if (decisions.length === 0) zeroWarnings.push("ZERO decisions exist in the database — do not invent any");
-    const dataSummary = zeroWarnings.length > 0
-      ? `## Data summary\n${zeroWarnings.map(w => `- ${w}`).join("\n")}\n\n`
-      : `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
+    const dataSummary =
+      zeroWarnings.length > 0
+        ? `## Data summary\n${zeroWarnings.map((w) => `- ${w}`).join("\n")}\n\n`
+        : `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
 
-    const userContent = `${purposeBlock}${memberBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
+    const prompt = `${purposeBlock}${memberBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
+
+    const model = this.llm.getRespondModel(complexity ?? 0);
 
     try {
-      const result = await this.llm.chatCompletion(
-        "respond",
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userContent },
-        ],
-        {
-          max_tokens: 800,
-          temperature: 0.7,
-          complexity,
-          escalateToSlot: "complexSynthesis",
-        },
-      );
+      const { text, usage } = await generateText({
+        model,
+        system: buildSystemPrompt(this.botName),
+        prompt,
+        maxRetries: 2,
+        maxOutputTokens: 800,
+      });
 
-      if (result.usedFallback) {
-        this.logger.warn("OpenAIGeneralAnswerAdapter: used fallback model", {
-          model: result.model,
-        });
-      }
+      this.logger.info("Pipeline: respond", {
+        complexity,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        slot: complexity && complexity > this.llm.timeoutMs ? "complexSynthesis" : "respond",
+      });
 
-      const stripped = stripTrailingOffer(result.content.trim());
+      const stripped = stripTrailingOffer(text.trim());
       if (stripped) return stripped;
 
-      // The model returned only a permission-asking question. Retry once with a
-      // direct instruction to answer without asking.
-      const retry = await this.llm.chatCompletion(
-        "respond",
-        [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userContent },
-          { role: "assistant", content: result.content.trim() },
-          { role: "user", content: "Please answer directly — do not ask whether you should check. Just provide the answer now." },
+      // The model returned only a permission-asking question. Retry once.
+      const { text: retryText } = await generateText({
+        model,
+        system: buildSystemPrompt(this.botName),
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: text.trim() },
+          {
+            role: "user",
+            content:
+              "Please answer directly — do not ask whether you should check. Just provide the answer now.",
+          },
         ],
-        { max_tokens: 800, temperature: 0.3 },
-      );
-      return stripTrailingOffer(retry.content.trim()) || "I wasn't able to generate a response.";
+        maxRetries: 1,
+        maxOutputTokens: 800,
+      });
+
+      return stripTrailingOffer(retryText.trim()) || "I wasn't able to generate a response.";
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        this.logger.warn("OpenAIGeneralAnswerAdapter: request timed out");
-        return "I'm afraid I wasn't able to respond in time — the request timed out.";
-      }
       this.logger.warn("OpenAIGeneralAnswerAdapter: request failed", { err: String(err) });
       return "I wasn't able to generate a response just now.";
     }

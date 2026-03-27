@@ -30,7 +30,7 @@ import type { SchedulerPort } from "../../application/ports/SchedulerPort";
 import type { Logger } from "../../application/ports/Logger";
 import type { ActionStatus } from "../../domain/entities/Action";
 import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
-import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
+import type { ProcessingQueuePort } from "../../application/ports/ProcessingQueuePort";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
 import { toChannelId } from "./channelId";
 
@@ -82,10 +82,12 @@ export interface WireEventRouterDeps {
    * Phase 2: background processing pipeline.
    * Optional — when not provided, the pipeline is disabled (tests / Phase 1 mode).
    */
-  processingQueue?: InMemoryProcessingQueue<MessageJob>;
+  processingQueue?: ProcessingQueuePort<MessageJob>;
   pipeline?: ProcessingPipeline;
   /** Wire domain string used as org scope for pipeline extractions. Defaults to botUserId.domain. */
   orgId?: string;
+  /** Configurable bot persona name. Defaults to "Jeeves". */
+  botName?: string;
 }
 
 export class WireEventRouter extends WireEventsHandler {
@@ -99,6 +101,10 @@ export class WireEventRouter extends WireEventsHandler {
 
   constructor(private readonly deps: WireEventRouterDeps) {
     super();
+  }
+
+  private get botName(): string {
+    return this.deps.botName ?? "Jeeves";
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -294,7 +300,7 @@ export class WireEventRouter extends WireEventsHandler {
         timestamp: new Date(),
         orgId,
       };
-      this.deps.processingQueue.enqueue({
+      void this.deps.processingQueue.enqueue({
         id: wireMessage.id,
         channelId,
         payload: job,
@@ -644,15 +650,15 @@ export class WireEventRouter extends WireEventsHandler {
       this.deps.messageBuffer.push(convId, {
         messageId: botMsgId,
         senderId: this.deps.botUserId,
-        senderName: "Jeeves",
+        senderName: this.botName,
         text: answer,
         timestamp: new Date(),
       });
       this.deps.slidingWindow.push(channelId, {
         messageId: botMsgId,
         authorId: this.deps.botUserId.id,
-        authorName: "Jeeves",
-        text: `[Jeeves] ${answer}`,
+        authorName: this.botName,
+        text: `[${this.botName}] ${answer}`,
         timestamp: new Date(),
       });
     }
@@ -933,7 +939,7 @@ export class WireEventRouter extends WireEventsHandler {
           this.awaitingPurpose.add(channelId);
           await this.deps.wireOutbound.sendPlainText(
             convId,
-            "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
+            `Good day. I'm ${this.botName}, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.`,
           );
         }
       }
@@ -990,13 +996,15 @@ export class WireEventRouter extends WireEventsHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   private startsWithJeeves(lowered: string): boolean {
-    return lowered.startsWith("jeeves") || lowered.startsWith("@jeeves");
+    const name = this.botName.toLowerCase();
+    return lowered.startsWith(name) || lowered.startsWith(`@${name}`);
   }
 
   private stripJeevesPrefix(lowered: string): string {
-    // Strip @Jeeves or Jeeves, optionally followed by a parenthetical display-name
+    // Strip @<botName> or <botName>, optionally followed by a parenthetical display-name
     // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
-    return lowered.replace(/^@?jeeves(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
+    const name = this.botName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return lowered.replace(new RegExp(`^@?${name}(?:\\s+\\([^)]+\\))?[,:]?\\s*`, "i"), "").trim();
   }
 
   private matchesPauseCommand(lowered: string): boolean {

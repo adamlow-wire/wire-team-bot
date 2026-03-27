@@ -20,14 +20,21 @@
     "postinstall": "npm run sdk:setup"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.48",
     "@prisma/client": "^6.0.0",
+    "ai": "^6.0.141",
+    "bullmq": "^5.71.1",
     "chrono-node": "^2.9.0",
     "dotenv": "^16.4.5",
+    "ioredis": "^5.10.1",
+    "js-yaml": "^4.1.1",
     "prisma": "^6.0.0",
     "reflect-metadata": "^0.1.13",
-    "wire-apps-js-sdk": "file:./wire-apps-js-sdk"
+    "wire-apps-js-sdk": "file:./wire-apps-js-sdk",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@typescript-eslint/eslint-plugin": "*",
     "@typescript-eslint/parser": "*",
     "eslint": "*",
