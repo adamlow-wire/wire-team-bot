@@ -45,7 +45,7 @@ import { InProcessScheduler } from "../infrastructure/scheduler/InProcessSchedul
 import { InMemoryProcessingQueue } from "../infrastructure/queue/InMemoryProcessingQueue";
 import { ProcessingPipeline } from "../infrastructure/pipeline/ProcessingPipeline";
 import type { MessageJob } from "../infrastructure/pipeline/ProcessingPipeline";
-import { LLMClientFactory } from "../infrastructure/llm/LLMClientFactory";
+import { VercelAISlotFactory } from "../infrastructure/llm/VercelAISlotFactory";
 import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralAnswerAdapter";
 import { OpenAIClassifierAdapter } from "../infrastructure/llm/OpenAIClassifierAdapter";
 import { OpenAIExtractionAdapter } from "../infrastructure/llm/OpenAIExtractionAdapter";
@@ -100,13 +100,13 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
 
 // ── Stub outbound port ────────────────────────────────────────────────────────
 
-function createCliOutbound(memberCache: InMemoryMemberCache): WireOutboundPort {
+function createCliOutbound(memberCache: InMemoryMemberCache, botName: string): WireOutboundPort {
   return {
     async sendPlainText(_convId: QualifiedId, text: string, _opts?: OutboundTextOptions) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      process.stdout.write(`[${botName}] ${text}\n`);
     },
     async sendCompositePrompt(_convId: QualifiedId, text: string) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      process.stdout.write(`[${botName}] ${text}\n`);
     },
     async sendReaction() {},
     async sendFile() {},
@@ -119,10 +119,10 @@ function createCliOutbound(memberCache: InMemoryMemberCache): WireOutboundPort {
 
 // ── Fake TextMessage builder ──────────────────────────────────────────────────
 
-function buildMessage(text: string, sender: QualifiedId): object {
-  const botMentionPattern = /^@jeeves\b/i;
+function buildMessage(text: string, sender: QualifiedId, botName: string): object {
+  const botMentionPattern = new RegExp(`^@${botName}\\b`, "i");
   const mentions = botMentionPattern.test(text.trim())
-    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: "@jeeves".length }]
+    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: `@${botName}`.length }]
     : [];
   return {
     id: `cli-msg-${Date.now()}`,
@@ -162,7 +162,8 @@ async function main() {
   const userResolution  = new MemberCacheUserResolutionService(memberCache);
   const dateTimeService = new SystemDateTimeService();
   const scheduler       = new InProcessScheduler(logger);
-  const llmFactory      = new LLMClientFactory(config.llm.jeeves, logger);
+  const llmFactory      = new VercelAISlotFactory(config.llm.jeeves, logger);
+  const botName         = config.app.botName;
 
   // Seed member cache with the CLI roster + bot
   const channelId = toChannelId(CHANNEL_ID_RAW);
@@ -189,11 +190,11 @@ async function main() {
   }
 
   // Outbound
-  const wireOutbound = createCliOutbound(memberCache);
+  const wireOutbound = createCliOutbound(memberCache, botName);
 
   // Pipeline
-  const classifier       = new OpenAIClassifierAdapter(llmFactory, logger);
-  const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
+  const classifier       = new OpenAIClassifierAdapter(llmFactory, logger, botName);
+  const extraction       = new OpenAIExtractionAdapter(llmFactory, logger, botName);
   const embeddingService = new JeevesEmbeddingAdapter(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
     classifier, extraction, embeddingService,
@@ -208,17 +209,17 @@ async function main() {
   processingQueue.setWorker(job => pipeline.process(job.payload));
 
   // Retrieval
-  const queryAnalysis    = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
+  const queryAnalysis    = new OpenAIQueryAnalysisAdapter(llmFactory, logger, botName);
   const structuredPath   = new StructuredRetrievalPath(decisionsRepo, actionsRepo);
   const semanticPath     = new SemanticRetrievalPath(embeddingService, embeddingRepo, decisionsRepo, actionsRepo, logger);
   const graphPath        = new GraphRetrievalPath(logger);
-  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger);
+  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger, botName);
   const generateSummary  = new GenerateSummary(summarisationAdapter, signalRepo, decisionsRepo, actionsRepo, summaryRepo, logger);
   const summaryPath      = new SummaryRetrievalPath(summaryRepo, logger);
   const retrievalEngine  = new MultiPathRetrievalEngine(structuredPath, semanticPath, graphPath, summaryPath, logger);
 
   // Use cases
-  const answerQuestion = new AnswerQuestion(generalAnswerAdapter(llmFactory, logger), wireOutbound, queryAnalysis, retrievalEngine, logger);
+  const answerQuestion = new AnswerQuestion(new OpenAIGeneralAnswerAdapter(llmFactory, logger, botName), wireOutbound, queryAnalysis, retrievalEngine, logger);
   const statusCommand  = new StatusCommand(channelConfigRepo, entityRepo, wireOutbound);
   const catchMeUp      = new CatchMeUpCommand(summaryRepo, generateSummary, wireOutbound);
 
@@ -256,6 +257,7 @@ async function main() {
     processingQueue,
     pipeline,
     orgId:                  DOMAIN,
+    botName,
   });
 
   // Mark channel as known so hydrateChannelState is skipped on first message
@@ -264,7 +266,7 @@ async function main() {
   const isInteractive = process.stdin.isTTY;
 
   if (isInteractive) {
-    process.stderr.write(`Jeeves CLI — type messages, prefix with "Name: " to change sender\n`);
+    process.stderr.write(`${config.app.botName} CLI — type messages, prefix with "Name: " to change sender\n`);
     process.stderr.write(`Members: ${MEMBERS.map(m => m.name).join(", ")}\n`);
     process.stderr.write(`Type "exit" or Ctrl-D to quit.\n\n`);
   }
@@ -295,7 +297,7 @@ async function main() {
       process.stderr.write(`[${senderName}] ${text}\n`);
     }
 
-    const msg = buildMessage(text, sender);
+    const msg = buildMessage(text, sender, botName);
     await router.onTextMessageReceived(msg as Parameters<typeof router.onTextMessageReceived>[0]);
   }
 
@@ -307,11 +309,6 @@ async function main() {
   });
 
   await prisma.$disconnect();
-}
-
-// Tiny helper — avoids duplicating the adapter construction
-function generalAnswerAdapter(llmFactory: LLMClientFactory, logger: ReturnType<typeof getLogger>) {
-  return new OpenAIGeneralAnswerAdapter(llmFactory, logger);
 }
 
 main().catch(err => {

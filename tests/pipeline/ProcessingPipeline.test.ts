@@ -7,6 +7,14 @@ import { ProcessingPipeline } from "../../src/infrastructure/pipeline/Processing
 import type { PipelineDeps, MessageJob } from "../../src/infrastructure/pipeline/ProcessingPipeline";
 import type { ClassifyResult } from "../../src/application/ports/ClassifierPort";
 import type { ExtractResult } from "../../src/application/ports/ExtractionPort";
+import type { VercelAISlotFactory } from "../../src/infrastructure/llm/VercelAISlotFactory";
+
+vi.mock("ai", () => ({
+  generateText: vi.fn(),
+}));
+
+import { generateText } from "ai";
+const mockGenerateText = vi.mocked(generateText);
 
 const convId = { id: "conv-1", domain: "wire.com" };
 const senderId = { id: "user-1", domain: "wire.com" };
@@ -41,13 +49,14 @@ const highSignalResult: ClassifyResult = {
 const fullExtractResult: ExtractResult = {
   decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
   actions: [{ description: "Set up Postgres", ownerName: "Alice", confidence: 0.8, tags: [] }],
+  completions: [],
   entities: [{ name: "Postgres", entityType: "service", aliases: ["PostgreSQL"] }],
   relationships: [],
   signals: [{ signalType: "update", summary: "Postgres chosen", tags: [], confidence: 0.75 }],
 };
 
 const emptyExtractResult: ExtractResult = {
-  decisions: [], actions: [], entities: [], relationships: [], signals: [],
+  decisions: [], actions: [], completions: [], entities: [], relationships: [], signals: [],
 };
 
 function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
@@ -93,8 +102,11 @@ function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
       sendFile: vi.fn().mockResolvedValue(undefined),
     },
     llm: {
-      chatCompletion: vi.fn().mockResolvedValue({ content: "no", model: "m", usedFallback: false }),
-    } as unknown as import("../../src/infrastructure/llm/LLMClientFactory").LLMClientFactory,
+      getModel: vi.fn().mockReturnValue("test-model"),
+      getFallbackModel: vi.fn(),
+      getRespondModel: vi.fn(),
+      timeoutMs: 10000,
+    } as unknown as VercelAISlotFactory,
     logger: {
       child: vi.fn().mockReturnThis(),
       debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(),
@@ -106,6 +118,12 @@ function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
 }
 
 describe("ProcessingPipeline", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: contradiction check returns "no"
+    mockGenerateText.mockResolvedValue({ text: "no" } as never);
+  });
+
   describe("Low-signal path (Tier 1 only)", () => {
     it("writes a signal but does NOT call the extractor", async () => {
       const deps = makeDeps({
@@ -276,6 +294,8 @@ describe("ProcessingPipeline", () => {
         linkedIds: [], attachments: [], tags: [], updatedAt: new Date(), deleted: false, version: 1,
       };
 
+      mockGenerateText.mockResolvedValue({ text: "yes" } as never);
+
       const deps = makeDeps({
         classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
         extraction: { extract: vi.fn().mockResolvedValue({
@@ -301,9 +321,6 @@ describe("ProcessingPipeline", () => {
             similarity: 0.85,  // above threshold
           }]),
         },
-        llm: {
-          chatCompletion: vi.fn().mockResolvedValue({ content: "yes", model: "m", usedFallback: false }),
-        } as unknown as import("../../src/infrastructure/llm/LLMClientFactory").LLMClientFactory,
       });
       const pipeline = new ProcessingPipeline(deps);
 
@@ -349,9 +366,6 @@ describe("ProcessingPipeline", () => {
           store: vi.fn().mockResolvedValue("embed-1"),
           findSimilar: vi.fn().mockResolvedValue([]),
         },
-        llm: {
-          chatCompletion: vi.fn().mockResolvedValue({ content: "no", model: "m", usedFallback: false }),
-        } as unknown as import("../../src/infrastructure/llm/LLMClientFactory").LLMClientFactory,
       });
       const pipeline = new ProcessingPipeline(deps);
       await pipeline.process(baseJob());

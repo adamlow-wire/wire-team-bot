@@ -24,7 +24,8 @@ import type { WireOutboundPort } from "../../application/ports/WireOutboundPort"
 import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { Logger } from "../../application/ports/Logger";
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
-import type { LLMClientFactory } from "../llm/LLMClientFactory";
+import { generateText } from "ai";
+import type { VercelAISlotFactory } from "../llm/VercelAISlotFactory";
 import type { Decision } from "../../domain/entities/Decision";
 import type { Action } from "../../domain/entities/Action";
 
@@ -52,7 +53,7 @@ export interface PipelineDeps {
   channelConfig: ChannelConfigRepository;
   slidingWindow: SlidingWindowBuffer;
   wireOutbound: WireOutboundPort;
-  llm: LLMClientFactory;
+  llm: VercelAISlotFactory;
   logger: Logger;
   /** Minimum confidence to persist extracted decisions/actions (default 0.6). */
   extractConfidenceMin: number;
@@ -465,10 +466,13 @@ export class ProcessingPipeline {
       const question = `Decision A: "${existing.summary}"\nDecision B: "${decision.summary}"\n\nDoes decision B contradict decision A? Answer only "yes" or "no".`;
       let answer: string;
       try {
-        const result = await this.deps.llm.chatCompletion("classify", [
-          { role: "user", content: question },
-        ], { max_tokens: 5, temperature: 0 });
-        answer = result.content.toLowerCase().trim();
+        const { text } = await generateText({
+          model: this.deps.llm.getModel("classify"),
+          prompt: question,
+          maxOutputTokens: 5,
+          maxRetries: 1,
+        });
+        answer = text.toLowerCase().trim();
       } catch {
         continue;
       }

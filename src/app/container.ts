@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import fs from "fs";
 import path from "node:path";
+import { Redis } from "ioredis";
 import type { WireAppSdk } from "wire-apps-js-sdk";
 import type { Config } from "./config";
 import type { Logger } from "./logging";
@@ -17,7 +18,7 @@ import { PrismaAuditLogRepository } from "../infrastructure/persistence/postgres
 import { SystemDateTimeService } from "../infrastructure/services/SystemDateTimeService";
 import { MemberCacheUserResolutionService } from "../infrastructure/services/MemberCacheUserResolutionService";
 import { InMemoryMemberCache } from "../infrastructure/services/InMemoryMemberCache";
-import { InProcessScheduler } from "../infrastructure/scheduler/InProcessScheduler";
+import { BullMQScheduler } from "../infrastructure/scheduler/BullMQScheduler";
 import { ConversationMessageBuffer } from "../application/services/ConversationMessageBuffer";
 import { LogDecision } from "../application/usecases/decisions/LogDecision";
 import { SearchDecisions } from "../application/usecases/decisions/SearchDecisions";
@@ -39,14 +40,14 @@ import { SnoozeReminder } from "../application/usecases/reminders/SnoozeReminder
 import type { ScheduledJob } from "../application/ports/SchedulerPort";
 import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaClient";
 import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralAnswerAdapter";
-import { LLMClientFactory } from "../infrastructure/llm/LLMClientFactory";
+import { VercelAISlotFactory } from "../infrastructure/llm/VercelAISlotFactory";
 import { OpenAIClassifierAdapter } from "../infrastructure/llm/OpenAIClassifierAdapter";
 import { OpenAIExtractionAdapter } from "../infrastructure/llm/OpenAIExtractionAdapter";
 import { JeevesEmbeddingAdapter } from "../infrastructure/llm/JeevesEmbeddingAdapter";
 import { PrismaEntityRepository } from "../infrastructure/persistence/postgres/PrismaEntityRepository";
 import { PrismaEmbeddingRepository } from "../infrastructure/persistence/postgres/PrismaEmbeddingRepository";
 import { PrismaConversationSignalRepository } from "../infrastructure/persistence/postgres/PrismaConversationSignalRepository";
-import { InMemoryProcessingQueue } from "../infrastructure/queue/InMemoryProcessingQueue";
+import { BullMQProcessingQueue } from "../infrastructure/queue/BullMQProcessingQueue";
 import { ProcessingPipeline } from "../infrastructure/pipeline/ProcessingPipeline";
 import type { MessageJob } from "../infrastructure/pipeline/ProcessingPipeline";
 import { AnswerQuestion } from "../application/usecases/general/AnswerQuestion";
@@ -62,9 +63,11 @@ import { GraphRetrievalPath } from "../infrastructure/retrieval/GraphRetrievalPa
 import { SummaryRetrievalPath } from "../infrastructure/retrieval/SummaryRetrievalPath";
 import { MultiPathRetrievalEngine } from "../infrastructure/retrieval/MultiPathRetrievalEngine";
 import { PrismaConversationSummaryRepository } from "../infrastructure/persistence/postgres/PrismaConversationSummaryRepository";
+import { SeedLoader } from "../infrastructure/seed/SeedLoader";
 
 export interface Container {
   getWireClient(): Promise<WireAppSdk>;
+  runSeed(): Promise<void>;
   shutdown(): Promise<void>;
 }
 
@@ -85,14 +88,22 @@ export function createContainer(config: Config, logger: Logger): Container {
   const memberCache = new InMemoryMemberCache();
   const userResolutionService = new MemberCacheUserResolutionService(memberCache);
   const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
-  const scheduler = new InProcessScheduler(logger);
 
-  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.jeeves, logger), logger);
+  const botName = config.app.botName;
+
+  // ── Redis connection (shared by BullMQ queue and scheduler) ─────────────
+  const redis = new Redis(config.redis.url, { maxRetriesPerRequest: null });
+
+  const scheduler = new BullMQScheduler(redis.options, logger);
+
+  // ── Vercel AI SDK slot factory (replaces LLMClientFactory) ──────────────
+  const llmFactory = new VercelAISlotFactory(config.llm.jeeves, logger);
+
+  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(llmFactory, logger, botName);
 
   // ── Phase 2: Intelligence pipeline ──────────────────────────────────────
-  const llmFactory = new LLMClientFactory(config.llm.jeeves, logger);
-  const classifier = new OpenAIClassifierAdapter(llmFactory, logger);
-  const extraction = new OpenAIExtractionAdapter(llmFactory, logger);
+  const classifier = new OpenAIClassifierAdapter(llmFactory, logger, botName);
+  const extraction = new OpenAIExtractionAdapter(llmFactory, logger, botName);
   const embeddingService = new JeevesEmbeddingAdapter(config.llm.jeeves, logger);
   const entityRepo = new PrismaEntityRepository();
   const embeddingRepo = new PrismaEmbeddingRepository(logger);
@@ -116,13 +127,11 @@ export function createContainer(config: Config, logger: Logger): Container {
     contradictionThreshold: config.llm.jeeves.contradictionThreshold,
   });
 
-  const processingQueue = new InMemoryProcessingQueue<MessageJob>(
-    (msg, meta) => logger.warn(msg, meta),
-  );
+  const processingQueue = new BullMQProcessingQueue<MessageJob>(redis.options, logger);
   processingQueue.setWorker((job) => pipeline.process(job.payload));
 
   // ── Phase 3: Multi-path retrieval engine ────────────────────────────────
-  const queryAnalysis = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
+  const queryAnalysis = new OpenAIQueryAnalysisAdapter(llmFactory, logger, botName);
   const structuredPath = new StructuredRetrievalPath(decisionsRepo, actionsRepo);
   const semanticPath = new SemanticRetrievalPath(
     embeddingService,
@@ -135,7 +144,7 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   // ── Phase 4: Summaries + Proactive ──────────────────────────────────────
   const summaryRepo = new PrismaConversationSummaryRepository();
-  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger);
+  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger, botName);
   const generateSummary = new GenerateSummary(
     summarisationAdapter,
     signalRepo,
@@ -277,6 +286,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     processingQueue,
     pipeline,
     orgId: config.wire.userDomain,
+    botName,
   });
   handlerRef.current = router as unknown as HandlerManagerRef["current"];
 
@@ -285,9 +295,14 @@ export function createContainer(config: Config, logger: Logger): Container {
   scheduler.schedule({ id: "daily_summary_all",  type: "daily_summary_all",  runAt: nextDailyAt8UTC(),   payload: {} });
   scheduler.schedule({ id: "weekly_summary_all", type: "weekly_summary_all", runAt: nextMondayAt8UTC(),  payload: {} });
 
+  const seedLoader = new SeedLoader(decisionsRepo, entityRepo, logger);
+
   let sdkPromise: Promise<WireAppSdk> | null = null;
 
   return {
+    async runSeed(): Promise<void> {
+      await seedLoader.load(config.app.seedFile);
+    },
     async getWireClient(): Promise<WireAppSdk> {
       if (!sdkPromise) {
         const storageDir = path.isAbsolute(config.app.storageDir)
@@ -298,13 +313,9 @@ export function createContainer(config: Config, logger: Logger): Container {
         }
         sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db"), logger).then(async (sdk) => {
           // Rehydrate pending reminders only after the Wire SDK is fully initialised.
-          // Scheduling before this point causes overdue reminders to fire before the
-          // crypto client is ready, crashing with "Cannot read properties of undefined".
           void remindersRepo
             .query({ statusIn: ["pending"] })
             .then((pending) => {
-              // Filter out reminders from e2e test conversations (domain "cli.local").
-              // These have no real MLS group and would crash on send after rehydration.
               const testArtefacts = pending.filter((r) => r.conversationId?.domain === "cli.local");
               const real = pending.filter((r) => r.conversationId?.domain !== "cli.local");
               if (testArtefacts.length > 0) {
@@ -327,9 +338,7 @@ export function createContainer(config: Config, logger: Logger): Container {
             });
 
           // Hydrate the member cache from the SDK's persisted SQLite store before
-          // startListening() is called. This ensures display names are available for
-          // the first message after a restart (onAppAddedToConversation only fires on
-          // first-ever join, not on reconnect).
+          // startListening() is called.
           try {
             const [{ ConversationRepository }, { ConversationMemberRepository }, { container: sdkContainer }] =
               await Promise.all([
@@ -356,6 +365,9 @@ export function createContainer(config: Config, logger: Logger): Container {
       return sdkPromise;
     },
     async shutdown(): Promise<void> {
+      await processingQueue.close();
+      await scheduler.close();
+      redis.disconnect();
       await getPrismaClient().$disconnect();
     },
   };

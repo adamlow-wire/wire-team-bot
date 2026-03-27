@@ -54,6 +54,9 @@ export class PrismaDecisionRepository implements DecisionRepository {
         extractionModel: decision.extractionModel ?? null,
         sourceRef: decision.sourceRef ? toJson(decision.sourceRef) : undefined,
         organisationId: decision.organisationId ?? null,
+        source: decision.source ?? null,
+        standing: decision.standing ?? false,
+        sourceNote: decision.sourceNote ?? null,
       },
     });
     return decision;

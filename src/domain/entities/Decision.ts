@@ -56,4 +56,10 @@ export interface Decision {
   sourceRef?: DecisionSourceRef;
   /** Wire domain used as organisation scope. */
   organisationId?: string;
+  /** Provenance: 'seed' | 'extraction' | 'tool_call' | 'file:<filename>' */
+  source?: string;
+  /** True for standing records immune to contradiction detection and auto-expiry. */
+  standing?: boolean;
+  /** Admin note on standing records (e.g. 'removed_from_seed'). */
+  sourceNote?: string;
 }

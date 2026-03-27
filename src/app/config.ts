@@ -51,12 +51,20 @@ export interface Config {
   database: {
     url: string;
   };
+  redis: {
+    /** Full Redis connection URL, e.g. redis://:password@redis:6379 */
+    url: string;
+  };
   app: {
     logLevel: string;
     messageBufferSize: number;
     storageDir: string;
     /** Inactivity period in ms before the bot prompts to exit secret mode. Default 1800000 (30 min). */
     secretModeInactivityMs: number;
+    /** Configurable bot persona name. Defaults to "Jeeves". Used in all user-facing messages and LLM prompts. */
+    botName: string;
+    /** Path to jeeves-seed.yaml. Undefined = skip seeding silently. */
+    seedFile: string | undefined;
   };
   llm: {
     jeeves: JeevesLLMConfig;
@@ -138,6 +146,10 @@ export function loadConfig(): Config {
     url: process.env.DATABASE_URL ?? "postgres://wirebot:wirebot@localhost:5432/wire_team_bot",
   };
 
+  const redis = {
+    url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  };
+
   const logLevel = process.env.LOG_LEVEL ?? "info";
   const messageBufferSize = Math.min(
     Math.max(1, parseInt(process.env.MESSAGE_BUFFER_SIZE ?? "50", 10)),
@@ -145,13 +157,16 @@ export function loadConfig(): Config {
   );
   const storageDir = process.env.STORAGE_DIR ?? "storage";
   const secretModeInactivityMs = Math.max(60_000, parseInt(process.env.SECRET_MODE_INACTIVITY_MS ?? "1800000", 10));
+  const botName = process.env.BOT_NAME ?? "Jeeves";
+  const seedFile = process.env.JEEVES_SEED_FILE ?? undefined;
 
   const jeeves = loadJeevesConfig();
 
   return {
     wire,
     database,
-    app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
+    redis,
+    app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs, botName, seedFile },
     llm: { jeeves },
   };
 }

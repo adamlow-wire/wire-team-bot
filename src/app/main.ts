@@ -26,6 +26,7 @@ async function main(): Promise<void> {
   });
 
   try {
+    await container.runSeed();
     sdk = await container.getWireClient();
     logger.info("Wire client connected, listening for events");
     await sdk.startListening();
