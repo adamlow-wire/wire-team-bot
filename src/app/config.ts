@@ -26,6 +26,8 @@ export interface JeevesLLMConfig {
   entityDedupThreshold: number;
   /** Cosine similarity threshold for decision contradiction detection. */
   contradictionThreshold: number;
+  /** Cosine similarity threshold for write-time decision deduplication (default 0.85). */
+  dedupSimilarityThreshold: number;
   /** Vector dimensions for embedding model output. */
   embedDims: number;
   slots: {
@@ -119,6 +121,7 @@ function loadJeevesConfig(): JeevesLLMConfig {
     extractConfidenceMin: envFloat("JEEVES_EXTRACT_CONFIDENCE_MIN", 0.6),
     entityDedupThreshold: envFloat("JEEVES_ENTITY_DEDUP_THRESHOLD", 0.92),
     contradictionThreshold: envFloat("JEEVES_CONTRADICTION_THRESHOLD", 0.78),
+    dedupSimilarityThreshold: envFloat("JEEVES_DEDUP_SIMILARITY_THRESHOLD", 0.85),
     embedDims: envInt("JEEVES_EMBED_DIMS", 2560),
     slots: {
       classify:        slot("JEEVES_MODEL_CLASSIFY",       "JEEVES_FALLBACK_CLASSIFY",       "qwen3-next:80b",       "qwen3-next:80b"),

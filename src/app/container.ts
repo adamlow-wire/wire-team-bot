@@ -64,6 +64,7 @@ import { SummaryRetrievalPath } from "../infrastructure/retrieval/SummaryRetriev
 import { MultiPathRetrievalEngine } from "../infrastructure/retrieval/MultiPathRetrievalEngine";
 import { PrismaConversationSummaryRepository } from "../infrastructure/persistence/postgres/PrismaConversationSummaryRepository";
 import { SeedLoader } from "../infrastructure/seed/SeedLoader";
+import { RedisEmbeddingDeduplicationService } from "../application/services/DeduplicationService";
 
 export interface Container {
   getWireClient(): Promise<WireAppSdk>;
@@ -109,6 +110,8 @@ export function createContainer(config: Config, logger: Logger): Container {
   const embeddingRepo = new PrismaEmbeddingRepository(logger);
   const signalRepo = new PrismaConversationSignalRepository();
 
+  const dedup = new RedisEmbeddingDeduplicationService(redis, embeddingRepo, decisionsRepo);
+
   const pipeline = new ProcessingPipeline({
     classifier,
     extraction,
@@ -125,6 +128,8 @@ export function createContainer(config: Config, logger: Logger): Container {
     logger,
     extractConfidenceMin: config.llm.jeeves.extractConfidenceMin,
     contradictionThreshold: config.llm.jeeves.contradictionThreshold,
+    dedup,
+    dedupSimilarityThreshold: config.llm.jeeves.dedupSimilarityThreshold,
   });
 
   const processingQueue = new BullMQProcessingQueue<MessageJob>(redis.options, logger);
@@ -169,7 +174,7 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   const statusCommand = new StatusCommand(channelConfigRepo, entityRepo, wireOutbound);
 
-  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger);
+  const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger, dedup);
   const searchDecisions = new SearchDecisions(decisionsRepo, wireOutbound);
   const listDecisions = new ListDecisions(decisionsRepo, wireOutbound);
   const supersedeDecision = new SupersedeDecision(decisionsRepo, wireOutbound, auditLogRepo);
@@ -183,6 +188,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     wireOutbound,
     auditLogRepo,
     logger,
+    dedup,
   );
   const updateActionStatus = new UpdateActionStatus(actionsRepo, wireOutbound, auditLogRepo);
   const updateActionDeadline = new UpdateActionDeadline(actionsRepo, dateTimeService, wireOutbound, auditLogRepo);

@@ -15,6 +15,7 @@ export interface ActionRepository {
   create(action: Action): Promise<Action>;
   update(action: Action): Promise<Action>;
   findById(id: string): Promise<Action | null>;
+  findByContentHash(channelId: string, hash: string): Promise<Action | null>;
   query(criteria: ActionQuery): Promise<Action[]>;
   nextId(): Promise<string>;
 }

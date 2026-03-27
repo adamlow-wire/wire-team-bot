@@ -57,6 +57,9 @@ export class PrismaDecisionRepository implements DecisionRepository {
         source: decision.source ?? null,
         standing: decision.standing ?? false,
         sourceNote: decision.sourceNote ?? null,
+        contentHash: decision.contentHash ?? null,
+        dismissedAt: decision.dismissedAt ?? null,
+        mergedIntoId: decision.mergedIntoId ?? null,
       },
     });
     return decision;
@@ -87,6 +90,13 @@ export class PrismaDecisionRepository implements DecisionRepository {
     const row = await this.prisma.decision.findUnique({ where: { id } });
     if (!row) return null;
     return this.fromRow(row);
+  }
+
+  async findByContentHash(channelId: string, hash: string): Promise<Decision | null> {
+    const row = await this.prisma.decision.findFirst({
+      where: { conversationId: channelId, contentHash: hash, deleted: false },
+    });
+    return row ? this.fromRow(row) : null;
   }
 
   async query(criteria: DecisionQuery): Promise<Decision[]> {
@@ -138,6 +148,12 @@ export class PrismaDecisionRepository implements DecisionRepository {
     extractionModel?: string | null;
     sourceRef?: unknown;
     organisationId?: string | null;
+    source?: string | null;
+    standing?: boolean | null;
+    sourceNote?: string | null;
+    contentHash?: string | null;
+    dismissedAt?: Date | null;
+    mergedIntoId?: string | null;
   }): Decision {
     const context = (row.context as DecisionContextItem[]) ?? [];
     const attachments = (row.attachments as DecisionAttachment[]) ?? [];
@@ -167,6 +183,12 @@ export class PrismaDecisionRepository implements DecisionRepository {
       extractionModel: row.extractionModel ?? undefined,
       sourceRef: row.sourceRef ? (row.sourceRef as Decision["sourceRef"]) : undefined,
       organisationId: row.organisationId ?? undefined,
+      source: row.source ?? undefined,
+      standing: row.standing ?? undefined,
+      sourceNote: row.sourceNote ?? undefined,
+      contentHash: row.contentHash ?? undefined,
+      dismissedAt: row.dismissedAt ?? undefined,
+      mergedIntoId: row.mergedIntoId ?? undefined,
     };
   }
 }

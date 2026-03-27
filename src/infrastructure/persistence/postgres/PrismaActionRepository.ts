@@ -51,6 +51,10 @@ export class PrismaActionRepository implements ActionRepository {
         relatedDecisionId: action.relatedDecisionId ?? null,
         sourceRef: action.sourceRef ? (action.sourceRef as object) : undefined,
         organisationId: action.organisationId ?? null,
+        source: action.source ?? null,
+        contentHash: action.contentHash ?? null,
+        dismissedAt: action.dismissedAt ?? null,
+        mergedIntoId: action.mergedIntoId ?? null,
       },
     });
     return action;
@@ -81,6 +85,13 @@ export class PrismaActionRepository implements ActionRepository {
     const row = await this.prisma.action.findUnique({ where: { id } });
     if (!row) return null;
     return this.fromRow(row);
+  }
+
+  async findByContentHash(channelId: string, hash: string): Promise<Action | null> {
+    const row = await this.prisma.action.findFirst({
+      where: { conversationId: channelId, contentHash: hash, deleted: false },
+    });
+    return row ? this.fromRow(row) : null;
   }
 
   async query(criteria: ActionQuery): Promise<Action[]> {
@@ -139,6 +150,10 @@ export class PrismaActionRepository implements ActionRepository {
     relatedDecisionId?: string | null;
     sourceRef?: unknown;
     organisationId?: string | null;
+    source?: string | null;
+    contentHash?: string | null;
+    dismissedAt?: Date | null;
+    mergedIntoId?: string | null;
   }): Action {
     return {
       id: row.id,
@@ -165,6 +180,10 @@ export class PrismaActionRepository implements ActionRepository {
       relatedDecisionId: row.relatedDecisionId ?? undefined,
       sourceRef: row.sourceRef ? (row.sourceRef as Action["sourceRef"]) : undefined,
       organisationId: row.organisationId ?? undefined,
+      source: row.source ?? undefined,
+      contentHash: row.contentHash ?? undefined,
+      dismissedAt: row.dismissedAt ?? undefined,
+      mergedIntoId: row.mergedIntoId ?? undefined,
     };
   }
 }

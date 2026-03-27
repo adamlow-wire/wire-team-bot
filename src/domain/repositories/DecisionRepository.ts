@@ -13,6 +13,7 @@ export interface DecisionRepository {
   create(decision: Decision): Promise<Decision>;
   update(decision: Decision): Promise<Decision>;
   findById(id: string): Promise<Decision | null>;
+  findByContentHash(channelId: string, hash: string): Promise<Decision | null>;
   query(criteria: DecisionQuery): Promise<Decision[]>;
   nextId(): Promise<string>;
 }
