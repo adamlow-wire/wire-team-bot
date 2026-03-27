@@ -8,6 +8,7 @@ import type { PipelineDeps, MessageJob } from "../../src/infrastructure/pipeline
 import type { ClassifyResult } from "../../src/application/ports/ClassifierPort";
 import type { ExtractResult } from "../../src/application/ports/ExtractionPort";
 import type { VercelAISlotFactory } from "../../src/infrastructure/llm/VercelAISlotFactory";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 vi.mock("ai", () => ({
   generateText: vi.fn(),
@@ -113,6 +114,12 @@ function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
     },
     extractConfidenceMin: 0.6,
     contradictionThreshold: 0.78,
+    dedup: {
+      checkCreationFlag: vi.fn().mockResolvedValue(false),
+      setCreationFlag: vi.fn().mockResolvedValue(undefined),
+      checkDecisionSimilarity: vi.fn().mockResolvedValue({ isDuplicate: false }),
+    },
+    dedupSimilarityThreshold: 0.85,
     ...overrides,
   };
 }
@@ -372,6 +379,152 @@ describe("ProcessingPipeline", () => {
 
       await new Promise((r) => setTimeout(r, 50));
       expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Deduplication — creation flag", () => {
+    it("skips decision when creation flag is set for decisions", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
+        })},
+        dedup: {
+          checkCreationFlag: vi.fn().mockImplementation((_ch, _id, kind) =>
+            Promise.resolve(kind === "decision"),
+          ),
+          setCreationFlag: vi.fn().mockResolvedValue(undefined),
+          checkDecisionSimilarity: vi.fn().mockResolvedValue({ isDuplicate: false }),
+        },
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await pipeline.process(baseJob());
+
+      expect(deps.decisionRepo.create).not.toHaveBeenCalled();
+      expect(deps.dedup.setCreationFlag).not.toHaveBeenCalled();
+    });
+
+    it("skips action when creation flag is set for actions", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          actions: [{ description: "Set up Postgres", ownerName: "Alice", confidence: 0.8, tags: [] }],
+        })},
+        dedup: {
+          checkCreationFlag: vi.fn().mockImplementation((_ch, _id, kind) =>
+            Promise.resolve(kind === "action"),
+          ),
+          setCreationFlag: vi.fn().mockResolvedValue(undefined),
+          checkDecisionSimilarity: vi.fn().mockResolvedValue({ isDuplicate: false }),
+        },
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await pipeline.process(baseJob());
+
+      expect(deps.actionRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("sets creation flag after successful decision write", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
+        })},
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await pipeline.process(baseJob());
+
+      expect(deps.decisionRepo.create).toHaveBeenCalledOnce();
+      expect(deps.dedup.setCreationFlag).toHaveBeenCalledWith(
+        baseJob().channelId,
+        baseJob().messageId,
+        "decision",
+      );
+    });
+  });
+
+  describe("Deduplication — similarity check", () => {
+    it("skips decision when similarity check returns isDuplicate:true", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
+        })},
+        dedup: {
+          checkCreationFlag: vi.fn().mockResolvedValue(false),
+          setCreationFlag: vi.fn().mockResolvedValue(undefined),
+          checkDecisionSimilarity: vi.fn().mockResolvedValue({ isDuplicate: true, existingId: "DEC-0099", reason: "similarity" }),
+        },
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await pipeline.process(baseJob());
+
+      expect(deps.decisionRepo.create).not.toHaveBeenCalled();
+      expect(deps.dedup.setCreationFlag).not.toHaveBeenCalled();
+    });
+
+    it("proceeds with creation when similarity check returns isDuplicate:false", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
+        })},
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await pipeline.process(baseJob());
+
+      expect(deps.decisionRepo.create).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("Deduplication — unique index violation (P2002)", () => {
+    const p2002 = new PrismaClientKnownRequestError("Unique constraint failed", {
+      code: "P2002",
+      clientVersion: "5.x",
+    });
+
+    it("does not throw when decision create raises P2002", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
+        })},
+        decisionRepo: {
+          nextId: vi.fn().mockResolvedValue("DEC-0001"),
+          create: vi.fn().mockRejectedValue(p2002),
+          update: vi.fn(),
+          findById: vi.fn().mockResolvedValue(null),
+          query: vi.fn(),
+        },
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await expect(pipeline.process(baseJob())).resolves.toBeUndefined();
+      expect(deps.dedup.setCreationFlag).not.toHaveBeenCalled();
+    });
+
+    it("does not throw when action create raises P2002", async () => {
+      const deps = makeDeps({
+        classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+        extraction: { extract: vi.fn().mockResolvedValue({
+          ...emptyExtractResult,
+          actions: [{ description: "Set up Postgres", ownerName: "Alice", confidence: 0.8, tags: [] }],
+        })},
+        actionRepo: {
+          nextId: vi.fn().mockResolvedValue("ACT-0001"),
+          create: vi.fn().mockRejectedValue(p2002),
+          update: vi.fn(),
+          findById: vi.fn(),
+          query: vi.fn(),
+        },
+      });
+      const pipeline = new ProcessingPipeline(deps);
+      await expect(pipeline.process(baseJob())).resolves.toBeUndefined();
     });
   });
 });

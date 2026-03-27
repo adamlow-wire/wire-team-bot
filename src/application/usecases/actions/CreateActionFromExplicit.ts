@@ -7,6 +7,8 @@ import type { ConversationConfigRepository } from "../../../domain/repositories/
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { Logger } from "../../ports/Logger";
+import type { DeduplicationService } from "../../services/DeduplicationService";
+import { computeContentHash } from "../../../infrastructure/pipeline/contentHash";
 
 export interface CreateActionFromExplicitInput {
   conversationId: QualifiedId;
@@ -28,6 +30,7 @@ export class CreateActionFromExplicit {
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
     private readonly logger: Logger,
+    private readonly dedup?: DeduplicationService,
   ) {}
 
   async execute(input: CreateActionFromExplicitInput): Promise<Action> {
@@ -60,9 +63,15 @@ export class CreateActionFromExplicit {
       updatedAt: now,
       deleted: false,
       version: 1,
+      source: "tool_call",
+      contentHash: computeContentHash(input.description),
     };
 
     const saved = await this.actions.create(action);
+    if (this.dedup) {
+      const channelId = `${input.conversationId.id}@${input.conversationId.domain}`;
+      await this.dedup.setCreationFlag(channelId, input.rawMessageId, "action").catch(() => {});
+    }
     this.logger.info("Action created", { actionId: saved.id, conversationId: input.conversationId.id, assigneeId: assigneeId.id });
 
     await this.auditLog.append({

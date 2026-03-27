@@ -62,4 +62,11 @@ export interface Decision {
   standing?: boolean;
   /** Admin note on standing records (e.g. 'removed_from_seed'). */
   sourceNote?: string;
+  // Phase 2 (v3.0) additions — deduplication
+  /** SHA-256 of normalised summary text. Used for write-time exact-duplicate detection. */
+  contentHash?: string;
+  /** When this decision was dismissed or merged into another. */
+  dismissedAt?: Date | null;
+  /** ID of the decision this was merged into, if applicable. */
+  mergedIntoId?: string | null;
 }

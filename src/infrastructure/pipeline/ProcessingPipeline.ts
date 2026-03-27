@@ -25,9 +25,12 @@ import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { Logger } from "../../application/ports/Logger";
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
 import { generateText } from "ai";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import type { VercelAISlotFactory } from "../llm/VercelAISlotFactory";
 import type { Decision } from "../../domain/entities/Decision";
 import type { Action } from "../../domain/entities/Action";
+import type { DeduplicationService } from "../../application/services/DeduplicationService";
+import { computeContentHash } from "./contentHash";
 
 export interface MessageJob {
   messageId: string;
@@ -59,6 +62,10 @@ export interface PipelineDeps {
   extractConfidenceMin: number;
   /** Cosine similarity threshold for contradiction detection (default 0.78). */
   contradictionThreshold: number;
+  /** Write-time deduplication service. */
+  dedup: DeduplicationService;
+  /** Cosine similarity threshold for write-time decision deduplication (default 0.85). */
+  dedupSimilarityThreshold: number;
 }
 
 export class ProcessingPipeline {
@@ -192,6 +199,25 @@ export class ProcessingPipeline {
     for (const d of extracted.decisions) {
       if (d.confidence < this.deps.extractConfidenceMin) continue;
       try {
+        // Dedup layer 1: creation flag (same rawMessageId already produced a decision here)
+        if (await this.deps.dedup.checkCreationFlag(channelId, messageId, "decision")) {
+          log.info("Pipeline: skipping decision — creation flag set", { messageId });
+          continue;
+        }
+
+        // Dedup layer 2: semantic similarity (≥threshold cosine within 24h)
+        let preEmbed: number[] | undefined;
+        try { preEmbed = await this.deps.embeddingService.embed(d.summary); } catch { /* ok — proceed without similarity check */ }
+        if (preEmbed && preEmbed.length > 0) {
+          const sim = await this.deps.dedup.checkDecisionSimilarity(
+            channelId, conversationId, preEmbed, this.deps.dedupSimilarityThreshold,
+          );
+          if (sim.isDuplicate) {
+            log.info("Pipeline: skipping decision — similar exists", { existingId: sim.existingId });
+            continue;
+          }
+        }
+
         const id = await this.deps.decisionRepo.nextId();
         const decision: Decision = {
           id,
@@ -222,11 +248,25 @@ export class ProcessingPipeline {
             wire_msg_ids: [messageId],
             timestamp_range: { start: timestamp.toISOString(), end: timestamp.toISOString() },
           },
+          // Dedup layer 3: content hash (unique index catches exact-text race conditions)
+          contentHash: computeContentHash(d.summary),
         };
-        await this.deps.decisionRepo.create(decision);
+
+        // Dedup layer 3: catch unique index violation (concurrent insert of same content)
+        try {
+          await this.deps.decisionRepo.create(decision);
+        } catch (err) {
+          if (err instanceof PrismaClientKnownRequestError && err.code === "P2002") {
+            log.info("Pipeline: skipping decision — unique index violation (content_hash)");
+            continue;
+          }
+          throw err;
+        }
+
+        await this.deps.dedup.setCreationFlag(channelId, messageId, "decision");
         newDecisionIds.push(id);
 
-        // Tier 3: embed decision (fire-and-forget)
+        // Tier 3: embed decision (fire-and-forget; reuse pre-computed vector if available)
         void this.embedAndStore({
           text: d.summary,
           sourceType: "decision",
@@ -236,6 +276,7 @@ export class ProcessingPipeline {
           authorId: senderId.id,
           createdAt: timestamp,
           topicTags: d.tags,
+          preComputedEmbedding: preEmbed,
         }, conversationId, log);
       } catch (err) {
         log.warn("Pipeline: decision create failed", { err: String(err) });
@@ -263,6 +304,12 @@ export class ProcessingPipeline {
     for (const a of extracted.actions) {
       if (a.confidence < this.deps.extractConfidenceMin) continue;
       try {
+        // Dedup layer 1: creation flag
+        if (await this.deps.dedup.checkCreationFlag(channelId, messageId, "action")) {
+          log.info("Pipeline: skipping action — creation flag set", { messageId });
+          continue;
+        }
+
         // If this action supersedes an existing one, close the old one first
         if (a.supersedes) {
           const toClose = openActions.find(oa => oa.id === a.supersedes);
@@ -309,8 +356,22 @@ export class ProcessingPipeline {
             wire_msg_ids: [messageId],
             timestamp_range: { start: timestamp.toISOString(), end: timestamp.toISOString() },
           },
+          // Dedup layer 3: content hash
+          contentHash: computeContentHash(a.description),
         };
-        await this.deps.actionRepo.create(action);
+
+        // Dedup layer 3: catch unique index violation
+        try {
+          await this.deps.actionRepo.create(action);
+        } catch (err) {
+          if (err instanceof PrismaClientKnownRequestError && err.code === "P2002") {
+            log.info("Pipeline: skipping action — unique index violation (content_hash)");
+            continue;
+          }
+          throw err;
+        }
+
+        await this.deps.dedup.setCreationFlag(channelId, messageId, "action");
 
         // Tier 3: embed action (fire-and-forget)
         void this.embedAndStore({
@@ -361,9 +422,11 @@ export class ProcessingPipeline {
     authorId: string;
     createdAt: Date;
     topicTags: string[];
+    /** Pre-computed embedding from dedup check — avoids a second embed call. */
+    preComputedEmbedding?: number[];
   }, _convId: QualifiedId, log: Logger): Promise<void> {
     try {
-      const vector = await this.deps.embeddingService.embed(params.text);
+      const vector = params.preComputedEmbedding ?? await this.deps.embeddingService.embed(params.text);
       if (!vector || vector.length === 0) return;
       await this.deps.embeddingRepo.store({
         sourceType: params.sourceType as import("../../domain/repositories/EmbeddingRepository").EmbeddingSourceType,

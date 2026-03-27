@@ -39,4 +39,13 @@ export interface Action {
   sourceRef?: ActionSourceRef;
   /** Wire domain used as organisation scope. */
   organisationId?: string;
+  /** Provenance: 'seed' | 'extraction' | 'tool_call' | 'file:<filename>' */
+  source?: string;
+  // Phase 2 (v3.0) additions — deduplication
+  /** SHA-256 of normalised description text. Used for write-time exact-duplicate detection. */
+  contentHash?: string;
+  /** When this action was dismissed or merged into another. */
+  dismissedAt?: Date | null;
+  /** ID of the action this was merged into, if applicable. */
+  mergedIntoId?: string | null;
 }

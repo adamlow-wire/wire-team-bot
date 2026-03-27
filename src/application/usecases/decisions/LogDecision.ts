@@ -5,6 +5,8 @@ import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { BufferedMessage } from "../../services/ConversationMessageBuffer";
 import type { Logger } from "../../ports/Logger";
+import type { DeduplicationService } from "../../services/DeduplicationService";
+import { computeContentHash } from "../../../infrastructure/pipeline/contentHash";
 
 export interface LogDecisionInput {
   conversationId: QualifiedId;
@@ -22,6 +24,7 @@ export class LogDecision {
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
     private readonly logger: Logger,
+    private readonly dedup?: DeduplicationService,
   ) {}
 
   async execute(input: LogDecisionInput): Promise<Decision> {
@@ -53,9 +56,15 @@ export class LogDecision {
       updatedAt: now,
       deleted: false,
       version: 1,
+      source: "tool_call",
+      contentHash: computeContentHash(input.summary),
     };
 
     const saved = await this.decisions.create(decision);
+    if (this.dedup) {
+      const channelId = `${input.conversationId.id}@${input.conversationId.domain}`;
+      await this.dedup.setCreationFlag(channelId, input.rawMessageId, "decision").catch(() => {});
+    }
     this.logger.info("Decision logged", { decisionId: saved.id, conversationId: input.conversationId.id });
 
     await this.auditLog.append({

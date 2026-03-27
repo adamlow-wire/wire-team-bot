@@ -71,6 +71,11 @@ model Decision {
   source      String?  // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
   standing    Boolean  @default(false) // true = immune to contradiction detection
   sourceNote  String?  // e.g. 'removed_from_seed'
+
+  // Phase 2 (v3.0) additions — deduplication
+  contentHash  String?
+  dismissedAt  DateTime?
+  mergedIntoId String?
 }
 
 model Action {
@@ -106,6 +111,11 @@ model Action {
 
   // Phase 1 (v3.0) additions
   source      String?  // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
+
+  // Phase 2 (v3.0) additions — deduplication
+  contentHash  String?
+  dismissedAt  DateTime?
+  mergedIntoId String?
 }
 
 /// Atomic per-entity-type ID counter. nextVal is incremented via a single
