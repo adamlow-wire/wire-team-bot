@@ -14,7 +14,19 @@ v3.0 is a reliability and interaction quality upgrade. The core architecture (he
 2. **Language management fragility** — the regex-based command parser breaks on natural variations; local model JSON failures silently drop high-signal messages; assignee ambiguity causes hard errors rather than clarifying questions.
 3. **Robotic correction UX** — users must memorise entity IDs and command syntax to fix mistakes; contradiction detection sends unanswered questions; extraction provides no feedback loop.
 
-v3.0 replaces the fragile custom implementations of these areas with mature, well-tested open-source components and adds two explicit workstreams (deduplication and intent-first parsing) that the component upgrades alone do not cover.
+**v3.0 removes all structured command syntax.** Users interact with Jeeves in plain English only. No prefixes (`decision:`, `action:`), no entity IDs in bot-initiated messages, no command memorisation. Every `@Jeeves` message is classified by the LLM and routed to the appropriate tool. The background extraction pipeline remains the primary capture mechanism.
+
+### Token Budget Rationale
+
+Removing structured syntax adds LLM classification to every `@Jeeves` message. This is managed as follows:
+
+- **Intent classification uses the `classify` slot** — the smallest, fastest model, not the extraction model
+- **`@Jeeves` messages are a small fraction of channel traffic** — the background pipeline already processes every message through Tier 1 classification; this is additive on a small subset only
+- **Deduplication savings offset the cost** — preventing 2–3 duplicate extractions per high-signal message saves ~2,500 tokens per prevented duplicate (Tier 2 extraction is expensive); at moderate channel volume this exceeds classification overhead
+- **No retry waste** — Zod validation retries within the same API call; failed extractions no longer burn a full pipeline run
+- **Tool definitions are fixed overhead** — ~600 tokens per respond turn, but respond turns are already the most expensive operation in the system
+
+Net effect across a typical active channel: roughly token-neutral once deduplication savings are counted. The gain is reliability and user experience, not additional cost.
 
 ---
 
@@ -29,7 +41,7 @@ v3.0 replaces the fragile custom implementations of these areas with mature, wel
 | 5 | Re-ranking | Add **`@xenova/transformers` cross-encoder** (runs on-prem) to reorder retrieval results by true relevance before token budget cut. Eliminates silent truncation of relevant results. |
 | 6 | Vector storage | Replace `pgvector` with **pgvecto.rs** (drop-in, faster HNSW, sparse vector support). No schema migration required — same pgvector API. |
 | 7 | Respond path | Replace deterministic retrieve→prompt→respond with **tool-calling via Vercel AI SDK** on the respond path only. Background extraction pipeline remains deterministic. |
-| 8 | Command parsing | Replace regex-first cascade with **intent-first LLM classification** → regex fast-path for unambiguous patterns, LLM for natural language. Assignee ambiguity resolved via clarifying question not hard error. |
+| 8 | Command parsing | **Remove all structured command syntax.** Every `@Jeeves` message is classified by the LLM using the `classify` slot. No prefixes, no IDs in user-facing interaction. Assignee ambiguity → clarifying question, not hard error. A minimal regex fast-path remains only for unambiguous operational commands (`@Jeeves pause`, `@Jeeves resume`, `@Jeeves secure`). |
 | 9 | Deduplication at write | Add similarity check at decision/action write time (cosine ≥ 0.85 within same channel + 24h window → merge, not insert). Explicit commands flag messages so background pipeline skips them. |
 | 10 | Extraction acknowledgment | When background pipeline extracts a decision or action implicitly, send a lightweight acknowledgment with a dismiss option. Dismissed items are marked `status: dismissed` not deleted. |
 | 11 | ORM | Keep Prisma. No change from v2.0 decision. |
@@ -96,43 +108,61 @@ Background pipeline sees same message
   └─ Still writes ConversationSignal (lightweight, always useful)
 ```
 
-### 4.2 Intent-First Command Parsing
+### 4.2 Full Natural Language Routing (No Structured Commands)
 
-**Problem**: The regex cascade breaks on natural language variations and produces hard errors on ambiguous input (e.g., unknown assignee names).
+**Problem**: The regex cascade breaks on natural language variations, produces hard errors on ambiguous input, and requires users to learn and remember command syntax. The structured prefix approach (`decision:`, `action:`) is fundamentally at odds with natural team communication.
 
-**Fix**: Replace the routing entry point with a two-stage parser:
+**Fix**: Remove all structured command syntax. Replace the entire command routing layer with LLM-based intent classification.
 
-**Stage 1 — Fast-path regex** (< 1ms, no LLM call):
-Unambiguous, structured commands bypass LLM entirely:
-- `ACT-\d+ done|cancelled|in_progress`
-- `DEC-\d+ revoke`
-- `REM-\d+ cancel|snooze`
-- `@Jeeves pause|resume|secure`
+**Stage 1 — Operational fast-path** (< 1ms, no LLM call):
+Only three unambiguous operational state changes bypass LLM:
+- `@Jeeves pause` / `step out`
+- `@Jeeves resume`
+- `@Jeeves secure` / `ears off`
 
-**Stage 2 — Intent classification** (for everything else):
-All other `@Jeeves` messages and explicit-prefix messages (`decision:`, `action:`, `remind`) are passed to a lightweight LLM call using the `classify` slot:
+Everything else — including all knowledge capture, corrections, questions, and list requests — goes to Stage 2.
+
+**Stage 2 — Natural language classification** (all `@Jeeves` messages):
 
 ```ts
 const intent = await generateObject({
-  model: classifySlot,
+  model: classifySlot,   // smallest/cheapest slot — not the extraction model
   schema: z.object({
-    type: z.enum(['log_decision', 'log_action', 'create_reminder',
-                  'update_action', 'correction', 'question', 'list', 'unknown']),
+    type: z.enum([
+      'log_decision', 'log_action', 'create_reminder',
+      'correct_decision', 'correct_action', 'complete_action',
+      'reassign_action', 'question', 'list_actions', 'list_decisions',
+      'list_reminders', 'cancel_reminder', 'unknown'
+    ]),
     entities: z.object({
       assignee: z.string().optional(),
       deadline: z.string().optional(),
       subject: z.string().optional(),
-      targetId: z.string().optional(),
+      targetRef: z.string().optional(),   // human description, not ID
     }),
     confidence: z.number(),
     clarificationNeeded: z.boolean(),
     clarificationPrompt: z.string().optional(),
   }),
-  prompt: intentClassificationPrompt(message, channelContext),
+  prompt: intentClassificationPrompt(message, recentContext),
 })
 ```
 
-If `clarificationNeeded: true`, Jeeves asks the clarification before acting. Assignee ambiguity ("which Sarah?") becomes a question not an error.
+**Examples of what this enables**:
+
+| User says | Intent classified | Action |
+|---|---|---|
+| "We've decided to go with Postgres" | `log_decision` | Logs decision, sends acknowledgment |
+| "Can Mike pick up the auth work?" | `log_action` | Creates action for Mike |
+| "Actually that should be Sarah not Mike" | `correct_action` | Tool call: `reassign_action` |
+| "That's done, we shipped yesterday" | `complete_action` | Tool call: `complete_action` with note |
+| "Remind me Friday about the deploy" | `create_reminder` | Tool call: `create_reminder` |
+| "What did we decide about the database?" | `question` | Full retrieval + respond path |
+| "What's on my plate this week?" | `list_actions` | Structured query, formatted response |
+
+If `clarificationNeeded: true`, Jeeves asks before acting. Assignee ambiguity ("which Sarah?") → clarifying question, not an error.
+
+**Token cost**: The `classify` slot uses the smallest model. A classification call is ~300–400 tokens in, ~80 tokens out. This applies only to `@Jeeves`-directed messages, a small fraction of channel traffic.
 
 ---
 
@@ -158,14 +188,17 @@ tools: {
 }
 ```
 
+The LLM resolves "the auth work" or "that decision about Postgres" to the correct internal record via `search_decisions` / `search_actions` before calling a mutation tool. Users never supply IDs.
+
 **Correction flows enabled**:
 
-| User says (natural language) | Tool called |
+| User says | Tools called |
 |---|---|
-| "Actually that was Sarah's call" | `correct_decision({ id: "DEC-38", correction: "..." })` |
-| "Mark the auth work as done — we shipped it" | `complete_action({ id: "ACT-15", completionNote: "shipped" })` |
-| "Remind me about this next Monday" | `create_reminder({ description: "...", triggerAt: "..." })` |
-| "That action should be Mike's not John's" | `reassign_action({ id: "ACT-22", to: "Mike" })` |
+| "Actually that was Sarah's call" | `search_decisions(...)` → `correct_decision(...)` |
+| "Mark the auth work as done — we shipped it" | `search_actions(...)` → `complete_action(...)` |
+| "Remind me about this next Monday" | `create_reminder(...)` |
+| "That action should be Mike's not John's" | `search_actions(...)` → `reassign_action(...)` |
+| "What did we agree on for the API design?" | `search_decisions(...)` → answer |
 
 ### 5.2 Extraction Acknowledgment Loop
 
@@ -193,9 +226,9 @@ Jeeves: I've updated the earlier decision on database choice — the current pos
 
 Resolution is declarative and immediate. The user can undo if the merge was wrong.
 
-### 5.4 Human-Readable References in Responses
+### 5.4 Human-Readable References in All Responses
 
-Entity IDs (`DEC-42`, `ACT-15`) are retained internally but never appear in bot-initiated messages. Jeeves refers to "the React decision" or "Sarah's auth PR review". IDs remain available via list commands for precision targeting.
+Entity IDs (`DEC-42`, `ACT-15`) are retained internally for audit trail and deduplication but **never appear in any user-facing message** — not in confirmations, corrections, lists, or answers. Jeeves refers to "the React decision" or "Sarah's auth PR review" exclusively. Internal IDs are an implementation detail.
 
 ### 5.5 Correction Echoes Context
 
@@ -357,4 +390,5 @@ Feel like a competent assistant, not a command parser.
 | 2 | `@xenova/transformers` cross-encoder model size vs. on-prem memory budget | Engineering | Before Phase 4 start |
 | 3 | BullMQ Redis: confirm acceptable for on-prem deployments given extract-and-forget constraints (TTL policy sufficient?) | Security review | Before Phase 1 end |
 | 4 | LlamaIndex TS: confirm pgvecto.rs vector store adapter exists or assess build cost | Engineering | Before Phase 4 start |
-| 5 | Intent-first classifier: latency budget — must not add perceptible delay to explicit commands on fast-path | Engineering | Before Phase 3 start |
+| 5 | Natural language classifier: latency budget — intent classification must complete in < 500ms on the classify slot model to avoid perceptible delay before Jeeves responds | Engineering | Before Phase 3 start |
+| 6 | Token monitoring: instrument per-slot token usage from day one of Phase 1 so deduplication savings vs. classification overhead can be measured empirically in Phase 2 | Engineering | Phase 1 |
