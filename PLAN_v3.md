@@ -1,6 +1,6 @@
 # Jeeves v3.0 — Implementation Plan
 
-> Branch: `v3.0-planning`
+> Branch: `v3.0`
 > Builds on: v2.0 (extract-and-forget architecture, multi-path retrieval, seven-slot LLM)
 > Status: Planning — 2026-03-27
 
@@ -48,6 +48,7 @@ Net effect across a typical active channel: roughly token-neutral once deduplica
 | 12 | Privacy model | Unchanged. Redis keys for message content have 60s TTL. mem0 self-hosted. Tool calls are structured writes, not raw text persistence. |
 | 13 | Organisation seed context | A human-managed YAML file (`jeeves-seed.yaml`) mounted via Docker volume at startup. Seeded facts are marked `source: seed` and are immune to background extraction overwrite. Standing decisions cannot be auto-superseded by contradiction detection. |
 | 14 | File handling | Lazy extraction. When a file is shared in channel, store metadata only (no download). Process only when a user explicitly asks. Extracted content follows extract-and-forget — never persisted. |
+| 15 | Bot persona and name | The bot's persona name (default: `Jeeves`) is configurable via `BOT_NAME` env var. All user-facing strings, LLM system prompts, and persona descriptions use this value. No hardcoded persona name in source code. The Wire SDK mention detection uses the bot's Wire account name (set in Wire itself); in-code prompt references use `BOT_NAME`. |
 
 ---
 
@@ -419,6 +420,27 @@ interface FileExtractorPort {
 
 ---
 
+### 6.3 Configurable Bot Persona
+
+The bot's persona is shipped as "Jeeves" by default but this is an operator choice, not a product constraint. Different teams may want to name their bot differently.
+
+**Design**: A single `BOT_NAME` env var (default: `Jeeves`) is injected into `src/app/config.ts`. Every place the bot's name appears — user-facing messages, LLM system prompts, persona descriptions, Wire mention triggers in prompts — uses `config.app.botName`.
+
+**Scope of change**:
+- `config.ts`: `botName: process.env.BOT_NAME ?? "Jeeves"`
+- All LLM system prompts (classifier, extractor, respond, summarise, queryAnalyse) accept a `botName` parameter and use it in persona instructions
+- All `WireOutboundAdapter` canned responses (channel-join greeting, mode-change confirmations, staleness nudges) use `config.app.botName`
+- CLI harness: the `@jeeves` mention trigger uses `botName.toLowerCase()`
+- Docker Compose: `BOT_NAME` documented in `.env.example`
+
+**Wire mention detection**: Wire delivers mentions as SDK events keyed to the bot's Wire user ID, not its display name — this is unaffected by `BOT_NAME`. The configurable name affects only what the bot *says*, not how it is *addressed*.
+
+**Persona style** (currently the "Jeeves" voice — formal British butler): this is defined in LLM system prompts. Changing `BOT_NAME` alone changes the name but not the voice. Operators who want a different voice can extend the prompt via a `BOT_SYSTEM_PROMPT_SUFFIX` env var (future; not in Phase 1 scope).
+
+**Phase 1 task**: Replace all hardcoded `"Jeeves"` strings in source code with `config.app.botName` or a passed `botName` parameter. This must be complete before Phase 3 adds new user-facing interaction paths.
+
+---
+
 ## 7. Component Boundaries
 
 Clear division of responsibility between new components. These boundaries must not be blurred during implementation.
@@ -468,7 +490,7 @@ LlamaIndex does NOT: write to DB, call mem0, trigger extractions
 
 ---
 
-## 7. Failure Modes
+## 8. Failure Modes
 
 Required fallback behaviour for each new component. All failures must be logged with structured context; none may crash the bot process.
 
@@ -489,7 +511,7 @@ Required fallback behaviour for each new component. All failures must be logged 
 
 ---
 
-## 8. Security Requirements
+## 9. Security Requirements
 
 ### Redis
 
@@ -526,18 +548,32 @@ Required fallback behaviour for each new component. All failures must be logged 
 
 ---
 
-## 9. Schema Changes
+## 10. Schema Changes
 
 Minimal — the core schema is stable. Additions only:
 
 ```prisma
-// Add to Decision and Action models
+// Add to Decision model (Phase 1: source, standing, sourceNote; Phase 2: dismissedAt, contentHash, mergedIntoId)
+source        String?           // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
+standing      Boolean           @default(false)  // true = immune to contradiction detection
+sourceNote    String?           // human note e.g. 'removed_from_seed'
 dismissedAt   DateTime?         // set when user dismisses an extraction acknowledgment
 contentHash   String?           // SHA-256 of normalised summary for dedup index
 mergedIntoId  String?           // if this record was merged into another
 
-// New: explicit message flag store (Redis, not Prisma)
-// jeeves:explicit:<channelId> → Set<wireMessageId>, TTL 5m
+// Add to Action model (Phase 1: source; Phase 2: dismissedAt, contentHash, mergedIntoId)
+source        String?           // 'seed' | 'extraction' | 'tool_call' | 'file:<filename>'
+dismissedAt   DateTime?
+contentHash   String?
+mergedIntoId  String?
+
+// Add to Entity model (Phase 1: source, standing, sourceNote)
+source        String?
+standing      Boolean           @default(false)
+sourceNote    String?
+
+// New: creation flag store (Redis, not Prisma)
+// jeeves:created:<channelId> → Set<wireMessageId>, TTL 30m (covers full 30-msg sliding window)
 ```
 
 **New partial unique index** (Prisma migration):
@@ -545,11 +581,15 @@ mergedIntoId  String?           // if this record was merged into another
 CREATE UNIQUE INDEX decision_content_hash_channel_idx
   ON decisions (channel_id, content_hash)
   WHERE content_hash IS NOT NULL AND status != 'dismissed';
+
+CREATE UNIQUE INDEX action_content_hash_channel_idx
+  ON actions (channel_id, content_hash)
+  WHERE content_hash IS NOT NULL AND status != 'dismissed';
 ```
 
 ---
 
-## 10. Tool Maximisation
+## 11. Tool Maximisation
 
 Each off-the-shelf component chosen for a specific reason. This section documents how to use each one to its full potential — not just as a drop-in replacement but extracting the value that motivated the choice.
 
@@ -679,14 +719,16 @@ const engine = new RouterQueryEngine({
 - **HNSW tuning**: `m=16, ef_construction=64` — default is conservative; these values give better recall at the channel data scales expected
 - **Indexing on `(org_id, embedding)`**: partition HNSW by org to avoid cross-org nearest-neighbour leakage at the vector layer (defence in depth alongside SQL scope)
 
-### `@xenova/transformers` (cross-encoder)
+### `@huggingface/transformers` (cross-encoder)
 
-**Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2` — 22MB, good quality/size tradeoff, CPU-viable.
+Use `@huggingface/transformers` — the actively maintained successor to the deprecated `@xenova/transformers`. API is compatible; update import paths from `@xenova/transformers` to `@huggingface/transformers`.
+
+**Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2` — 22MB, good quality/size tradeoff, CPU-viable. Confirm size and memory footprint before Phase 4 (Open Question §15 Q2).
 
 **What to use beyond the basics**:
 - Pre-download in Dockerfile at build time — zero cold start:
   ```dockerfile
-  RUN node -e "const {pipeline}=require('@xenova/transformers'); \
+  RUN node -e "const {pipeline}=require('@huggingface/transformers'); \
     pipeline('text-ranking','cross-encoder/ms-marco-MiniLM-L-6-v2')"
   ```
 - Load at bot startup into a module-level singleton — one load, many uses
@@ -695,18 +737,18 @@ const engine = new RouterQueryEngine({
 
 ---
 
-## 11. New Dependencies
+## 12. New Dependencies
 
 | Package | Purpose | Notes |
 |---|---|---|
 | `ai` (Vercel AI SDK) | LLM client, structured output, tool calling | Replaces custom fetch client |
-| `zod` | Schema validation for all LLM outputs | Likely already transitive dep |
+| `zod` | Schema validation for all LLM outputs | Already a transitive dependency |
 | `bullmq` | Job queue + scheduling | Replaces InMemoryProcessingQueue + InProcessScheduler |
 | `ioredis` | Redis client for BullMQ | New |
-| `mem0ai` | Write-path contradiction resolution | Self-hosted mode; Ollama-compatible |
-| `llamaindex` | Retrieval pipeline orchestration | Replaces MultiPathRetrievalEngine |
-| `@xenova/transformers` | Local cross-encoder re-ranker | Pre-downloaded in Docker image |
-| `pgvecto.rs` | Postgres extension (docker image swap) | Drop-in for pgvector; adds sparse vectors |
+| `mem0ai` | Write-path contradiction resolution | npm package is `mem0ai`; self-hosted mode; verify Ollama embed support before Phase 3 (Open Question §15 Q1) |
+| `@llamaindex/core` + `llamaindex` | Retrieval pipeline orchestration | Use the modular `@llamaindex/core` packages; `llamaindex` is the legacy monolith. Verify pgvecto.rs adapter availability before Phase 4 (Open Question §15 Q3). |
+| `@huggingface/transformers` | Local cross-encoder re-ranker | Successor to deprecated `@xenova/transformers`; pre-downloaded in Docker image. Verify model name and memory footprint before Phase 4 (Open Question §15 Q2). |
+| `pgvecto.rs` | Postgres extension (docker image swap) | Compose image: `tensorchord/pgvecto-rs:pg16` replaces `pgvector/pgvector:pg16`. Drop-in pgvector API; existing schema migrations unchanged. For production: drain queue, stop bot, swap image, restart. |
 | `js-yaml` | Parse `jeeves-seed.yaml` at startup | Seed context feature |
 | `pdf-parse` | Extract text from PDF files | File handling feature |
 | `mammoth` | Extract text from DOCX files | File handling feature |
@@ -720,7 +762,7 @@ const engine = new RouterQueryEngine({
 
 ---
 
-## 11. Phased Delivery
+## 13. Phased Delivery
 
 ### Phase 1 — Reliability Foundation (~2 weeks)
 
@@ -738,9 +780,10 @@ Stop silent failures. Users can trust what the bot captures.
 - [ ] Implement `SeedLoader` — parse `jeeves-seed.yaml`, upsert decisions/entities/terminology with `source: 'seed'` and `standing: true` where applicable
 - [ ] Add `JEEVES_SEED_FILE` env var; unset = skip silently; YAML schema error = abort startup
 - [ ] Add `source`, `standing`, `sourceNote` fields to Decision and Entity (Prisma migration)
+- [ ] Add `BOT_NAME` env var to `config.ts` (default: `Jeeves`); replace all hardcoded persona name strings in source with `config.app.botName` (see §6.3)
 - [ ] All existing tests pass
 
-**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts. Bot starts with org context on day one.
+**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts. Bot starts with org context on day one. Operators can rename the bot without touching source code.
 
 ---
 
@@ -827,7 +870,7 @@ Feel like a competent assistant.
 
 ---
 
-## 12. What Is Not In Scope for v3.0
+## 14. What Is Not In Scope for v3.0
 
 | Item | Reason |
 |---|---|
@@ -840,7 +883,7 @@ Feel like a competent assistant.
 
 ---
 
-## 13. Open Questions
+## 15. Open Questions
 
 | # | Question | Owner | Due |
 |---|---|---|---|

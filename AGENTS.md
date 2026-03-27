@@ -17,7 +17,7 @@ Read it before touching any code. When in doubt, ask rather than assume.
 
 Do not redefine architecture, module boundaries, or component roles without updating `PLAN_v3.md` first. If the plan conflicts with a requested change, flag it — do not silently deviate.
 
-**Current delivery state**: v3.0 is in active development on `v3.0-planning`. Phases are not yet started. v2.0 code is the current baseline.
+**Current delivery state**: v3.0 is in active development on `v3.0`. Phases are not yet started. v2.0 code is the current baseline.
 
 ---
 
@@ -409,18 +409,18 @@ npx prisma migrate reset --force     # completely clean DB if state is corrupted
 | Processing pipeline | `PLAN_v3.md` §4; `src/infrastructure/pipeline/` |
 | Intent classification | `PLAN_v3.md` §4.2; `src/infrastructure/wire/WireEventRouter.ts` |
 | Tool calling + authorization | `PLAN_v3.md` §5.1; `src/infrastructure/llm/tools/` |
-| LLM slots | `PLAN_v3.md` §5.9; `src/app/config.ts` |
-| mem0 boundary | `PLAN_v3.md` §6 (Component Boundaries); write path only |
-| LlamaIndex boundary | `PLAN_v3.md` §6; read path only |
+| LLM slots | `PLAN_v3.md` §5.1; `src/app/config.ts` |
+| mem0 boundary | `PLAN_v3.md` §7 (Component Boundaries); write path only |
+| LlamaIndex boundary | `PLAN_v3.md` §7; read path only |
 | BullMQ queues | §4.3 above; `src/infrastructure/pipeline/`, `src/infrastructure/scheduling/` |
 | Deduplication | `PLAN_v3.md` §4.1; 0.85 cosine (decisions/actions), 0.92 (entities) |
 | Seed context | `PLAN_v3.md` §6.1; `src/infrastructure/seed/SeedLoader.ts` |
 | File handling | `PLAN_v3.md` §6.2; `src/application/usecases/files/` |
-| Security rules | `PLAN_v3.md` §8; §6 above |
-| Failure modes | `PLAN_v3.md` §7 |
+| Security rules | `PLAN_v3.md` §9; §6 above |
+| Failure modes | `PLAN_v3.md` §8 |
 | Schema | `prisma/schema.prisma` |
 | Env vars | `src/app/config.ts` |
 | Persona rules | `PLAN_v3.md` §5.4 — no IDs in user-facing messages, no exclamation marks |
-| Phase checklist | `PLAN_v3.md` §12 |
+| Phase checklist | `PLAN_v3.md` §13 |
 
 When in doubt: read `PLAN_v3.md`, match the existing codebase style, and ask before crossing architectural boundaries.
