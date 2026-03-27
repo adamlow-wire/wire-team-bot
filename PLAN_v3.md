@@ -87,25 +87,37 @@ Net effect across a typical active channel: roughly token-neutral once deduplica
 
 ### 4.1 Deduplication at Write Time
 
-**Problem**: Decisions and actions are created twice — once by explicit command and once by the background extraction pipeline seeing the same message. Additionally, the 30-message sliding window means facts can be extracted on successive messages.
+**Problem**: Decisions and actions are created twice — once by direct user instruction (tool call via intent classifier) and once by the background extraction pipeline seeing the same message. The 30-message sliding window compounds this: as new messages arrive, the same fact can be extracted multiple times from successive windows.
+
+**Two thresholds, two layers** — these are distinct and must not be confused:
+- **0.92 cosine similarity** — existing entity deduplication (persons, projects, teams). No change.
+- **0.85 cosine similarity** — new decision/action write-time deduplication. Lower threshold because decision phrasing varies more than entity names.
 
 **Fix**:
 
-1. **Message flagging**: When an explicit command (`decision:`, `action:`) creates an entity, store the Wire message ID in a short-lived Redis set (`jeeves:explicit:<channelId>`, TTL 5 min). The Tier 2 extractor checks this set before writing extracted decisions/actions from the same message.
+1. **Creation flagging**: When any entity creation tool call (`log_decision`, `log_action`) executes — whether triggered by intent classifier or respond path — store the Wire message ID in a short-lived Redis set (`jeeves:created:<channelId>`, TTL 30 min). The TTL is 30 min (not 5 min) to cover the full 30-message sliding window re-extraction window. The Tier 2 extractor checks this set before writing extracted decisions/actions from the same message.
 
-2. **Write-time similarity check**: Before inserting any decision or action, query embeddings for cosine similarity ≥ 0.85 within the same channel and a 24-hour window. If a match exists, merge (update the existing record's confidence and source_ref) rather than insert.
+2. **Write-time similarity check**: Before inserting any decision or action, query embeddings for cosine similarity ≥ 0.85 within the same channel and a 24-hour window. If a match exists, merge (update confidence and `source_ref`) rather than insert. This check applies to ALL creation paths — tool calls and background extraction alike.
 
-3. **DB-level constraint**: Add a partial unique index on `(channel_id, content_hash)` where `content_hash` is a SHA-256 of the normalised summary text. Catches exact duplicates that slip through the similarity check.
+3. **DB-level constraint**: Add a partial unique index on `(channel_id, content_hash)` where `content_hash` is SHA-256 of the normalised summary text. Catches exact duplicates that slip through the similarity check. `contentHash` is computed on all new records; existing records have it NULL (excluded from index via `WHERE content_hash IS NOT NULL`).
+
+4. **Race condition guard**: Write-time similarity check and insert run in a single serializable transaction. Concurrent inserts of identical content rely on the DB-level unique index as the final safety net.
 
 ```
-Explicit command fires
-  └─ Create decision/action
-  └─ Flag wire_msg_id in Redis (TTL 5m)
-  └─ Write-time similarity check (≥0.85) → merge if match
+User directs Jeeves to log a decision (tool call)
+  └─ Execute log_decision tool
+  └─ Write-time similarity check (≥0.85, 24h) → merge if match
+  └─ Insert or merge
+  └─ Flag wire_msg_id in Redis (jeeves:created:<channelId>, TTL 30m)
 
-Background pipeline sees same message
+Background pipeline processes same message
   └─ Check Redis flag → if flagged, skip decision/action write
   └─ Still writes ConversationSignal (lightweight, always useful)
+
+Background pipeline (un-flagged high-signal message)
+  └─ Tier 2 extraction runs
+  └─ Write-time similarity check (≥0.85, 24h) → merge if match
+  └─ Insert or merge + flag
 ```
 
 ### 4.2 Full Natural Language Routing (No Structured Commands)
@@ -170,25 +182,34 @@ If `clarificationNeeded: true`, Jeeves asks before acting. Assignee ambiguity ("
 
 ### 5.1 Tool Calling on the Respond Path
 
-The `respond` LLM slot gains tools. The extraction pipeline remains deterministic. Tool calling applies only when Jeeves is responding to a direct question or correction.
+The `respond` LLM slot gains tools. The extraction pipeline remains deterministic. Tool calling applies only when Jeeves is responding to a direct `@Jeeves` message — never from the background pipeline.
 
-**Tools exposed to the respond LLM**:
+**Authorization: all tools are scoped to the requesting user's channel and organisation.** The tool execution layer (not the LLM) enforces this — every tool call receives an implicit `{ channelId, orgId, requestingUserId }` context injected server-side. The LLM cannot override or supply these values. Mutation tools validate that the target record belongs to the current channel before executing.
+
+**Audit trail: every mutation tool call writes to `AuditLog`** with `{ tool, params, requestingUserId, channelId, timestamp, outcome }`. This is the only way to trace LLM-driven changes and is required for the Undo flow.
+
+**Tools exposed to the respond LLM** (search tools return human-readable results; mutation tools take the internal ID resolved by a prior search):
 
 ```ts
-tools: {
-  search_decisions:   { query, filters: { owner?, dateRange?, tags? } },
-  search_actions:     { query, filters: { assignee?, status?, dateRange? } },
-  get_entity:         { name },
-  correct_decision:   { id, correction, reason? },
-  complete_action:    { id, completionNote? },
-  reassign_action:    { id, to },
-  update_deadline:    { id, deadline },
-  create_reminder:    { description, triggerAt, targetId? },
-  supersede_decision: { newSummary, supersedes },
-}
+// Read tools — scoped to current channel + org
+search_decisions:   { query: string, filters?: { owner?, dateRange?, tags? } }
+search_actions:     { query: string, filters?: { assignee?, status?, dateRange? } }
+get_entity:         { name: string }
+
+// Mutation tools — server enforces channel/org scope; all logged to AuditLog
+log_decision:       { summary: string, decidedBy?: string[] }
+log_action:         { description: string, assignee?: string, deadline?: string }
+correct_decision:   { id: string, correction: string, reason?: string }
+complete_action:    { id: string, completionNote?: string }
+reassign_action:    { id: string, to: string }
+update_deadline:    { id: string, deadline: string }
+create_reminder:    { description: string, triggerAt: string, targetUserId?: string }
+supersede_decision: { id: string, newSummary: string, reason?: string }
 ```
 
-The LLM resolves "the auth work" or "that decision about Postgres" to the correct internal record via `search_decisions` / `search_actions` before calling a mutation tool. Users never supply IDs.
+**Resolution pattern**: the LLM always calls a search tool first, selects the best match from results, then calls the mutation. Users never supply IDs. If the search returns multiple plausible matches, Jeeves asks for clarification before mutating.
+
+**Input validation**: all string parameters on mutation tools are validated server-side (max length, no control characters) before passing to DB queries. `targetRef` is never used directly in SQL — it is a human description for LLM use only; the resolved internal ID is used for DB operations.
 
 **Correction flows enabled**:
 
@@ -200,31 +221,36 @@ The LLM resolves "the auth work" or "that decision about Postgres" to the correc
 | "That action should be Mike's not John's" | `search_actions(...)` → `reassign_action(...)` |
 | "What did we agree on for the API design?" | `search_decisions(...)` → answer |
 
+**Ambiguous tool resolution** (multiple matches, unclear which): Jeeves asks "I found three actions matching 'auth work' — do you mean the API auth task assigned to Mike, the OAuth integration assigned to Sarah, or the session token work assigned to the platform team?" before calling any mutation.
+
 ### 5.2 Extraction Acknowledgment Loop
 
-When the background pipeline extracts a decision or action implicitly:
+When the background pipeline extracts a decision or action implicitly, Jeeves sends a lightweight acknowledgment. **No internal IDs appear in this message.**
 
 ```
-Jeeves: Noted — I've logged a decision: "we're moving to React" [DEC-43].
+Jeeves: Noted — I've logged a decision: "we're moving to React".
         Correct it  |  Dismiss
 ```
 
-- **Correct it** → opens a tool-calling respond turn pre-seeded with the decision context
-- **Dismiss** → marks `status: dismissed`, removed from all future retrieval
-- **No action** → decision stands; acknowledgment message expires after 60s (Wire SDK button timeout)
+- **Correct it** → opens a tool-calling respond turn pre-seeded with the decision context (Phase 3)
+- **Dismiss** → marks `status: dismissed` and sets `dismissedAt`; excluded from all future retrieval. Any channel member may dismiss. Dismiss is idempotent.
+- **No action** → decision stands; buttons expire after Wire SDK button timeout (~60s)
+
+`dismissedAt` is an audit field — it records when and implicitly who (last actor in channel) dismissed the item. `status: dismissed` drives retrieval exclusion. Both fields are set together on dismiss; they are not independent states.
 
 ### 5.3 Contradiction Resolution
 
-Replaces the current "One notes that... Shall I mark as superseded?" (unanswered question):
+Replaces the current "One notes that... Shall I mark as superseded?" (unanswered question). Resolution is declarative and immediate. **No internal IDs appear in the message.**
 
 ```
 Jeeves: I've updated the earlier decision on database choice — the current position
-        is PostgreSQL (DEC-43, Tuesday). The earlier MySQL decision (DEC-38) has
-        been marked superseded.
+        is PostgreSQL, agreed on Tuesday. The earlier MySQL decision has been
+        marked superseded.
         Undo
 ```
 
-Resolution is declarative and immediate. The user can undo if the merge was wrong.
+- **Undo** reverses the supersession: restores the earlier decision to `active` and removes the superseded link. Undo is available for 5 minutes after the resolution message (enforced server-side by comparing `AuditLog.timestamp`; the button becomes no-op after this window). Any channel member may undo — this is a deliberate team-level operation.
+- Resolution is atomic: both the supersession write and the audit log entry are committed in a single transaction. If the transaction fails, the message is not sent and no partial state is written.
 
 ### 5.4 Human-Readable References in All Responses
 
@@ -232,17 +258,127 @@ Entity IDs (`DEC-42`, `ACT-15`) are retained internally for audit trail and dedu
 
 ### 5.5 Correction Echoes Context
 
-When a correction is made, the response shows before/after:
+When a correction is made, the response shows before/after. **No internal IDs appear.**
 
 ```
-Current: "Decision DEC-38 revoked."
-New:     "Done — I've removed the earlier decision to use MySQL.
-          The current position is PostgreSQL (DEC-43, from last Tuesday)."
+Before: "Done — the auth work is now assigned to Sarah."
+After:  "Done — I've moved the auth work from Mike to Sarah."
+
+Before: "Decision revoked."
+After:  "Done — I've removed the earlier decision to use MySQL.
+         The current position is PostgreSQL, agreed last Tuesday."
 ```
 
 ---
 
-## 6. Schema Changes
+## 6. Component Boundaries
+
+Clear division of responsibility between new components. These boundaries must not be blurred during implementation.
+
+### mem0 — Write Path Only
+
+mem0 is called **only on write** (when a new decision or action is created or updated). It is not in the retrieval hot path.
+
+```
+Decision created → mem0.add(extractedFact, metadata)
+  └─ mem0 searches its store for contradictions
+  └─ If contradiction found: mem0 merges/supersedes + returns resolution metadata
+  └─ Jeeves sends declarative resolution message (§5.3)
+
+mem0 stores: extracted entities only — summaries, rationale, assignees, timestamps
+mem0 does NOT store: raw message text, Wire message IDs, sender identities
+```
+
+mem0's internal store is an **additional** persistence layer alongside Prisma/PostgreSQL. The Prisma schema remains the system of record for all structured data (decisions, actions, audit trail). mem0 is a conflict-detection index, not a replacement for the DB.
+
+### LlamaIndex — Read Path Only
+
+LlamaIndex is called **only on read** (when answering a question or resolving a tool search call).
+
+```
+User question → intent classifier → question intent
+  └─ LlamaIndex RouterQueryEngine selects retrieval paths
+  └─ QueryFusionRetriever runs selected paths + RRF merge
+  └─ Cross-encoder re-ranker reorders results
+  └─ Results passed to respond slot for answer generation
+
+LlamaIndex queries: Prisma/PostgreSQL (structured), pgvecto.rs (semantic), entity graph, summaries
+LlamaIndex does NOT: write to DB, call mem0, trigger extractions
+```
+
+**Integration point**: When mem0 supersedes a decision, the Prisma record is updated (`status: superseded`). LlamaIndex retrieval queries Prisma, so superseded decisions are automatically excluded from future retrieval without any LlamaIndex-specific integration needed.
+
+### Summary
+
+| Component | When called | Reads from | Writes to |
+|---|---|---|---|
+| mem0 | On every decision/action write | Its own internal store | Its own internal store |
+| LlamaIndex | On every question/search | Prisma DB + pgvecto.rs | Nothing |
+| Prisma | Always | PostgreSQL | PostgreSQL |
+| BullMQ | On every message + scheduled jobs | Redis | Redis |
+| cross-encoder | On every retrieval | LlamaIndex results | Nothing |
+
+---
+
+## 7. Failure Modes
+
+Required fallback behaviour for each new component. All failures must be logged with structured context; none may crash the bot process.
+
+| Scenario | Behaviour |
+|---|---|
+| Intent classifier times out (> 500ms) | Return `{ type: 'unknown' }` fallback; Jeeves responds "I'm not sure what you'd like — could you rephrase?" No retry. |
+| Tool search returns multiple ambiguous matches | Jeeves asks clarifying question; does not call mutation tool until user disambiguates. |
+| Mutation tool fails (DB error) | Jeeves responds "I wasn't able to make that change — please try again." AuditLog entry written with `outcome: failed`. |
+| mem0 contradiction check fails | Log error; proceed with insert as if no contradiction. Do not block the write. |
+| mem0 merge transaction fails | Log error; rollback to pre-merge state; do not send contradiction resolution message. |
+| BullMQ job fails after max retries | Move to dead-letter queue; log with full job context; do not retry indefinitely. |
+| BullMQ Redis unavailable on startup | Bot fails to start with a clear error. Redis is a hard dependency; no in-memory fallback. |
+| cross-encoder model unavailable | Fall back to unranked LlamaIndex results; log warning; do not fail the query. |
+| cross-encoder OOM / load failure | Same as above; alert via structured log. Pre-download model in Docker image to prevent cold-start failure (see §8). |
+| Zod validation retries exhausted (Vercel AI SDK) | Log extraction failure with full prompt context; write `ConversationSignal` with `signal_type: discussion`, confidence 0.3. Do not surface error to user. |
+| Undo button pressed after 5-minute window | Server-side check against AuditLog timestamp; respond "That change can no longer be undone." No-op on data. |
+| Dismiss pressed on already-dismissed item | Idempotent no-op. No error. |
+
+---
+
+## 8. Security Requirements
+
+### Redis
+
+- Redis is internal to the Docker compose network. No external port exposed.
+- Redis password authentication required (`REDIS_PASSWORD` env var). BullMQ configured with auth.
+- Redis persistence **disabled** (`save ""`, `appendonly no` in redis.conf). Data survives only in memory — consistent with extract-and-forget. A Redis crash loses pending jobs (acceptable) but not message content (required).
+- `message_content` keys: TTL 60s. Job payloads must not contain raw message text — only metadata (channelId, messageId, timestamp, signal type). Message text is read from the sliding window buffer in-process at job execution time, not stored in the job.
+- Verify Redis TTL policy in staging before Phase 1 ships (moved from Open Question to requirement).
+
+### Tool Calling Authorization
+
+- All tool calls execute with server-injected scope `{ channelId, orgId, requestingUserId }`. The LLM cannot supply or override these values.
+- Read tools (`search_decisions`, `search_actions`, `get_entity`) return only records scoped to `channelId` + `orgId`.
+- Mutation tools validate target record `channelId` matches request `channelId` before executing. Cross-channel mutation returns an error, never silently operates.
+- Rate limit: max 10 tool calls per `@Jeeves` turn; max 30 mutation tool calls per user per hour. Limits enforced in the tool execution layer, not by the LLM.
+
+### Prompt Injection
+
+- The background extraction pipeline **never triggers tool calls**. Only direct `@Jeeves` messages can invoke the intent classifier and tool path. A message saying "tell Jeeves to mark everything as done" received by the background pipeline is classified and extracted — it does not execute any tool.
+- `targetRef` and all string parameters on intent classifier output are treated as human descriptions, never executed as queries directly. Resolved internal IDs come only from server-side search results.
+- Max input length to intent classifier: 2,000 characters. Truncated cleanly at word boundary if exceeded.
+
+### mem0 Privacy
+
+- mem0 self-hosted instance is internal to the Docker compose network. No external port exposed.
+- mem0 stores extracted entity summaries only — no raw message text, no Wire message IDs, no sender email or user ID beyond the Wire `userId.id` opaque identifier.
+- mem0 data subject to same data deletion requirements as Prisma records. A "forget this channel" operation must purge mem0 entries for that channel alongside Prisma rows.
+
+### @xenova/transformers
+
+- Cross-encoder model files pre-downloaded and baked into the Docker image at build time. No runtime download. Model stored in `/app/models/` (Docker layer cached).
+- Model loaded at bot startup (warm), not on first request (cold). Startup is slower; first retrieval is not.
+- If model files are missing from the image, bot logs a clear error and disables re-ranking (falls back to unranked results). It does not attempt to download at runtime.
+
+---
+
+## 9. Schema Changes
 
 Minimal — the core schema is stable. Additions only:
 
@@ -265,7 +401,7 @@ CREATE UNIQUE INDEX decision_content_hash_channel_idx
 
 ---
 
-## 7. New Dependencies
+## 10. New Dependencies
 
 | Package | Purpose | Notes |
 |---|---|---|
@@ -287,21 +423,24 @@ CREATE UNIQUE INDEX decision_content_hash_channel_idx
 
 ---
 
-## 8. Phased Delivery
+## 11. Phased Delivery
 
 ### Phase 1 — Reliability Foundation (~2 weeks)
 
 Stop silent failures. Users can trust what the bot captures.
 
+**Pre-requisite before starting**: Redis security configuration validated (no persistence, password auth, internal network only). This was previously an open question — it is now a hard gate.
+
+- [ ] Add Redis compose service with persistence disabled, password auth, internal network only
 - [ ] Replace `LLMClientFactory` with Vercel AI SDK
-- [ ] Replace all `OpenAI*Adapter` JSON parsing with Zod `generateObject()`
-- [ ] Replace `InMemoryProcessingQueue` with BullMQ
+- [ ] Replace all `OpenAI*Adapter` JSON parsing with Zod `generateObject()` schemas
+- [ ] Instrument per-slot token usage (structured log per LLM call: slot, model, tokens_in, tokens_out)
+- [ ] Replace `InMemoryProcessingQueue` with BullMQ (job payloads contain no raw message text)
 - [ ] Replace `InProcessScheduler` with BullMQ delayed jobs + cron
-- [ ] Add Redis compose service (TTL policy for message content keys)
-- [ ] Replace pgvector with pgvecto.rs (docker image swap + migration test)
+- [ ] Replace pgvector extension with pgvecto.rs (docker image swap + smoke test HNSW index)
 - [ ] All existing tests pass
 
-**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts. Overdue action nudges don't skip if bot restarts near cron time.
+**User-visible**: Extraction stops silently dropping messages on local model JSON errors. Reminders survive bot restarts.
 
 ---
 
@@ -309,33 +448,41 @@ Stop silent failures. Users can trust what the bot captures.
 
 Stop the same fact appearing twice.
 
-- [ ] Add message flagging (Redis set, TTL 5m) on explicit command creation
-- [ ] Add write-time similarity check (≥0.85 cosine, 24h window) before decision/action insert
-- [ ] Add `contentHash` field + partial unique index to Decision and Action tables
-- [ ] Tier 2 extractor respects explicit message flags
-- [ ] Add `dismissedAt` and `mergedIntoId` fields + migration
-- [ ] Tests: explicit + implicit same message → single record
-- [ ] Tests: similar decisions in 24h window → merged, not duplicated
+- [ ] Add `contentHash`, `dismissedAt`, `mergedIntoId` fields to Decision and Action (Prisma migration)
+- [ ] Add partial unique index on `(channel_id, content_hash)` where `content_hash IS NOT NULL`
+- [ ] Add write-time similarity check (≥0.85 cosine, 24h window, serializable transaction) before decision/action insert
+- [ ] Add creation flagging (Redis set `jeeves:created:<channelId>`, TTL 30m) on all entity creation paths
+- [ ] Tier 2 extractor checks creation flag before writing decisions/actions
+- [ ] Tests: tool-call creation + background extraction from same message → single record
+- [ ] Tests: similar decisions in 24h window → merged not duplicated
+- [ ] Tests: race condition — concurrent inserts of identical content → unique index prevents duplicate
+
+**Note**: Creation flagging in this phase covers existing explicit commands (still present). When Phase 3 removes explicit commands and replaces with tool calls, the same flagging mechanism applies — no Phase 2 code changes needed for Phase 3.
 
 **User-visible**: "Why does Jeeves show the same decision three times?" is resolved.
 
 ---
 
-### Phase 3 — Natural Corrections (~3 weeks)
+### Phase 3 — Natural Language & Corrections (~3 weeks)
 
-Users fix mistakes in plain English.
+Users interact and correct in plain English. No structured commands.
 
-- [ ] Replace regex command cascade with intent-first LLM classifier (Stage 1 fast-path + Stage 2 LLM)
-- [ ] Assignee ambiguity → clarifying question, not hard error
-- [ ] Replace `ContradictionDetector` with mem0 (self-hosted)
-- [ ] Tool calling on respond path (Vercel AI SDK `generateText({ tools })`)
-- [ ] Implement extraction acknowledgment (button: Correct it | Dismiss)
-- [ ] Implement contradiction resolution message (declarative + Undo)
-- [ ] Wire button handler for Undo, Correct it, Dismiss
-- [ ] Tests: natural language corrections invoke correct tool
-- [ ] Tests: contradiction → single merged record + declarative message
+- [ ] Remove all regex command handlers except operational fast-path (`pause`, `resume`, `secure`)
+- [ ] Implement intent classifier (Vercel AI SDK `generateObject()` with Zod intent schema, `classify` slot)
+- [ ] Implement tool execution layer with server-injected channel/org/user scope and rate limiting
+- [ ] Implement all tools with input validation and AuditLog writes
+- [ ] Implement ambiguous tool resolution — clarifying question when search returns multiple matches
+- [ ] Replace `ContradictionDetector` with mem0 (self-hosted, internal network, Ollama-compatible endpoint confirmed)
+- [ ] Implement extraction acknowledgment message (Correct it | Dismiss buttons)
+- [ ] Implement contradiction resolution message (declarative + Undo, 5-minute window enforced via AuditLog)
+- [ ] Wire button handlers for Undo, Correct it, Dismiss (idempotent)
+- [ ] Tests: natural language intent classification covers all intent types
+- [ ] Tests: tool authorization — cross-channel mutation is rejected
+- [ ] Tests: rate limiting — 11th mutation tool call in an hour is rejected
+- [ ] Tests: contradiction → single merged record + declarative message (no unanswered question)
+- [ ] Tests: Undo after 5 minutes → no-op with message
 
-**User-visible**: "How do I fix a wrong decision?" → just say so in plain English.
+**User-visible**: No commands to learn. Corrections in plain English. Contradictions resolved automatically.
 
 ---
 
@@ -343,34 +490,37 @@ Users fix mistakes in plain English.
 
 Right answers, not first answers.
 
-- [ ] Replace `MultiPathRetrievalEngine` with LlamaIndex TS `QueryFusionRetriever`
-- [ ] Implement `RouterQueryEngine` for intent-driven path selection
-- [ ] Add `@xenova/transformers` cross-encoder re-ranker
-- [ ] Pass retrieval metadata (paths run, result count, threshold hits) into answer prompt
-- [ ] Transparent "I don't have this because..." responses when retrieval returns nothing
-- [ ] Tests: relevant result at rank 20 surfaces after re-ranking
-- [ ] Tests: empty retrieval → transparent response, not "I'm afraid I have no record"
+**Pre-requisite before starting**: `@xenova/transformers` model selected, size/memory validated, baked into Docker image.
 
-**User-visible**: Fewer "Jeeves got it wrong" moments; when it doesn't know, it says why.
+- [ ] Pre-download cross-encoder model into Docker image at build time; load at startup
+- [ ] Replace `MultiPathRetrievalEngine` with LlamaIndex TS `QueryFusionRetriever` (pgvecto.rs adapter)
+- [ ] Implement `RouterQueryEngine` for intent-driven path selection
+- [ ] Add cross-encoder re-ranker as post-retrieval step (fallback to unranked if model unavailable)
+- [ ] Pass retrieval metadata (paths run, result count, threshold hits) into answer prompt
+- [ ] Implement transparent "I don't have this because..." responses when retrieval returns nothing
+- [ ] Tests: relevant result at rank 20 surfaces after re-ranking
+- [ ] Tests: cross-encoder unavailable → unranked fallback, no query failure
+- [ ] Tests: empty retrieval → transparent response with reason
+
+**User-visible**: Fewer wrong answers. When Jeeves doesn't know something, it says why clearly.
 
 ---
 
 ### Phase 5 — Interaction Polish (~1 week)
 
-Feel like a competent assistant, not a command parser.
+Feel like a competent assistant.
 
-- [ ] Remove entity IDs from all bot-initiated messages; use human-readable labels
-- [ ] Correction responses echo before/after context
-- [ ] Remove dead "Any actions from this?" button (replace with tool-backed follow-up)
-- [ ] Decision logged → follow-up: "Want me to set a review date or assign follow-up actions?"
-- [ ] Action completed → follow-up: "Shall I note this in the next weekly summary?"
-- [ ] Reminder fired → follow-up: "Shall I set another for next week?"
+- [ ] Audit all bot-initiated messages — remove any remaining internal IDs
+- [ ] Correction responses echo before/after context in human-readable form
+- [ ] Remove dead "Any actions from this?" button; replace with tool-backed follow-up prompts
+- [ ] Contextual follow-ups: decision logged → offer review date or follow-up action; action completed → offer summary note; reminder fired → offer recurrence
+- [ ] End-to-end interaction tests covering full natural language flows
 
-**User-visible**: Responses feel conversational. Follow-up prompts are actionable.
+**User-visible**: Responses feel conversational. Nothing looks like a command interface.
 
 ---
 
-## 9. What Is Not In Scope for v3.0
+## 12. What Is Not In Scope for v3.0
 
 | Item | Reason |
 |---|---|
@@ -379,16 +529,16 @@ Feel like a competent assistant, not a command parser.
 | Horizontal scaling (multiple bot instances) | BullMQ makes this possible but it is a separate milestone |
 | Cloud vector DB (Qdrant, Weaviate) | pgvecto.rs is sufficient; migration deferred |
 | Streaming responses | Wire SDK does not support streaming message updates |
+| GDPR/right-to-forget full implementation | Requires cross-system purge (Prisma + mem0 + pgvecto.rs). Scoped to a dedicated compliance milestone. |
 
 ---
 
-## 10. Open Questions
+## 13. Open Questions
 
 | # | Question | Owner | Due |
 |---|---|---|---|
-| 1 | mem0 self-hosted: confirm it supports Ollama-compatible embed endpoints (not just OpenAI) | Engineering | Before Phase 3 start |
-| 2 | `@xenova/transformers` cross-encoder model size vs. on-prem memory budget | Engineering | Before Phase 4 start |
-| 3 | BullMQ Redis: confirm acceptable for on-prem deployments given extract-and-forget constraints (TTL policy sufficient?) | Security review | Before Phase 1 end |
-| 4 | LlamaIndex TS: confirm pgvecto.rs vector store adapter exists or assess build cost | Engineering | Before Phase 4 start |
-| 5 | Natural language classifier: latency budget — intent classification must complete in < 500ms on the classify slot model to avoid perceptible delay before Jeeves responds | Engineering | Before Phase 3 start |
-| 6 | Token monitoring: instrument per-slot token usage from day one of Phase 1 so deduplication savings vs. classification overhead can be measured empirically in Phase 2 | Engineering | Phase 1 |
+| 1 | mem0 self-hosted: confirm Ollama-compatible embed endpoint support (not just OpenAI API) | Engineering | **Before Phase 3 starts** |
+| 2 | `@xenova/transformers` cross-encoder: confirm model name, size, and memory footprint fit on-prem constraints | Engineering | **Before Phase 4 starts** |
+| 3 | LlamaIndex TS: confirm pgvecto.rs vector store adapter exists or scope build cost if not | Engineering | **Before Phase 4 starts** |
+| 4 | Intent classifier latency: measure classify slot response time on target hardware; must be < 500ms p95 | Engineering | **Before Phase 3 starts** |
+| 5 | Token monitoring results from Phase 1: do deduplication savings in Phase 2 offset classification overhead? Share findings before Phase 3 scope is locked. | Engineering | End of Phase 2 |
