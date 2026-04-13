@@ -11,6 +11,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Stub out the Wire SDK to avoid its WASM transitive dep in tests.
+      "wire-apps-js-sdk": path.resolve(__dirname, "./__mocks__/wire-apps-js-sdk.ts"),
     },
   },
 });

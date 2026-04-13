@@ -28,10 +28,14 @@ import type { ChannelConfigRepository } from "../../domain/repositories/ChannelC
 import type { WireOutboundPort } from "../../application/ports/WireOutboundPort";
 import type { SchedulerPort } from "../../application/ports/SchedulerPort";
 import type { Logger } from "../../application/ports/Logger";
-import type { ActionStatus } from "../../domain/entities/Action";
 import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { ProcessingQueuePort } from "../../application/ports/ProcessingQueuePort";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
+import type { IntentClassifierPort } from "../../application/ports/IntentClassifierPort";
+import type { IntentToolExecutor, ToolExecutionContext } from "../../application/services/IntentToolExecutor";
+import type { PendingActionStore } from "../pending/PendingActionStore";
+import type { DecisionRepository } from "../../domain/repositories/DecisionRepository";
+import type { ActionRepository } from "../../domain/repositories/ActionRepository";
 import { toChannelId } from "./channelId";
 
 const CONTEXT_WINDOW = 10;
@@ -88,6 +92,24 @@ export interface WireEventRouterDeps {
   orgId?: string;
   /** Configurable bot persona name. Defaults to "Jeeves". */
   botName?: string;
+  /**
+   * Phase 3: NL intent classifier.
+   * Optional — when absent, bot-addressed messages fall through to answerQuestion.
+   */
+  intentClassifier?: IntentClassifierPort;
+  /**
+   * Phase 3: intent-to-use-case executor (paired with intentClassifier).
+   */
+  intentExecutor?: IntentToolExecutor;
+  /**
+   * Phase 3: button-action pending state store.
+   * Used by onButtonActionReceived to handle undo/supersede button presses.
+   */
+  pendingActionStore?: PendingActionStore;
+  /** Phase 3: decision repository for undo operations in button handler. */
+  decisionRepo?: DecisionRepository;
+  /** Phase 3: action repository for undo operations in button handler. */
+  actionRepo?: ActionRepository;
 }
 
 export class WireEventRouter extends WireEventsHandler {
@@ -282,12 +304,17 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
+    // ── ACTIVE — determine addressing before pipeline enqueue ─────────────────
+    const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+    const isJeevesAddressed = botMentionedEarly || this.startsWithJeeves(lowered);
+    // Stripped text — used for content-preserving command matching below.
+    const commandText = isJeevesAddressed ? this.stripJeevesPrefix(text) : text;
+
     // ── ACTIVE — enqueue background pipeline job ──────────────────────────────
-    // Skip explicit command messages (decision:, action:) — those are persisted
-    // synchronously by the command handlers below.  Re-processing them through
-    // the extraction pipeline creates duplicate entities in the database.
-    const isExplicitCommand = /^(?:decision|action):\s/i.test(text.trim());
-    if (!isExplicitCommand && this.deps.processingQueue && this.deps.pipeline) {
+    // Skip when the bot is directly addressed: those messages are handled
+    // synchronously by the intent executor, which calls the same use-cases.
+    // Processing them through the pipeline would produce duplicate entities.
+    if (!isJeevesAddressed && this.deps.processingQueue && this.deps.pipeline) {
       log.info("Message: enqueued for pipeline processing");
       const orgId = this.deps.orgId ?? convId.domain;
       const job: MessageJob = {
@@ -308,18 +335,9 @@ export class WireEventRouter extends WireEventsHandler {
       });
     }
 
-    // ── ACTIVE — state-change commands ────────────────────────────────────────
-    const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
-
-    // When addressed via @mention or Jeeves-prefix, strip the bot name so
-    // downstream pattern matching works on the bare command regardless of prefix.
-    // e.g. "@Jeeves (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
-    const isJeevesAddressed = botMentionedEarly || this.startsWithJeeves(lowered);
-    const commandLowered = isJeevesAddressed ? this.stripJeevesPrefix(lowered) : lowered;
-    // Original-case stripped text — used for content-preserving matches (decision:, action:, remind, IDs).
-    const commandText = isJeevesAddressed ? this.stripJeevesPrefix(text) : text;
-
-    if (botMentionedEarly || this.startsWithJeeves(lowered)) {
+    // ── ACTIVE — bot-addressed handling ───────────────────────────────────────
+    if (isJeevesAddressed) {
+      // State-change fast-paths (exact-match; must not go through NL classifier).
       if (this.matchesPauseCommand(lowered)) {
         await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
         return;
@@ -332,6 +350,8 @@ export class WireEventRouter extends WireEventsHandler {
         await this.deps.wireOutbound.sendPlainText(convId, "I am already at your service.", { replyToMessageId: wireMessage.id });
         return;
       }
+
+      // Context field update (@Jeeves context: ...)
       const contextMatch = this.matchContextCommand(text);
       if (contextMatch) {
         await this.handleContextCommand(contextMatch, convId, channelId, sender, wireMessage.id, log);
@@ -365,223 +385,32 @@ export class WireEventRouter extends WireEventsHandler {
           return;
         }
       }
-    }
 
-    // ── Fast-path: ID-based mutations ─────────────────────────────────────────
+      // ── NL intent classifier path ──────────────────────────────────────────
+      if (this.deps.intentClassifier && this.deps.intentExecutor) {
+        const recentContext = this.deps.messageBuffer
+          .getLastN(convId, 3)
+          .map((m) => (m.senderName ? `${m.senderName}: ${m.text}` : m.text));
 
-    // cancel REM-NNNN
-    const cancelReminderMatch = commandText.match(/^cancel\s+(REM-\d+)\s*$/i);
-    if (cancelReminderMatch) {
-      await this.deps.cancelReminder.execute({
-        reminderId: cancelReminderMatch[1], conversationId: convId, actorId: sender, replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
+        const intent = await this.deps.intentClassifier.classify(commandText, recentContext);
+        log.debug("Intent classified", { type: intent.type });
 
-    // snooze REM-NNNN <expression>
-    const snoozeReminderMatch = commandText.match(/^snooze\s+(REM-\d+)\s+(.+)$/i);
-    if (snoozeReminderMatch) {
-      const config = await this.deps.conversationConfig.get(convId);
-      await this.deps.snoozeReminder.execute({
-        reminderId: snoozeReminderMatch[1], conversationId: convId, actorId: sender,
-        snoozeExpression: snoozeReminderMatch[2].trim(),
-        timezone: config?.timezone ?? "UTC",
-        replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    // ACT-NNNN reassign / assign ACT-NNNN to <name>
-    const actReassignMatch = commandText.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
-    if (actReassignMatch) {
-      const actionId = (actReassignMatch[1] ?? actReassignMatch[3])!;
-      const newAssignee = (actReassignMatch[2] ?? actReassignMatch[4])!.trim();
-      await this.deps.reassignAction.execute({
-        actionId, conversationId: convId, newAssigneeReference: newAssignee, actorId: sender, replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    // ACT-NNNN status or status ACT-NNNN
-    const actDoneMatch = commandText.match(/^(?:(ACT-\d+)\s+(done|cancelled|in[_\s]progress|close|complete|cancel)|(done|close|complete|cancel|cancelled|in[_\s]progress)\s+(ACT-\d+))\s*(.*)$/i);
-    if (actDoneMatch) {
-      const actionId = (actDoneMatch[1] ?? actDoneMatch[4])!;
-      const rawStatus = (actDoneMatch[2] ?? actDoneMatch[3])!.toLowerCase();
-      const note = actDoneMatch[5]?.trim() || undefined;
-      const normStatus = rawStatus === "close" || rawStatus === "complete" ? "done"
-        : rawStatus === "cancel" ? "cancelled"
-        : rawStatus.replace(/\s/, "_") as ActionStatus;
-      await this.deps.updateActionStatus.execute({
-        actionId, newStatus: normStatus as "done" | "cancelled" | "in_progress",
-        conversationId: convId, actorId: sender,
-        completionNote: note, replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    // ACT-NNNN due <expression>
-    const actDeadlineMatch = commandText.match(/^(ACT-\d+)\s+due\s+(.+)$/i);
-    if (actDeadlineMatch) {
-      const config = await this.deps.conversationConfig.get(convId);
-      await this.deps.updateActionDeadline.execute({
-        actionId: actDeadlineMatch[1], conversationId: convId, actorId: sender,
-        deadlineText: actDeadlineMatch[2].trim(), timezone: config?.timezone ?? "UTC",
-        replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    const revokeMatch = commandText.match(/^revoke\s+(DEC-\d+)\s*(.*)$/i);
-    if (revokeMatch) {
-      await this.deps.revokeDecision.execute({
-        conversationId: convId, actorId: sender,
-        decisionId: revokeMatch[1], reason: revokeMatch[2].trim() || undefined, replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    const supersedeMatch = commandText.match(/^decision:\s*(.+?)\s+supersedes\s+(DEC-\d+)\s*$/i);
-    if (supersedeMatch) {
-      await this.deps.supersedeDecision.execute({
-        conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
-        rawMessageId: wireMessage.id,
-        newSummary: supersedeMatch[1].trim(), supersedesDecisionId: supersedeMatch[2],
-        replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    // decision: <summary>
-    const decisionMatch = commandText.match(/^decision:\s*(.+)$/i);
-    if (decisionMatch) {
-      const contextMessages = this.deps.messageBuffer.getLastN(convId, CONTEXT_WINDOW);
-      const participantIds = contextMessages.length
-        ? [...new Map(contextMessages.map((m) => [m.senderId.id, m.senderId])).values()]
-        : [sender];
-      await this.deps.logDecision.execute({
-        conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
-        rawMessageId: wireMessage.id,
-        summary: decisionMatch[1].trim(), contextMessages, participantIds,
-      });
-      return;
-    }
-
-    // action: <description> [for <Name>] or action: <Name> to <description>
-    const actionMatch = commandText.match(/^action:\s*(.+)$/i);
-    if (actionMatch) {
-      const raw = actionMatch[1].trim();
-      const senderName = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id)?.name ?? "";
-      // "Name to <description>" pattern
-      const nameToMatch = raw.match(/^([A-Za-z][A-Za-z0-9 ]{0,30}?)\s+to\s+(.+)$/i);
-      // "<description> for <Name>" pattern
-      const forNameMatch = raw.match(/^(.+?)\s+for\s+([A-Za-z][A-Za-z0-9 ]{0,30})$/i);
-      let description = raw;
-      let assigneeReference: string | undefined;
-      if (nameToMatch) {
-        assigneeReference = nameToMatch[1].trim();
-        description = nameToMatch[2].trim();
-      } else if (forNameMatch) {
-        description = forNameMatch[1].trim();
-        assigneeReference = forNameMatch[2].trim();
+        if (intent.type !== "unknown") {
+          const config = await this.deps.conversationConfig.get(convId).catch(() => null);
+          const execCtx: ToolExecutionContext = {
+            conversationId: convId,
+            channelId,
+            sender,
+            senderName: senderDisplayName,
+            replyToMessageId: wireMessage.id,
+            members,
+            timezone: config?.timezone ?? "UTC",
+          };
+          const handled = await this.deps.intentExecutor.execute(intent, execCtx);
+          if (handled) return;
+        }
+        // "unknown" intent falls through to answerQuestion below.
       }
-      await this.deps.createActionFromExplicit.execute({
-        conversationId: convId, creatorId: sender, authorName: senderName,
-        rawMessageId: wireMessage.id,
-        description,
-        assigneeReference,
-      });
-      return;
-    }
-
-    // decisions about / search decisions <query>
-    const decisionsSearchMatch = commandText.match(/^(?:decisions?\s+(?:about|on|for|regarding)|search\s+decisions?)\s+(.+)$/i);
-    if (decisionsSearchMatch) {
-      await this.deps.searchDecisions.execute({
-        conversationId: convId, searchText: decisionsSearchMatch[1].trim(), replyToMessageId: wireMessage.id,
-      });
-      return;
-    }
-
-    // remind me <time-expression> to <description>
-    // Also handles: "make/set/create/add a reminder for <time> that/to <desc>"
-    const remindMatch = commandText.match(/^remind(?:\s+me)?\s+(.+?)\s+to\s+(.+)$/i)
-                     ?? commandText.match(/^reminder\s+(.+?)\s+to\s+(.+)$/i)
-                     ?? commandText.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+for\s+(.+?)\s+(?:that|to)\s+(.+)$/i)
-                     ?? commandText.match(/^(?:make|set|create|add)\s+(?:a\s+)?reminder\s+(.+?)\s+(?:that|to)\s+(.+)$/i);
-    if (remindMatch) {
-      const config = await this.deps.conversationConfig.get(convId);
-      const parsed = this.deps.dateTimeService.parse(remindMatch[1].trim(), { timezone: config?.timezone ?? "UTC" });
-      if (!parsed?.value) {
-        await this.deps.wireOutbound.sendPlainText(convId,
-          `I'm afraid I couldn't parse _"${remindMatch[1].trim()}"_ as a time. Try: _"remind me at 3pm to call John"_ or _"remind me in 2 hours to check the build"_.`,
-          { replyToMessageId: wireMessage.id });
-        return;
-      }
-      await this.deps.createReminder.execute({
-        conversationId: convId, authorId: sender, authorName: "",
-        rawMessageId: wireMessage.id,
-        description: remindMatch[2].trim(), targetId: sender, triggerAt: parsed.value,
-      });
-      return;
-    }
-
-    // Retired TASK-* fast-paths — redirect to actions
-    if (/^(?:TASK-\d+\s+.+|(?:done|close|complete|cancel|cancelled|in[_\s]progress)\s+TASK-\d+)/i.test(commandText)) {
-      await this.deps.wireOutbound.sendPlainText(convId,
-        "I'm afraid tasks have been consolidated into actions. Please use _ACT-NNNN_ identifiers going forward.",
-        { replyToMessageId: wireMessage.id });
-      return;
-    }
-
-    // List commands — use commandLowered so "@Jeeves (DEV) show reminders" routes
-    // the same as the bare plain-text equivalent.  Natural-language variants are
-    // matched here so they are handled regardless of whether @Jeeves was mentioned.
-    if (commandLowered === "my actions" || commandLowered === "my action"
-        || /^(?:what\s+are\s+(?:my|all\s+my)|show\s+(?:me\s+)?my|list\s+my)\s+(?:open\s+|current\s+)?actions?\s*[?]?$/i.test(commandLowered)
-        || /^(?:do\s+i\s+have\s+(?:any\s+)?(?:open\s+)?actions?)\s*[?]?$/i.test(commandLowered)) {
-      await this.deps.listMyActions.execute({ conversationId: convId, assigneeId: sender, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (commandLowered === "team actions" || commandLowered === "team action") {
-      await this.deps.listTeamActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (commandLowered === "overdue actions" || commandLowered === "overdue" || commandLowered === "overdue tasks") {
-      await this.deps.listOverdueActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (commandLowered === "my reminders" || commandLowered === "show reminders" || commandLowered === "list reminders" || commandLowered === "reminders"
-        || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+(?:we|i)\s+have)?[?]?$/i.test(commandLowered)
-        || /^(?:what\s+reminders\s+do\s+i\s+have)\s*[?]?$/i.test(commandLowered)
-        || /^(?:what|show|list)\s+(?:are\s+(?:the|our|my)\s+)?(?:open\s+|pending\s+)?reminders?\s*[?]?$/i.test(commandLowered)) {
-      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (commandLowered === "list decisions" || commandLowered === "decisions" || commandLowered === "decisions list") {
-      await this.deps.listDecisions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
-      return;
-    }
-
-    // Retired task commands — redirect to action equivalents
-    if (/^(my tasks?|list my tasks?)$/.test(commandLowered)) {
-      await this.deps.listMyActions.execute({ conversationId: convId, assigneeId: sender, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (/^(team tasks?|all tasks?|list team tasks?)$/.test(commandLowered)) {
-      await this.deps.listTeamActions.execute({ conversationId: convId, replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (/^(knowledge|list knowledge|my knowledge|show knowledge)$/.test(commandLowered)) {
-      await this.deps.wireOutbound.sendPlainText(convId,
-        "I'm afraid the knowledge base has been reorganised. Ask me a question directly and I shall do my best to assist.",
-        { replyToMessageId: wireMessage.id });
-      return;
-    }
-    if (/^(?:forget|update)\s+KB-\d+/i.test(commandText)) {
-      await this.deps.wireOutbound.sendPlainText(convId,
-        "I'm afraid knowledge entries are no longer managed that way. The knowledge system is being rebuilt — do ask me questions directly in the meantime.",
-        { replyToMessageId: wireMessage.id });
-      return;
     }
 
     // ── Awaiting channel purpose ──────────────────────────────────────────────
@@ -818,11 +647,13 @@ export class WireEventRouter extends WireEventsHandler {
     const convId = wireMessage.conversationId as QualifiedId;
     const senderId = wireMessage.sender as QualifiedId;
     const { buttonId, referenceMessageId } = wireMessage;
+    const channelId = toChannelId(convId);
     const log = this.deps.logger.child({ conversationId: convId.id, senderId: senderId.id, buttonId });
 
-    switch (buttonId) {
-      default:
-        log.warn("Unhandled button action", { buttonId });
+    try {
+      await this.handleButtonAction(buttonId, convId, channelId, senderId, log);
+    } catch (err) {
+      log.warn("Button action handler failed", { err: String(err) });
     }
 
     try {
@@ -831,6 +662,83 @@ export class WireEventRouter extends WireEventsHandler {
       );
     } catch {
       // manager not available in tests — safe to ignore
+    }
+  }
+
+  private async handleButtonAction(
+    buttonId: string,
+    convId: QualifiedId,
+    channelId: string,
+    actor: QualifiedId,
+    log: Logger,
+  ): Promise<void> {
+    const store = this.deps.pendingActionStore;
+    if (!store) return;
+
+    const pending = await store.get(buttonId).catch(() => null);
+    if (!pending) {
+      log.debug("No pending action for button (expired or unknown)", { buttonId });
+      return;
+    }
+
+    // Consume the button immediately (idempotency — second press is a no-op).
+    await store.del(buttonId).catch(() => {});
+
+    switch (pending.kind) {
+      case "undo_decision": {
+        const repo = this.deps.decisionRepo;
+        if (!repo) break;
+        const decision = await repo.findById(pending.entityId);
+        if (!decision) break;
+        await repo.update({ ...decision, deleted: true, updatedAt: new Date() });
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          `Understood — **${pending.entityId}** has been removed.`,
+        );
+        log.info("Decision undone via button", { decisionId: pending.entityId });
+        break;
+      }
+
+      case "undo_action": {
+        const repo = this.deps.actionRepo;
+        if (!repo) break;
+        const action = await repo.findById(pending.entityId);
+        if (!action) break;
+        await repo.update({ ...action, deleted: true, updatedAt: new Date() });
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          `Understood — **${pending.entityId}** has been removed.`,
+        );
+        log.info("Action undone via button", { actionId: pending.entityId });
+        break;
+      }
+
+      case "supersede_decision": {
+        const newId = pending.extraData?.newId;
+        if (!newId || !this.deps.decisionRepo) break;
+        const oldDecision = await this.deps.decisionRepo.findById(pending.entityId);
+        if (!oldDecision) break;
+        await this.deps.decisionRepo.update({
+          ...oldDecision,
+          status: "superseded",
+          supersededBy: newId,
+          updatedAt: new Date(),
+        });
+        await this.deps.wireOutbound.sendPlainText(
+          convId,
+          `Very good — **${pending.entityId}** has been marked as superseded by **${newId}**.`,
+        );
+        log.info("Decision superseded via button", { oldId: pending.entityId, newId });
+        break;
+      }
+
+      case "dismiss":
+        // User acknowledged without taking action — nothing to do.
+        log.debug("Button action dismissed", { buttonId, entityId: pending.entityId });
+        break;
+
+      default:
+        log.warn("Unknown pending action kind", { kind: (pending as { kind: string }).kind });
     }
   }
 

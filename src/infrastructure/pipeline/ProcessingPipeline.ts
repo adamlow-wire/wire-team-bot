@@ -30,6 +30,7 @@ import type { VercelAISlotFactory } from "../llm/VercelAISlotFactory";
 import type { Decision } from "../../domain/entities/Decision";
 import type { Action } from "../../domain/entities/Action";
 import type { DeduplicationService } from "../../application/services/DeduplicationService";
+import type { PendingActionStore } from "../pending/PendingActionStore";
 import { computeContentHash } from "./contentHash";
 
 export interface MessageJob {
@@ -66,6 +67,11 @@ export interface PipelineDeps {
   dedup: DeduplicationService;
   /** Cosine similarity threshold for write-time decision deduplication (default 0.85). */
   dedupSimilarityThreshold: number;
+  /**
+   * Phase 3: pending-action store for extraction ACK and contradiction buttons.
+   * Optional — when absent, no buttons are sent (plain text or silent).
+   */
+  pendingActionStore?: PendingActionStore;
 }
 
 export class ProcessingPipeline {
@@ -266,6 +272,9 @@ export class ProcessingPipeline {
         await this.deps.dedup.setCreationFlag(channelId, messageId, "decision");
         newDecisionIds.push(id);
 
+        // Phase 3: extraction ACK — send composite prompt with Undo button (fire-and-forget)
+        void this.sendExtractionAck(id, d.summary, "decision", conversationId, log);
+
         // Tier 3: embed decision (fire-and-forget; reuse pre-computed vector if available)
         void this.embedAndStore({
           text: d.summary,
@@ -373,6 +382,9 @@ export class ProcessingPipeline {
 
         await this.deps.dedup.setCreationFlag(channelId, messageId, "action");
 
+        // Phase 3: extraction ACK — send composite prompt with Undo button (fire-and-forget)
+        void this.sendExtractionAck(id, a.description, "action", conversationId, log);
+
         // Tier 3: embed action (fire-and-forget)
         void this.embedAndStore({
           text: a.description,
@@ -412,6 +424,49 @@ export class ProcessingPipeline {
   // ─────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Phase 3: send an extraction acknowledgement composite prompt with an Undo button.
+   * Only fires if pendingActionStore is configured; otherwise silent.
+   */
+  private async sendExtractionAck(
+    entityId: string,
+    summary: string,
+    entityType: "decision" | "action",
+    conversationId: QualifiedId,
+    log: Logger,
+  ): Promise<void> {
+    if (!this.deps.pendingActionStore) return;
+    try {
+      const undoButtonId = `jeeves:undo:${entityType}:${entityId}`;
+      const dismissButtonId = `jeeves:dismiss:${entityType}:${entityId}`;
+
+      await this.deps.pendingActionStore.set(undoButtonId, {
+        kind: entityType === "decision" ? "undo_decision" : "undo_action",
+        channelId: conversationId.id,
+        entityId,
+        entityType,
+      });
+      await this.deps.pendingActionStore.set(dismissButtonId, {
+        kind: "dismiss",
+        channelId: conversationId.id,
+        entityId,
+        entityType,
+      });
+
+      const label = entityType === "decision" ? "decision" : "action";
+      await this.deps.wireOutbound.sendCompositePrompt(
+        conversationId,
+        `I've noted a ${label}: _"${summary.slice(0, 100)}"_ (**${entityId}**)`,
+        [
+          { id: dismissButtonId, label: "✓ Noted" },
+          { id: undoButtonId, label: "↩ Undo" },
+        ],
+      );
+    } catch (err) {
+      log.warn("Pipeline: extraction ACK failed", { entityId, err: String(err) });
+    }
+  }
 
   private async embedAndStore(params: {
     text: string;
@@ -543,10 +598,38 @@ export class ProcessingPipeline {
       if (answer.startsWith("yes")) {
         log.info("Contradiction detected", { newDecisionId: decisionId, existingDecisionId: existing.id });
         try {
-          await this.deps.wireOutbound.sendPlainText(
-            conversationId,
-            `One notes that a recent decision ("${decision.summary.slice(0, 80)}") appears to differ from an earlier one ("${existing.summary.slice(0, 80)}"). Shall I mark the earlier decision as superseded, or is this a separate matter?`,
-          );
+          const supersedeButtonId = `jeeves:supersede:decision:${existing.id}`;
+          const dismissButtonId = `jeeves:dismiss:decision:${existing.id}`;
+
+          if (this.deps.pendingActionStore) {
+            await this.deps.pendingActionStore.set(supersedeButtonId, {
+              kind: "supersede_decision",
+              channelId,
+              entityId: existing.id,
+              entityType: "decision",
+              extraData: { newId: decisionId },
+            });
+            await this.deps.pendingActionStore.set(dismissButtonId, {
+              kind: "dismiss",
+              channelId,
+              entityId: existing.id,
+              entityType: "decision",
+            });
+
+            await this.deps.wireOutbound.sendCompositePrompt(
+              conversationId,
+              `One notes that a recent decision ("${decision.summary.slice(0, 80)}") appears to differ from an earlier one — **${existing.id}**: "${existing.summary.slice(0, 80)}". Shall I mark the earlier decision as superseded?`,
+              [
+                { id: supersedeButtonId, label: "Yes, supersede it" },
+                { id: dismissButtonId, label: "No, keep both" },
+              ],
+            );
+          } else {
+            await this.deps.wireOutbound.sendPlainText(
+              conversationId,
+              `One notes that a recent decision ("${decision.summary.slice(0, 80)}") appears to differ from an earlier one — **${existing.id}**: "${existing.summary.slice(0, 80)}". Shall I mark the earlier decision as superseded, or is this a separate matter?`,
+            );
+          }
         } catch (err) {
           log.warn("Failed to send contradiction notice", { err: String(err) });
         }
