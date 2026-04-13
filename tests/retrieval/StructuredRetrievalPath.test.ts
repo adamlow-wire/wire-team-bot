@@ -82,15 +82,21 @@ describe("StructuredRetrievalPath", () => {
     expect(results.some((r) => r.type === "action")).toBe(true);
   });
 
-  it("passes searchText derived from entities in plan", async () => {
+  it("queries without text filter when entities present (LLM ranks relevance)", async () => {
     const decisionRepo = { query: vi.fn().mockResolvedValue([]), findById: vi.fn() };
     const actionRepo = { query: vi.fn().mockResolvedValue([]), findById: vi.fn() };
     const path = new StructuredRetrievalPath(decisionRepo as never, actionRepo as never);
 
     await path.retrieve({ ...basePlan, entities: ["Alice", "ProjectX"] }, scope);
 
+    // Entity keywords are NOT passed as a DB text filter — doing so causes false
+    // negatives when extracted entities don't literally appear in summaries.
+    // All active decisions are fetched and the LLM determines relevance.
     expect(decisionRepo.query).toHaveBeenCalledWith(
-      expect.objectContaining({ searchText: "Alice ProjectX" }),
+      expect.objectContaining({ conversationId: { id: "conv-1", domain: "wire.com" } }),
+    );
+    expect(decisionRepo.query).toHaveBeenCalledWith(
+      expect.not.objectContaining({ searchText: expect.anything() }),
     );
   });
 

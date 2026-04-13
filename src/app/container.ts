@@ -65,6 +65,9 @@ import { MultiPathRetrievalEngine } from "../infrastructure/retrieval/MultiPathR
 import { PrismaConversationSummaryRepository } from "../infrastructure/persistence/postgres/PrismaConversationSummaryRepository";
 import { SeedLoader } from "../infrastructure/seed/SeedLoader";
 import { RedisEmbeddingDeduplicationService } from "../application/services/DeduplicationService";
+import { PendingActionStore } from "../infrastructure/pending/PendingActionStore";
+import { VercelAIIntentClassifierAdapter } from "../infrastructure/llm/VercelAIIntentClassifierAdapter";
+import { IntentToolExecutor } from "../application/services/IntentToolExecutor";
 
 export interface Container {
   getWireClient(): Promise<WireAppSdk>;
@@ -111,6 +114,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const signalRepo = new PrismaConversationSignalRepository();
 
   const dedup = new RedisEmbeddingDeduplicationService(redis, embeddingRepo, decisionsRepo);
+  const pendingActionStore = new PendingActionStore(redis);
 
   const pipeline = new ProcessingPipeline({
     classifier,
@@ -130,6 +134,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     contradictionThreshold: config.llm.jeeves.contradictionThreshold,
     dedup,
     dedupSimilarityThreshold: config.llm.jeeves.dedupSimilarityThreshold,
+    pendingActionStore,
   });
 
   const processingQueue = new BullMQProcessingQueue<MessageJob>(redis.options, logger);
@@ -209,6 +214,34 @@ export function createContainer(config: Config, logger: Logger): Container {
     auditLogRepo,
     logger,
   );
+
+  // ── Phase 3: NL intent classifier + tool executor ───────────────────────
+  const intentClassifier = new VercelAIIntentClassifierAdapter(llmFactory);
+  const intentExecutor = new IntentToolExecutor({
+    logDecision,
+    createActionFromExplicit,
+    updateActionStatus,
+    reassignAction,
+    updateActionDeadline,
+    listMyActions,
+    listTeamActions,
+    listOverdueActions,
+    searchDecisions,
+    listDecisions,
+    supersedeDecision,
+    revokeDecision,
+    createReminder,
+    listMyReminders,
+    cancelReminder,
+    snoozeReminder,
+    wireOutbound,
+    actionRepo: actionsRepo,
+    decisionRepo: decisionsRepo,
+    reminderRepo: remindersRepo,
+    conversationConfig: conversationConfigRepo,
+    dateTimeService,
+    messageBuffer,
+  });
 
   // Every branch uses .catch() so a single job failure never becomes an unhandled
   // rejection that crashes the process.
@@ -293,6 +326,11 @@ export function createContainer(config: Config, logger: Logger): Container {
     pipeline,
     orgId: config.wire.userDomain,
     botName,
+    intentClassifier,
+    intentExecutor,
+    pendingActionStore,
+    decisionRepo: decisionsRepo,
+    actionRepo: actionsRepo,
   });
   handlerRef.current = router as unknown as HandlerManagerRef["current"];
 
