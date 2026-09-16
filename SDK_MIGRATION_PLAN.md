@@ -105,6 +105,8 @@ Staging: `docker-compose.staging.yml` + `npm run staging:up` runs the bot agains
 - **Verified in `node:22-trixie-slim`:** SDK loads via CommonJS `require()`, full image builds (862 MB), runner stage has the Prisma client and no devDependencies, config validation fails fast on a malformed `WIRE_SDK_CRYPTO_KEY`.
 - **Unit tests:** 141 pass, 0 fail, in the container. 15 tests inherited from `main` had drifted from deliberate code changes (`extract()` gained a `knownActions` parameter, `ExtractResult` gained `completions`, query analysis always injects a structured path, structured retrieval dropped the entity text filter); the tests were brought in line with the code.
 - **Lint:** 0 problems. The 22 warnings inherited from `main` were fixed: three were real layer violations (`WindowMessage` now lives in the extraction port, extraction result types in `src/domain/entities/Extraction.ts`, `channelId` helpers in `src/domain/ids/channelId.ts`); the rest were unused imports.
+- **Offline CLI harness (container + real Postgres, no LLM, no Wire):** `decision:`, `list decisions`, `action: … for Bob`, `my actions`, `team actions`, `remind me in 2 hours …`, `my reminders`, `@Jeeves pause` / `resume` all behave correctly with the SDK module loaded but never connected. Only warnings are `Classifier LLM call failed` (no model endpoint on the dev box), which the pipeline is designed to absorb.
+- **Not runnable on this box:** the LLM-judged e2e suite and the simulation need a model endpoint (`JEEVES_LLM_BASE_URL`); run them in CI or from a host with Ollama.
 - **Not exercised yet:** anything requiring a real app token (`WireAppSdk.create`, hydration, message send/receive). That's cutover step 4 onwards.
 
 ## 8. Risks
