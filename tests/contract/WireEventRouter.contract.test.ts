@@ -26,6 +26,33 @@ function customMention(command: string) {
   ] };
 }
 
+it.each([
+  "ACT-0002 reassign to @Adam (Test)",
+  "`ACT-0002 reassign to` @Adam (Test)",
+  "`ACT-0002` reassign to @Adam (Test)",
+  "`ACT-0002 reassign to @Adam (Test)`",
+])("routes a pasted reassignment with a person mention: %s", async text => {
+  for (const addressed of [false, true]) {
+    const enqueue = vi.fn();
+    const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
+    const message = addressed ? customMention(text) : { ...makeMessage(text), mentions: [] };
+    message.mentions.push({ userId: { id: "target", domain: "wire.com" }, offset: message.text.indexOf("@Adam"), length: "@Adam (Test)".length });
+    await new WireEventRouter(deps).onTextMessageReceived(message);
+    expect(deps.reassignAction.execute).toHaveBeenCalledWith(expect.objectContaining({
+      actionId: "ACT-0002", newAssigneeReference: "@Adam (Test)", conversationId: convId,
+    }));
+    expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  }
+});
+
+it.each(["Here is an example: `ACT-0002 done`", "```ACT-0002 done```", "`ACT-0002 done\nACT-0003 done`"])("does not execute quoted examples or multiple commands: %s", async text => {
+  const deps = makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(text));
+  expect(deps.updateActionStatus.execute).not.toHaveBeenCalled();
+  expect(deps.reassignAction.execute).not.toHaveBeenCalled();
+});
+
 it("routes a real mention with an arbitrary display name to the caller's action list", async () => {
   const deps = makeDeps();
   const caller = { id: "second-user", domain: "wire.com" };
@@ -52,6 +79,20 @@ it("passes the actual caller and cleaned question after a custom bot mention", a
   expect(deps.answerQuestion.execute).toHaveBeenCalledWith(expect.objectContaining({
     question: "What am I responsible for?", requester: { ...caller, name: "Second User" },
   }));
+});
+
+it("routes an action status question to record retrieval, not channel status", async () => {
+  const deps = makeDeps({ statusCommand: { execute: vi.fn() } as never });
+  await new WireEventRouter(deps).onTextMessageReceived(customMention("What is the status and owner of ACT-0002?"));
+  expect(deps.statusCommand!.execute).not.toHaveBeenCalled();
+  expect(deps.answerQuestion.execute).toHaveBeenCalledWith(expect.objectContaining({ question: "What is the status and owner of ACT-0002?" }));
+});
+
+it.each(["status", "channel status?"])("retains the explicit channel command %s", async command => {
+  const deps = makeDeps({ statusCommand: { execute: vi.fn() } as never });
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(command));
+  expect(deps.statusCommand!.execute).toHaveBeenCalledOnce();
+  expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
 });
 
 it.each(["foreign", "invalid", "nonleading"])("does not strip a %s mention into a command", async variant => {

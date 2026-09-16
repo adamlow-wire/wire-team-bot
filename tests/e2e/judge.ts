@@ -43,7 +43,7 @@ export async function judge(botResponse: string, assertion: string): Promise<Jud
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Bot response:\n${botResponse}\n\nAssertion: ${assertion}`,
+        content: `Evaluation time (UTC): ${new Date().toISOString()}\nUse this date when evaluating relative deadlines.\n\nBot response:\n${botResponse}\n\nAssertion: ${assertion}`,
       },
     ],
     max_tokens: 150,

@@ -337,6 +337,17 @@ export const scenarios: Scenario[] = [
   },
 
   {
+    id: "TC-ACT-09",
+    description: "Pasted inline-code action commands reassign, change deadline and complete",
+    steps: [
+      { input: "action: review the formatting smoke checklist", captureAs: "ACT" },
+      { input: "@Wire Team Bot `{{ACT}} reassign to` @Bob", assert: "The action {{ACT}} was reassigned to Bob. The bot does not claim mentions cannot be used or that it can only read records." },
+      { input: "`{{ACT}} due tomorrow`", assert: "The deadline for {{ACT}} was updated to tomorrow." },
+      { input: "`{{ACT}}` done", assert: "The action {{ACT}} was marked done or completed." },
+      { input: "Bob: @Wire Team Bot What is the status and owner of {{ACT}}?", assert: "Action {{ACT}} belongs to Bob and is done or completed." },
+    ],
+  },
+  {
     id: "TC-ACT-07",
     description: "Action with owner and due date — both present in response",
     steps: [

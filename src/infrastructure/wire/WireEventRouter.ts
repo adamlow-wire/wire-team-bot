@@ -239,7 +239,10 @@ export class WireEventRouter extends WireEventsHandler {
     const channelState = this.channelStateCache.get(channelId) ?? "active";
     const botMentionedEarly = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
     const isBotAddressed = botMentionedEarly || this.startsWithBotName(lowered);
-    const commandText = isBotAddressed ? this.stripAddressedBotPrefix(text, wireMessage) : text.trim();
+    const addressedText = isBotAddressed ? this.stripAddressedBotPrefix(text, wireMessage) : text.trim();
+    // Pasted command examples may retain inline-code delimiters around the ID,
+    // command prefix, or whole command. Do not unwrap prose, fences or multiline code.
+    const commandText = addressedText.replace(/^`(ACT-\d+\b[^`\r\n]*)`(?=\s|$)/i, "$1");
     const commandLowered = commandText.toLowerCase();
 
     const cachedMembers = this.deps.memberCache.getMembers(convId);
@@ -309,7 +312,7 @@ export class WireEventRouter extends WireEventsHandler {
       }
 
       // @Wire Team Bot status
-      if (/\bstatus\b/i.test(commandLowered) && this.deps.statusCommand) {
+      if (/^(?:channel\s+)?status[?.!]?$/i.test(commandLowered) && this.deps.statusCommand) {
         await this.deps.statusCommand.execute({
           conversationId: convId,
           channelId,
