@@ -1,6 +1,6 @@
 {
   "date": "2026-09-16",
-  "runtimeCommit": "82fe04b",
+  "runtimeCommit": "2ba7a1f",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,31 +49,32 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 213,
+      "passed": 222,
       "integrationTests": 6,
-      "testFiles": 36,
-      "validationCommit": "82fe04b"
+      "testFiles": 38,
+      "validationCommit": "2ba7a1f"
     },
     "realModelE2E": {
-      "passed": 53,
+      "passed": 54,
       "failed": 2,
       "report": "e2e-report.json",
-      "commit": "82fe04b",
+      "commit": "2ba7a1f",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
         "TC-ACT-07: correct end-of-month response rejected by model judge"
       ],
       "execution": "Immutable release image with read-only test harness and external ts-node tooling",
-      "harnessCommit": "82fe04b"
+      "harnessCommit": "2ba7a1f"
     }
   },
   "image": {
-    "tag": "wire-team-bot:v3-rc-82fe04b",
-    "id": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
-    "commit": "82fe04b",
+    "tag": "wire-team-bot:v3-rc-2ba7a1f",
+    "id": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
+    "commit": "2ba7a1f",
     "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
     "cliSmoke": [
-      "full unchanged real-model e2e suite"
+      "full real-model suite with original assertions retained and added current-caller regression",
+      "20-event stored-record evaluation and 11 known/unknown questions"
     ],
     "stagingStartup": "passed; member cache hydrated; no SDK errors observed during startup"
   },
@@ -88,8 +89,8 @@
       "diagnosticOccurrences": 0
     },
     "humanReview": "pending",
-    "measuredCommit": "bde0d0a",
-    "execution": "bde0d0a release image CLI with synthetic evaluation harness mounted; isolated DB",
+    "measuredCommit": "2ba7a1f",
+    "execution": "Immutable 2ba7a1f release image CLI with synthetic evaluation harness mounted; isolated DB",
     "decisions": {
       "correct": 10,
       "captured": 10,
@@ -100,15 +101,14 @@
       "captured": 10,
       "expected": 10
     },
-    "medianReplyEventMs": 6049,
-    "slowestReplyEventMs": 8636,
-    "medianKnownQuestionMs": 7985.0,
+    "medianReplyEventMs": 6389,
+    "slowestReplyEventMs": 9392,
+    "medianKnownQuestionMs": 7557.0,
     "unsolicitedMessages": 0,
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
-    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
-    "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
+    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: assignment persistence passed; custom-mention routing and caller-identity repair under validation",
+  "wireSmoke": "in progress: stored assignment passed; caller routing repair validated automatically; Wire retest pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -126,22 +126,23 @@
     "operator": "@adamhuman",
     "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
     "secondParticipant": "@adamlow_wire",
-    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check",
+    "membershipEvidence": "Scoped stored ACT-0002 owner and creator map to the two operator accounts; screenshot confirms Adam Low sent the subsequent question.",
     "displayedBotName": "AI Team Bot (adamlow, staging)",
     "displayNameAcceptance": "pending change to Wire Team Bot"
   },
   "stagingActivation": {
-    "startedAt": "2026-09-16T16:42:04.492764984Z",
-    "image": "wire-team-bot:v3-rc-82fe04b",
-    "imageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
-    "previousImageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
+    "startedAt": "2026-09-16T17:04:19.746615702Z",
+    "image": "wire-team-bot:v3-rc-2ba7a1f",
+    "imageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
+    "previousImageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
     "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-owner-backup-QFDF2p",
+    "backupDirectory": "/tmp/wire-v3-caller-backup-tbxaea25",
     "backupReadChecks": "passed",
     "pendingRemindersBeforeSwitch": 0,
-    "memberCacheHydratedConversations": 1,
+    "memberCacheHydration": "passed",
     "sdkErrorDiagnostics": 0,
-    "transportRoundTrip": "pending operator action test after this restart"
+    "containerRestarts": 0,
+    "transportRoundTrip": "pending operator repeat on this image"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -167,6 +168,11 @@
       "deadline": "2026-09-18T12:00:00.000Z",
       "auditEntries": 1,
       "evidence": "Operator screenshot plus scoped DB inspection; my-actions answer addressed the previous speaker as you"
+    },
+    "callerIdentityRepair": {
+      "runtimeCommit": "2ba7a1f",
+      "automated": "passed: qualified mention routing contracts and real-model same-conversation caller switch",
+      "wire": "pending operator repeat after staging update"
     }
   },
   "previousImageSmoke": {
@@ -198,19 +204,34 @@
     "commit": "82fe04b",
     "result": "passed: correct stored owner/deadline, real-model owner recall, unknown target creates no action"
   },
-  "previousStagingActivation": {
-    "startedAt": "2026-09-16T16:11:50.582516172Z",
-    "image": "wire-team-bot:v3-rc-bde0d0a",
-    "imageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
-    "previousImageId": "sha256:2a4568a601435903a131c210ab5b48bfbd9e58c16d3bea741c726b39a9492879",
-    "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-staging-backup-kcqACp",
-    "backupReadChecks": "passed",
-    "pendingRemindersBeforeSwitch": 0,
-    "joinedConversationsBeforeSwitch": 1,
-    "memberCacheHydratedConversations": 1,
-    "applicationStartup": "Wire client connected, listening for events",
-    "sdkErrorDiagnostics": 1,
-    "transportRoundTrip": "passed: user screenshot of actual mention status request and ACTIVE reply"
-  }
+  "stagingActivationHistory": [
+    {
+      "startedAt": "2026-09-16T16:11:50.582516172Z",
+      "image": "wire-team-bot:v3-rc-bde0d0a",
+      "imageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
+      "previousImageId": "sha256:2a4568a601435903a131c210ab5b48bfbd9e58c16d3bea741c726b39a9492879",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-staging-backup-kcqACp",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "joinedConversationsBeforeSwitch": 1,
+      "memberCacheHydratedConversations": 1,
+      "applicationStartup": "Wire client connected, listening for events",
+      "sdkErrorDiagnostics": 1,
+      "transportRoundTrip": "passed: user screenshot of actual mention status request and ACTIVE reply"
+    },
+    {
+      "startedAt": "2026-09-16T16:42:04.492764984Z",
+      "image": "wire-team-bot:v3-rc-82fe04b",
+      "imageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+      "previousImageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-owner-backup-QFDF2p",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "memberCacheHydratedConversations": 1,
+      "sdkErrorDiagnostics": 0,
+      "transportRoundTrip": "passed on 82fe04b: operator screenshot of handle assignment and subsequent reply; caller-specific response failed"
+    }
+  ]
 }

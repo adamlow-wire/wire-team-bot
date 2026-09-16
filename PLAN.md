@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-16. Release runtime: `82fe04b` (baseline `e35428b`).
+Updated: 2026-09-16. Release runtime: `2ba7a1f` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -175,7 +175,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 53/55, two adjudications and Wire acceptance pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 54/56, two adjudications and Wire acceptance pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -290,22 +290,24 @@ Provisional thresholds for this small pilot (not production SLAs):
 
 ### Candidate disposition — 2026-09-16
 
-**Implemented and packaged; not yet pilot ready.** Runtime `82fe04b` is available locally as
-`wire-team-bot:v3-rc-82fe04b`. This image is now active on the designated staging backend;
+**Implemented and packaged; not yet pilot ready.** Runtime `2ba7a1f` is available locally as
+`wire-team-bot:v3-rc-2ba7a1f`. This image is now active on the designated staging backend;
 user-driven Wire smoke checks are underway. No production deployment was performed.
 Human review and designated Wire acceptance still prevent closing P0–P2.
 [Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
 and check boundaries without credentials.
 
-- Fresh final build, `npx tsc --noEmit` and lint pass. **213 tests pass** in 36 files, including
+- Fresh final build, `npx tsc --noEmit` and lint pass. **222 tests pass** in 38 files, including
   six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
   image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
-- Full real-model e2e: **53/55**, with original assertions retained in
+- Full real-model e2e: **54/56**, with original assertions retained in
   [e2e-report.json](tests/acceptance/e2e-report.json). The full suite was rerun against immutable
-  image `82fe04b`, retaining its compiled runtime and production dependencies; only the test
+  image `2ba7a1f`, retaining its compiled runtime and production dependencies; only the test
   harness/tooling was mounted read-only. This supersedes the earlier working-build run and
-  reproduces the same two failures. Final-image capture/recall and restart checks also pass.
-- Final-image stored-record evaluation at `bde0d0a`: **20/20 correct unique captures out of
+  reproduces the same two failures. The added same-conversation caller-switch regression passes;
+  successful replies are also retained for inspection. Final-image capture/recall passes;
+  earlier CLI restart evidence remains attributed below.
+- Final-image stored-record evaluation at `2ba7a1f`: **20/20 correct unique captures out of
   20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
   precision/recall **100%/100%**, versus baseline 100%/50% (10/10/20). Half the expected events
   are passive; scoring queries all persisted records after drain and matches facts/source/owner.
@@ -314,7 +316,7 @@ and check boundaries without credentials.
   not human-approved extraction quality.
 - Assistant inspection finds all ten known answers match the expected facts and the unknown
   budget question correctly reports no record. **Human correctness/usefulness review pending.**
-  Median reply-event completion: **6.049 s**; known-question median **7.985 s**; slowest **8.636 s**;
+  Median reply-event completion: **6.389 s**; known-question median **7.557 s**; slowest **9.392 s**;
   unsolicited messages **0**. Two malformed query-analysis responses fell back to the default
   retrieval plan; answer outputs remain in the report. Timings include queue drain.
 - `TC-PIPE-06` expects an Alice-owned action from “we need to update the API documentation”.
@@ -353,8 +355,8 @@ designated conversation was present and no reminders were pending before the swi
 match the accepted synthetic configuration; embeddings are off. Startup hydrated one conversation
 and reported the Wire client listening, with one content-free SDK error still unexplained.
 The operator's screenshot confirms a mentioned `status` request received a channel-status reply
-showing ACTIVE: initial receive/decrypt/reply and mention routing pass. The container remains on
-the pinned image with zero restarts; SDK error count has not increased from startup. This does
+showing ACTIVE: initial receive/decrypt/reply and mention routing pass. At that check the container
+had zero restarts; SDK error count had not increased from startup. This does
 not yet verify reminders or a subsequent reconnect. The next operator screenshot confirms
 `DEC-0002` creation and correct model-backed recall of Postgres and its transactions rationale.
 Scoped database inspection confirms Adam (Human) attribution, empty context and one audit entry. The registered
@@ -375,14 +377,34 @@ type-check, lint and 213 tests pass. Full unchanged real-model suite on the immu
 remains 53/55 with the same two documented discrepancies. The isolated
 [owner smoke report](tests/acceptance/owner-smoke-report.json) verifies the stored Bob owner and
 Friday deadline, model recall, and no write for an unknown handle. Pipeline/model prompts did not
-change; the 20-event quality sample above remains explicitly measured at `bde0d0a`.
+change in that fix; its quality evidence was measured at `bde0d0a`. The current sample above
+was rerun on `2ba7a1f` after the caller prompt changed.
 
-Staging now runs `wire-team-bot:v3-rc-82fe04b`, with the same database and crypto volume. Fresh
+That update activated `wire-team-bot:v3-rc-82fe04b`, with the same database and crypto volume. Fresh
 snapshots and its override are in `/tmp/wire-v3-owner-backup-QFDF2p/`; backup readability passed.
-Startup hydrated one conversation and logged no SDK errors. The operator's live handle-assignment
-and post-restart round trip remain pending. To roll back this update to the previous candidate:
+Startup hydrated one conversation and logged no SDK errors. The subsequent operator screenshot
+confirms a post-restart round trip and correct persisted assignment for `ACT-0002`: owner
+@adamlow_wire, creator @adamhuman, deadline `2026-09-18T12:00:00.000Z`, one audit entry.
+The `my actions` reply incorrectly addressed the previous speaker; caller-specific acceptance
+failed and requires the repair below. To roll back this update to the previous candidate:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-staging-backup-kcqACp/candidate.override.yml up -d --no-deps --no-build jeeves`.
 Keep current volumes; no database or crypto reset is required.
+
+Caller fix and staging update (2026-09-16 17:04 UTC): `2ba7a1f` routes a leading actual Wire
+mention by qualified identity and its bounded UTF-16 span, independent of the registered display
+name. Both model stages receive the current requester explicitly. Contract tests cover custom
+labels, Unicode, qualified identity, invalid spans and privacy controls; the real-model caller
+switch verifies Alice and Bob receive their own assignments in one conversation. Build/type-check/
+lint and 222 tests pass; full image regression is 54/56 with the same two retained discrepancies.
+The 20-event stored-record and 11-question evaluation was repeated on this image as reported above.
+
+Staging now runs `wire-team-bot:v3-rc-2ba7a1f`; database and crypto volumes were preserved.
+Fresh readable snapshots and override: `/tmp/wire-v3-caller-backup-tbxaea25/`. Startup connected,
+hydrated the member cache and reported zero SDK errors and zero container restarts. The operator
+must repeat mentioned `my actions` and `What am I responsible for here?` as @adamlow_wire;
+`ACT-0002` already exists and must not be recreated. Wire caller acceptance remains pending.
+Rollback to the preceding image while keeping current volumes:
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-owner-backup-QFDF2p/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
 Remaining entry checks, in order:
 
@@ -428,6 +450,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Real-member assignment parser gap | Before testing the supplied handle, four mocked contract cases reproduced dropped @handle/parenthesised-name assignees and missing handle hydration. Explicit target parsing now preserves these references and member profiles retain handles across restart/join/refresh; qualified resolution rejects unknown or ambiguous targets. | Validate, rebuild image and resume Wire assignment check |
 | 2026-09-16 | Assignment fix validated and staged | `82fe04b`: 213 tests, build/type-check/lint pass; real-model owner smoke verifies persisted Bob attribution and unknown-owner refusal. Immutable-image full regression 53/55, same two retained failures. Staging updated with fresh backups and existing volumes; startup has zero SDK errors. | Operator handle assignment and post-restart Wire check |
 | 2026-09-16 | Wire handle assignment and caller confusion | Operator screenshot confirms ACT-0002 was assigned to @adamlow_wire with Friday deadline; scoped DB confirms qualified Adam Low owner, Adam (Human) creator and one audit entry. Mentioned `my actions` incorrectly went through Q&A and addressed the prior speaker as you. Reproduced custom-display-name mention parsing failure in contract tests; repair uses bounded UTF-16 mention spans and explicitly passes the current caller to query analysis/answering. | Validate and stage the repair, then repeat caller-specific list and privacy controls on Wire |
+| 2026-09-16 | Caller fix validated and staged | `2ba7a1f`: 222 tests and build/type-check/lint pass; immutable-image real-model regression 54/56, same two discrepancies; caller-switch answers inspected. Fresh stored-record evaluation 20/20/20, zero duplicates/markers, human review pending. Staging updated with readable backups and preserved volumes; connected without SDK errors. | Repeat caller-specific list and Q&A as @adamlow_wire, then continue remaining Wire journeys |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
