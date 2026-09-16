@@ -298,6 +298,55 @@ describe("WireEventRouter contract: general behaviour", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Configurable bot name
+// ─────────────────────────────────────────────────────────────────────────────
+describe("WireEventRouter contract: configurable bot name", () => {
+  it("defaults to Jeeves for prefix addressing", async () => {
+    const deps = makeDeps();
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("@Jeeves pause"));
+    expect(deps.channelConfig.setState).not.toHaveBeenCalled(); // no existing config row, but the reply proves routing
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId, expect.stringContaining("step out"), expect.anything(),
+    );
+  });
+
+  it("uses the configured name for prefix addressing and ignores the old one", async () => {
+    const deps = makeDeps({ botName: "Alfred" });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("Alfred, pause"));
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId, expect.stringContaining("step out"), expect.anything(),
+    );
+
+    deps.wireOutbound.sendPlainText.mockClear();
+    await router.onTextMessageReceived(makeMessage("@Jeeves pause"));
+    expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
+  });
+
+  it("greets with the configured name when added to a conversation", async () => {
+    const deps = makeDeps({ botName: "Alfred" });
+    const router = new WireEventRouter(deps);
+    await router.onAppAddedToConversation(
+      { id: "conv-1", domain: "wire.com", name: "General", type: 0, teamId: null } as never,
+      [],
+    );
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId, expect.stringContaining("I'm Alfred"),
+    );
+  });
+
+  it("escapes regex metacharacters in the name", async () => {
+    const deps = makeDeps({ botName: "C++ Bot" });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("@C++ Bot pause"));
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(
+      convId, expect.stringContaining("step out"), expect.anything(),
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Button action handling
 // ─────────────────────────────────────────────────────────────────────────────
 function makeButtonAction(buttonId: string, referenceMessageId = "msg-1", id = "btn-1") {

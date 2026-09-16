@@ -74,6 +74,8 @@ export interface Config {
   };
   app: {
     logLevel: string;
+    /** Persona name used in prompts and user-facing text (BOT_NAME, default "Jeeves"). The Wire display name is set in Wire. */
+    botName: string;
     messageBufferSize: number;
     /** Inactivity period in ms before the bot prompts to exit secret mode. Default 1800000 (30 min). */
     secretModeInactivityMs: number;
@@ -206,6 +208,8 @@ export function loadConfig(): Config {
   };
 
   const logLevel = process.env.LOG_LEVEL ?? "info";
+  const botName = (process.env.BOT_NAME ?? "Jeeves").trim();
+  if (!botName) throw new Error("BOT_NAME must not be empty");
   const messageBufferSize = Math.min(
     Math.max(1, parseInt(process.env.MESSAGE_BUFFER_SIZE ?? "50", 10)),
     500,
@@ -217,7 +221,7 @@ export function loadConfig(): Config {
   return {
     wire,
     database,
-    app: { logLevel, messageBufferSize, secretModeInactivityMs },
+    app: { logLevel, botName, messageBufferSize, secretModeInactivityMs },
     llm: { jeeves },
   };
 }

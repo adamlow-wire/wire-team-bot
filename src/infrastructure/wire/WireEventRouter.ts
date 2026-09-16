@@ -77,6 +77,8 @@ export interface WireEventRouterDeps {
   catchMeUpCommand?: CatchMeUpCommand;
   // Infrastructure
   botUserId: QualifiedId;
+  /** Persona name used for prefix addressing ("<name> pause"), greetings and buffered self-messages. Default "Jeeves". */
+  botName?: string;
   wireOutbound: WireOutboundPort;
   messageBuffer: ConversationMessageBuffer;
   dateTimeService: DateTimeService;
@@ -107,8 +109,14 @@ export class WireEventRouter extends WireEventsHandler {
 
   private readonly awaitingPurpose = new Set<string>();
 
+  private readonly botName: string;
+  /** Lowercased, regex-escaped persona name for prefix matching. */
+  private readonly botNamePattern: string;
+
   constructor(private readonly deps: WireEventRouterDeps) {
     super();
+    this.botName = (deps.botName ?? "Jeeves").trim() || "Jeeves";
+    this.botNamePattern = this.botName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -315,15 +323,15 @@ export class WireEventRouter extends WireEventsHandler {
     // ── ACTIVE — state-change commands ────────────────────────────────────────
     const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
 
-    // When addressed via @mention or Jeeves-prefix, strip the bot name so
+    // When addressed via @mention or name-prefix, strip the bot name so
     // downstream pattern matching works on the bare command regardless of prefix.
     // e.g. "@Jeeves (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
-    const isJeevesAddressed = botMentionedEarly || this.startsWithJeeves(lowered);
-    const commandLowered = isJeevesAddressed ? this.stripJeevesPrefix(lowered) : lowered;
+    const isBotAddressed = botMentionedEarly || this.startsWithBotName(lowered);
+    const commandLowered = isBotAddressed ? this.stripBotNamePrefix(lowered) : lowered;
     // Original-case stripped text — used for content-preserving matches (decision:, action:, remind, IDs).
-    const commandText = isJeevesAddressed ? this.stripJeevesPrefix(text) : text;
+    const commandText = isBotAddressed ? this.stripBotNamePrefix(text) : text;
 
-    if (botMentionedEarly || this.startsWithJeeves(lowered)) {
+    if (isBotAddressed) {
       if (this.matchesPauseCommand(lowered)) {
         await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
         return;
@@ -654,15 +662,15 @@ export class WireEventRouter extends WireEventsHandler {
       this.deps.messageBuffer.push(convId, {
         messageId: botMsgId,
         senderId: this.deps.botUserId,
-        senderName: "Jeeves",
+        senderName: this.botName,
         text: answer,
         timestamp: new Date(),
       });
       this.deps.slidingWindow.push(channelId, {
         messageId: botMsgId,
         authorId: this.deps.botUserId.id,
-        authorName: "Jeeves",
-        text: `[Jeeves] ${answer}`,
+        authorName: this.botName,
+        text: `[${this.botName}] ${answer}`,
         timestamp: new Date(),
       });
     }
@@ -951,7 +959,7 @@ export class WireEventRouter extends WireEventsHandler {
           this.awaitingPurpose.add(channelId);
           await this.deps.wireOutbound.sendPlainText(
             convId,
-            "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
+            `Good day. I'm ${this.botName}, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.`,
           );
         }
       }
@@ -1007,28 +1015,28 @@ export class WireEventRouter extends WireEventsHandler {
   // Command matchers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private startsWithJeeves(lowered: string): boolean {
-    return lowered.startsWith("jeeves") || lowered.startsWith("@jeeves");
+  private startsWithBotName(lowered: string): boolean {
+    return new RegExp(`^@?${this.botNamePattern}\\b`, "i").test(lowered);
   }
 
-  private stripJeevesPrefix(lowered: string): string {
-    // Strip @Jeeves or Jeeves, optionally followed by a parenthetical display-name
+  private stripBotNamePrefix(text: string): string {
+    // Strip "@<name>" or "<name>", optionally followed by a parenthetical display-name
     // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
-    return lowered.replace(/^@?jeeves(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
+    return text.replace(new RegExp(`^@?${this.botNamePattern}(?:\\s+\\([^)]+\\))?[,:]?\\s*`, "i"), "").trim();
   }
 
   private matchesPauseCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotNamePrefix(lowered);
     return /^(pause|step out)(\s+please)?$/.test(s) || /^(pause|step out)(\s+please)?$/.test(lowered);
   }
 
   private matchesResumeCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotNamePrefix(lowered);
     return /^(resume|come back)(\s+please)?$/.test(s) || /^(resume|come back)(\s+please)?$/.test(lowered);
   }
 
   private matchesSecureCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotNamePrefix(lowered);
     // "safe mode" is accepted as a natural-language alias for "secure mode".
     return /^(secure mode|safe mode|ears off|secure|safe)(\s+please)?$/.test(s)
         || /^(secure mode|safe mode|ears off)(\s+please)?$/.test(lowered);
@@ -1036,11 +1044,12 @@ export class WireEventRouter extends WireEventsHandler {
 
   private matchContextCommand(text: string): ContextCommandMatch | null {
     const m = (re: RegExp, field: ContextField) => { const r = text.match(re); return r ? { field, value: r[1].trim() } : null; };
-    return m(/^@?[Jj]eeves[,:]?\s+context:\s*(.+)$/i, "purpose")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+type:\s*(.+)$/i, "type")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+tags:\s*(.+)$/i, "tags")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+stakeholders:\s*(.+)$/i, "stakeholders")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+related:\s*(.+)$/i, "related")
+    const n = this.botNamePattern;
+    return m(new RegExp(`^@?${n}[,:]?\\s+context:\\s*(.+)$`, "i"), "purpose")
+      ?? m(new RegExp(`^@?${n}[,:]?\\s+context\\s+type:\\s*(.+)$`, "i"), "type")
+      ?? m(new RegExp(`^@?${n}[,:]?\\s+context\\s+tags:\\s*(.+)$`, "i"), "tags")
+      ?? m(new RegExp(`^@?${n}[,:]?\\s+context\\s+stakeholders:\\s*(.+)$`, "i"), "stakeholders")
+      ?? m(new RegExp(`^@?${n}[,:]?\\s+context\\s+related:\\s*(.+)$`, "i"), "related")
       ?? null;
   }
 

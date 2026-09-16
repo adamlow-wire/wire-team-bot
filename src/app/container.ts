@@ -86,12 +86,13 @@ export function createContainer(config: Config, logger: Logger): Container {
   const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
   const scheduler = new InProcessScheduler(logger);
 
-  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.jeeves, logger), logger);
+  const botName = config.app.botName;
+  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.jeeves, logger), logger, botName);
 
   // ── Phase 2: Intelligence pipeline ──────────────────────────────────────
   const llmFactory = new LLMClientFactory(config.llm.jeeves, logger);
-  const classifier = new OpenAIClassifierAdapter(llmFactory, logger);
-  const extraction = new OpenAIExtractionAdapter(llmFactory, logger);
+  const classifier = new OpenAIClassifierAdapter(llmFactory, logger, botName);
+  const extraction = new OpenAIExtractionAdapter(llmFactory, logger, botName);
   const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const entityRepo = new PrismaEntityRepository();
   const embeddingRepo = new PrismaEmbeddingRepository(logger);
@@ -121,7 +122,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   processingQueue.setWorker((job) => pipeline.process(job.payload));
 
   // ── Phase 3: Multi-path retrieval engine ────────────────────────────────
-  const queryAnalysis = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
+  const queryAnalysis = new OpenAIQueryAnalysisAdapter(llmFactory, logger, botName);
   const structuredPath = new StructuredRetrievalPath(decisionsRepo, actionsRepo);
   const semanticPath = new SemanticRetrievalPath(
     embeddingService,
@@ -134,7 +135,7 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   // ── Phase 4: Summaries + Proactive ──────────────────────────────────────
   const summaryRepo = new PrismaConversationSummaryRepository();
-  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger);
+  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger, botName);
   const generateSummary = new GenerateSummary(
     summarisationAdapter,
     signalRepo,
@@ -245,6 +246,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const router = new WireEventRouter({
     logger,
     botUserId: systemActorId,
+    botName,
     logDecision,
     searchDecisions,
     listDecisions,
