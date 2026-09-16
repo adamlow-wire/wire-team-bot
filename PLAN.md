@@ -337,6 +337,13 @@ and check boundaries without credentials.
   `golden.json` remains an instruction placeholder. **No measured simulation precision/recall
   is claimed.**
 
+Designated Wire test conversation: **Wire Team Bot Testing**,
+`3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io`. The user supplied the name;
+a read-only lookup in the running staging SDK conversation store resolved it uniquely.
+Operator: **@adamhuman**, already signed in to the staging webapp. This identifies the test
+location; it is not a completed candidate smoke test. Second participant and human reviewer
+remain to be identified.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -344,7 +351,7 @@ Remaining entry checks, in order:
    Review simulation misses/false positives using `npm run simulate:review` as supporting evidence.
 2. Adjudicate the two e2e cases above. Preserve the raw results; any changed behaviour needs a
    regression run. Review latency and unsolicited output with the team.
-3. Supply the qualified designated Wire conversation, operator and second named member. Run the
+3. Identify a second named participant for assignment checks in the designated conversation. Run the
    [Wire smoke steps](README.md#designated-wire-smoke-test) on the pinned image, including names,
    decryption, correction commands, reminder downtime/failed-send recovery and both privacy states.
 4. Record the approved team/provider configuration and completed gates here, then begin the

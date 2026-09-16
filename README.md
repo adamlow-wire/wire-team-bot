@@ -379,8 +379,9 @@ restart. Arbitrary edited messages do not update records; use the documented cor
 
 ## Designated Wire smoke test
 
-Pending operator inputs: the qualified test conversation (`ID@domain`), the operator and a second
-named member, approved provider settings, and the human reviewer. Do not use a real team channel
+Record the qualified test conversation (`ID@domain`), operator, second named member, approved
+provider settings and human reviewer in PLAN.md. A conversation name is sufficient to begin:
+the operator can supply its name, and the bot’s local SDK store can resolve its ID if it has joined. Do not use a real team channel
 until the synthetic privacy/access checks have passed. Use actual Wire mentions below; plain text
 that looks like a mention is not sufficient for resume from PAUSED/SECURE.
 

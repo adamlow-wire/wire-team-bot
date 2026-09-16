@@ -122,7 +122,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
-  "wireSmoke": "pending designated conversation and operator",
+  "wireSmoke": "pending candidate Wire smoke; designated conversation and operator identified",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -133,5 +133,12 @@
     "humanReview": "pending; golden.json contains instructions only",
     "precision": null,
     "recall": null
+  },
+  "wireTestLocation": {
+    "name": "Wire Team Bot Testing",
+    "qualifiedId": "3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io",
+    "operator": "@adamhuman",
+    "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
+    "secondParticipant": "pending"
   }
 }
