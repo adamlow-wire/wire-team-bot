@@ -49,7 +49,7 @@ import { LLMClientFactory } from "../infrastructure/llm/LLMClientFactory";
 import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralAnswerAdapter";
 import { OpenAIClassifierAdapter } from "../infrastructure/llm/OpenAIClassifierAdapter";
 import { OpenAIExtractionAdapter } from "../infrastructure/llm/OpenAIExtractionAdapter";
-import { JeevesEmbeddingAdapter } from "../infrastructure/llm/JeevesEmbeddingAdapter";
+import { createEmbeddingService } from "../infrastructure/llm/createEmbeddingService";
 import { OpenAIQueryAnalysisAdapter } from "../infrastructure/llm/OpenAIQueryAnalysisAdapter";
 import { OpenAISummarisationAdapter } from "../infrastructure/llm/OpenAISummarisationAdapter";
 import { LogDecision } from "../application/usecases/decisions/LogDecision";
@@ -192,7 +192,7 @@ async function main() {
   // Pipeline
   const classifier       = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
-  const embeddingService = new JeevesEmbeddingAdapter(config.llm.jeeves, logger);
+  const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
     classifier, extraction, embeddingService,
     entityRepo, embeddingRepo, signalRepo,

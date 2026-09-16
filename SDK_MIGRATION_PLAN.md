@@ -109,6 +109,10 @@ Staging: `docker-compose.staging.yml` + `npm run staging:up` runs the bot agains
 - **Not runnable on this box:** the LLM-judged e2e suite and the simulation need a model endpoint (`JEEVES_LLM_BASE_URL`); run them in CI or from a host with Ollama.
 - **Not exercised yet:** anything requiring a real app token (`WireAppSdk.create`, hydration, message send/receive). That's cutover step 4 onwards.
 
+## 7b. Provider compatibility (Claude and OpenAI-compatible)
+
+The bot's LLM client is OpenAI-style (`/chat/completions`, `/embeddings`, Bearer auth). Anthropic's OpenAI-compatible endpoint (`https://api.anthropic.com/v1`) covers the chat slots; `response_format` is ignored there but the prompts request JSON explicitly and the adapters strip fences. Anthropic has no `/embeddings`, so the embed slot now has its own endpoint (`JEEVES_EMBED_BASE_URL` / `JEEVES_EMBED_API_KEY`) and an `auto|on|off` switch (`JEEVES_EMBEDDINGS`); `auto` turns embeddings off when the embedding host is `api.anthropic.com`, using a no-op service so retrieval degrades to structured and summary paths without per-message errors. HTTP 529 (Anthropic overloaded) triggers the same fallback-model retry as 503. The staging compose has an optional Ollama (`--profile embeddings`) for local embeddings with Claude-only keys.
+
 ## 8. Risks
 
 | Risk | Handling |

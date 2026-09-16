@@ -13,10 +13,29 @@ export interface JeevesModelSlot {
   fallback: string;
 }
 
-export interface JeevesLLMConfig {
-  /** Shared provider endpoint for all model slots. */
+/**
+ * Embedding endpoint settings. Chat and embeddings may come from different providers:
+ * Anthropic's OpenAI-compatible endpoint serves chat completions but has no /embeddings,
+ * so a Claude deployment points JEEVES_EMBED_BASE_URL at Ollama/OpenAI/etc. or runs with
+ * embeddings disabled (semantic retrieval, entity dedup and contradiction detection off).
+ */
+export interface JeevesEmbeddingConfig {
   baseUrl: string;
   apiKey: string;
+  enabled: boolean;
+}
+
+export type EmbeddingsMode = "on" | "off" | "auto";
+
+/** Hostname of Anthropic's API; it exposes chat completions but no /embeddings endpoint. */
+export const ANTHROPIC_API_HOST = "api.anthropic.com";
+
+export interface JeevesLLMConfig {
+  /** Chat-completions provider endpoint shared by all six chat slots. */
+  baseUrl: string;
+  apiKey: string;
+  /** Embedding provider; defaults to the chat provider unless overridden. */
+  embed: JeevesEmbeddingConfig;
   timeoutMs: number;
   /** Complexity score above which the respond slot escalates to complexSynthesis. */
   complexityThreshold: number;
@@ -102,9 +121,51 @@ function envInt(name: string, defaultVal: number): number {
   return isNaN(n) ? defaultVal : n;
 }
 
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pure resolver for the embedding endpoint, kept separate from process.env for testing.
+ * `auto` disables embeddings only when the effective embedding host is Anthropic's API,
+ * which has no /embeddings endpoint; any other host is assumed to serve one.
+ */
+export function resolveEmbeddingSettings(input: {
+  llmBaseUrl: string;
+  llmApiKey: string;
+  embedBaseUrl?: string;
+  embedApiKey?: string;
+  mode: EmbeddingsMode;
+}): JeevesEmbeddingConfig {
+  const baseUrl = (input.embedBaseUrl?.trim() || input.llmBaseUrl).replace(/\/+$/, "");
+  const apiKey = input.embedApiKey !== undefined ? input.embedApiKey : input.llmApiKey;
+  const enabled =
+    input.mode === "on" ? true
+    : input.mode === "off" ? false
+    : hostOf(baseUrl) !== ANTHROPIC_API_HOST;
+  return { baseUrl, apiKey, enabled };
+}
+
+function envEmbeddingsMode(name: string): EmbeddingsMode {
+  const raw = (process.env[name] ?? "auto").trim().toLowerCase();
+  if (raw === "on" || raw === "off" || raw === "auto") return raw;
+  throw new Error(`${name} must be one of: on, off, auto`);
+}
+
 function loadJeevesConfig(): JeevesLLMConfig {
-  const baseUrl = envStr("JEEVES_LLM_BASE_URL", "http://localhost:11434/v1");
+  const baseUrl = envStr("JEEVES_LLM_BASE_URL", "http://localhost:11434/v1").replace(/\/+$/, "");
   const apiKey = envStr("JEEVES_LLM_API_KEY", "");
+  const embed = resolveEmbeddingSettings({
+    llmBaseUrl: baseUrl,
+    llmApiKey: apiKey,
+    embedBaseUrl: process.env.JEEVES_EMBED_BASE_URL,
+    embedApiKey: process.env.JEEVES_EMBED_API_KEY,
+    mode: envEmbeddingsMode("JEEVES_EMBEDDINGS"),
+  });
   const slot = (modelEnv: string, fallbackEnv: string, defaultModel: string, defaultFallback: string): JeevesModelSlot => ({
     model: envStr(modelEnv, defaultModel),
     fallback: envStr(fallbackEnv, defaultFallback),
@@ -112,6 +173,7 @@ function loadJeevesConfig(): JeevesLLMConfig {
   return {
     baseUrl,
     apiKey,
+    embed,
     timeoutMs: envInt("JEEVES_LLM_TIMEOUT_MS", 60_000),
     complexityThreshold: envFloat("JEEVES_COMPLEXITY_THRESHOLD", 0.7),
     extractConfidenceMin: envFloat("JEEVES_EXTRACT_CONFIDENCE_MIN", 0.6),

@@ -3,7 +3,7 @@
  *
  * Provides a unified fetch-based OpenAI-compatible client for all seven model
  * slots. Handles per-slot model selection and a single fallback retry:
- *   - On 503 or AbortError (timeout): retry once with the slot's fallback model.
+ *   - On 503/529 or AbortError (timeout): retry once with the slot's fallback model.
  *   - Both attempts are logged.
  *
  * Usage:
@@ -116,7 +116,9 @@ export class LLMClientFactory {
       clearTimeout(timeout);
     }
 
-    if (res.status === 503) {
+    // 503: generic unavailable. 529: Anthropic's "overloaded" (its OpenAI-compatible endpoint
+    // returns it too). Both are transient, so retry once on the slot's fallback model.
+    if (res.status === 503 || res.status === 529) {
       throw new LLMServiceUnavailableError(model, res.status);
     }
 

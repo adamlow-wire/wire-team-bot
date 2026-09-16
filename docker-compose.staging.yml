@@ -48,6 +48,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional local embeddings, for chat providers without an /embeddings endpoint (Claude).
+  #   docker compose -f docker-compose.staging.yml --profile embeddings up -d
+  #   docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b     # once
+  # and in .env.staging:  JEEVES_EMBED_BASE_URL=http://ollama:11434/v1
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jeeves-staging-ollama
+    profiles: ["embeddings"]
+    restart: unless-stopped
+    volumes:
+      - jeeves-staging-ollama:/root/.ollama
+
 volumes:
   jeeves-staging-crypto:
   jeeves-staging-db:
+  jeeves-staging-ollama:

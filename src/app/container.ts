@@ -41,7 +41,7 @@ import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralA
 import { LLMClientFactory } from "../infrastructure/llm/LLMClientFactory";
 import { OpenAIClassifierAdapter } from "../infrastructure/llm/OpenAIClassifierAdapter";
 import { OpenAIExtractionAdapter } from "../infrastructure/llm/OpenAIExtractionAdapter";
-import { JeevesEmbeddingAdapter } from "../infrastructure/llm/JeevesEmbeddingAdapter";
+import { createEmbeddingService } from "../infrastructure/llm/createEmbeddingService";
 import { PrismaEntityRepository } from "../infrastructure/persistence/postgres/PrismaEntityRepository";
 import { PrismaEmbeddingRepository } from "../infrastructure/persistence/postgres/PrismaEmbeddingRepository";
 import { PrismaConversationSignalRepository } from "../infrastructure/persistence/postgres/PrismaConversationSignalRepository";
@@ -92,7 +92,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const llmFactory = new LLMClientFactory(config.llm.jeeves, logger);
   const classifier = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction = new OpenAIExtractionAdapter(llmFactory, logger);
-  const embeddingService = new JeevesEmbeddingAdapter(config.llm.jeeves, logger);
+  const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const entityRepo = new PrismaEntityRepository();
   const embeddingRepo = new PrismaEmbeddingRepository(logger);
   const signalRepo = new PrismaConversationSignalRepository();
