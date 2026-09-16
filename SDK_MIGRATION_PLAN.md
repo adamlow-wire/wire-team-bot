@@ -52,11 +52,12 @@ Config (`src/app/config.ts`, `.env.example`, README env table):
 
 ## 4. Prerequisites (ops, before PR 1 can be tested)
 
-1. **Apps feature enabled for the team** on the target backend. wire-server routes: `POST /teams/{tid}/apps` (create), token via `/teams/{tid}/apps/{aid}/cookies`. Needs a team admin. **Hard blocker if unavailable.**
-2. Create the "Jeeves" app; record its qualified ID; mint the token.
-3. `openssl rand -hex 32` → `WIRE_SDK_CRYPTO_KEY`.
-4. Deployment host is linux/x86_64 (no ARM).
-5. Fill in the WPB key.
+1. **A team admin account** on the target backend (the backend checks the `CreateApp` team permission). Backend must expose API v15 (the SDK hardcodes `v15`); staging supports up to v18.
+2. **Register the app and mint the token** with `scripts/register-app.mjs` (added 2026-09-16): `create` calls `POST /teams/{tid}/apps`, verifies the returned `zuid` cookie against `POST /access`, and writes the full `WIRE_SDK_*` block including a fresh `WIRE_SDK_CRYPTO_KEY`. `refresh` re-issues a token for an existing app via `/teams/{tid}/apps/{app}/cookies` without changing identity. `list` and `send-code` (2FA) round it out. README → "Testing against the Wire staging backend".
+3. Deployment host is linux/x86_64 (no ARM).
+4. Fill in the WPB key.
+
+Staging: `docker-compose.staging.yml` + `npm run staging:up` runs the bot against `https://staging-nginz-https.zinfra.io` (domain `staging.zinfra.io`) with isolated volumes, container names and Postgres port.
 
 ## 5. PR 1 — Library swap + adapters (makes it build and run)
 

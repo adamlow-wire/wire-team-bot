@@ -15,7 +15,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init"
+    "prisma:migrate": "prisma migrate dev --name init",
+    "register-app": "node scripts/register-app.mjs",
+    "staging:up": "docker compose -f docker-compose.staging.yml up --build -d",
+    "staging:logs": "docker compose -f docker-compose.staging.yml logs -f jeeves",
+    "staging:down": "docker compose -f docker-compose.staging.yml down"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

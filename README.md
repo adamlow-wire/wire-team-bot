@@ -195,6 +195,52 @@ A team admin adds the Jeeves app to any group conversation. Jeeves will ask for 
 
 ---
 
+## Testing against the Wire staging backend
+
+Everything below runs from a dev box with Docker. The image is built locally, so the host's glibc does not matter.
+
+1. **Register Jeeves as a Wire app** (needs a staging team account with admin/owner rights; the backend checks the
+   `CreateApp` team permission). The token is the `zuid` cookie the backend hands back; the script checks it against
+   `/access` before writing anything.
+
+   ```bash
+   node scripts/register-app.mjs versions --host https://staging-nginz-https.zinfra.io          # sanity: API v15+ available
+   node scripts/register-app.mjs create   --host https://staging-nginz-https.zinfra.io \
+        --email <team-admin@staging> --name "Jeeves (staging)" --out .env.staging
+   ```
+
+   You are prompted for the admin password (never echoed). If the account has a second factor enabled, run
+   `send-code` first and pass `--code`. `.env.staging` is written with mode 0600 and is gitignored. It contains
+   `WIRE_SDK_API_HOST`, `WIRE_SDK_APP_ID`, `WIRE_SDK_APP_DOMAIN`, `WIRE_SDK_API_TOKEN`, and a freshly generated
+   `WIRE_SDK_CRYPTO_KEY`.
+
+2. **Add your LLM settings** (`JEEVES_LLM_BASE_URL`, `JEEVES_LLM_API_KEY`, model overrides) to `.env.staging`.
+
+3. **Start the staging stack** (own container names, volumes, and Postgres port 5433, so it coexists with a production stack):
+
+   ```bash
+   npm run staging:up
+   npm run staging:logs        # expect: migrations, "CoreCrypto initialized", websocket connected
+   ```
+
+4. **Add the app to a conversation** as a team admin in the staging Wire client. Jeeves greets and asks for the
+   channel purpose. Then try `decision: ship it`, `@Jeeves what did we decide?`, `remind me in 2 minutes to test`.
+
+5. **Restart test**: `docker restart jeeves-staging`, then send another message. It must still decrypt; the SDK's
+   persistent keystore is the point of this migration.
+
+6. **Token expired or revoked?** Mint a new one without creating a new identity, then restart:
+
+   ```bash
+   node scripts/register-app.mjs refresh --host https://staging-nginz-https.zinfra.io \
+        --email <team-admin@staging> --app-id <WIRE_SDK_APP_ID> --print-token
+   ```
+
+   Keep the existing `WIRE_SDK_CRYPTO_KEY` and volume; only `WIRE_SDK_API_TOKEN` changes.
+
+`npm run staging:down` stops the stack. Add `-v` manually (`docker compose -f docker-compose.staging.yml down -v`) only
+when you want to throw away the staging identity's crypto store and start over with a new `create`.
+
 ## Environment variables
 
 ### Wire application (all required)
