@@ -168,7 +168,9 @@ Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, th
 ### Prerequisites
 
 - Docker and Docker Compose v2
-- A Wire account for the bot (`WIRE_SDK_USER_*` credentials)
+- A linux/x86_64 host. The Wire SDK's CoreCrypto native library needs glibc 2.38 or newer, which the
+  `node:22-trixie-slim` image provides. It does not run on Alpine (musl) or on linux/arm64.
+- A Wire **application** registered by a team admin, with its app token (`WIRE_SDK_API_TOKEN`). This is not a user login.
 - An Ollama instance (or any OpenAI-compatible LLM endpoint)
 
 ### 1. Clone and configure
@@ -177,7 +179,8 @@ Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, th
 git clone <repo-url>
 cd wire-team-bot
 cp .env.example .env
-# Edit .env — set Wire credentials and JEEVES_LLM_BASE_URL
+# Edit .env — set the Wire app token / app ID, generate WIRE_SDK_CRYPTO_KEY, set JEEVES_LLM_BASE_URL
+openssl rand -hex 32   # paste as WIRE_SDK_CRYPTO_KEY
 ```
 
 ### 2. Start the stack
@@ -186,24 +189,26 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### 3. Add the bot to a Wire conversation
+### 3. Add the app to a Wire conversation
 
-Add the bot user to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
+A team admin adds the Jeeves app to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
 
 ---
 
 ## Environment variables
 
-### Wire credentials (all required)
+### Wire application (all required)
 
 | Variable | Description |
 |---|---|
-| `WIRE_SDK_USER_EMAIL` | Email of the bot's Wire account |
-| `WIRE_SDK_USER_PASSWORD` | Password |
-| `WIRE_SDK_USER_ID` | Wire UUID of the bot user |
-| `WIRE_SDK_USER_DOMAIN` | Wire federation domain (e.g. `wire.example.com`) |
-| `WIRE_SDK_API_HOST` | Wire backend API hostname |
-| `WIRE_SDK_CRYPTO_PASSWORD` | Passphrase for the local crypto store |
+| `WIRE_SDK_API_TOKEN` | App authentication token minted by a team admin for the Jeeves application |
+| `WIRE_SDK_API_HOST` | Wire backend API base URL (e.g. `https://prod-nginz-https.wire.com`) |
+| `WIRE_SDK_APP_ID` | Wire UUID of the application; verified against the backend at startup |
+| `WIRE_SDK_APP_DOMAIN` | Wire federation domain of the application (e.g. `wire.example.com`) |
+| `WIRE_SDK_CRYPTO_KEY` | 32 random bytes, hex-encoded (64 chars), protecting the local CoreCrypto keystore. Generate with `openssl rand -hex 32`. Losing it means losing all E2EE state. |
+
+The SDK stores its SQLite database and keystore under `./storage` relative to the process working directory
+(`/app/storage` in the container, mounted as the `jeeves-crypto` volume).
 
 ### Database
 
@@ -250,7 +255,6 @@ These power the foreground intent router (`create_decision`, `create_action`, et
 |---|---|---|
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `MESSAGE_BUFFER_SIZE` | `50` | Recent messages kept per conversation for Q&A context (max 500). Does not affect the Tier 2 extraction window, which is always 30. |
-| `STORAGE_DIR` | `storage` | Wire SDK local crypto store directory |
 | `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Jeeves prompts the team to resume (minimum 60 000) |
 
 ---
@@ -315,8 +319,8 @@ All channel mode commands accept an optional trailing _"please"_.
 ## Development
 
 ```bash
-npm install
-cp .env.example .env          # fill in credentials
+npm ci                        # see "Dependency notes" below before using plain `npm install`
+cp .env.example .env          # fill in the Wire app token, app ID and crypto key
 npx prisma migrate dev        # create the local DB schema
 npm run dev                   # start with ts-node watch
 
@@ -330,6 +334,24 @@ npm run simulate:review                     # annotate report as golden baseline
 ```
 
 Database migrations live in `prisma/migrations/`. The schema is in `prisma/schema.prisma`.
+
+### Dependency notes
+
+- **Runtime requirement.** `@wireapp/wire-apps-js-sdk` pulls in `@wireapp/core-crypto`, whose native library needs
+  glibc 2.38+ on linux/x86_64 (or macOS). Importing the SDK on an older glibc (for example Ubuntu 22.04 / WSL) fails at
+  load time, which also breaks `npm test` and the CLI/e2e harness locally. Run them in a container instead:
+
+  ```bash
+  docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/app -w /app node:22-trixie-slim npx vitest run
+  ```
+
+- **`npm install` on npm 10.9.x** fails with `Cannot read properties of null (reading 'edgesOut')` while resolving
+  this tree. Use `npm ci` with the committed lockfile, or npm 11+ (`npx npm@12 install`) when you need to change
+  dependencies.
+- **`npm ci` compiles better-sqlite3 unnecessarily** on npm 10 (it ignores the package's `gypfile: false` when
+  reading from the lockfile). The Dockerfile and CI therefore run
+  `npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines`; Prisma is the only dependency whose
+  install hooks are needed. On a machine with a C++ toolchain, plain `npm ci` also works, just slower.
 
 ### Test layout
 

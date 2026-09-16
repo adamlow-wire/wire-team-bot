@@ -27,7 +27,7 @@ This file gives AI agents working on this repository a concise contract: where t
 | `infrastructure` | `src/infrastructure/` | `application`, `domain`, external libs |
 | `app` | `src/app/` | All layers — composition root only, no business logic |
 
-Application code must never call `wire-apps-js-sdk`, Prisma, or any LLM SDK directly. All external calls go through ports.
+Application code must never call `@wireapp/wire-apps-js-sdk`, Prisma, or any LLM SDK directly. All external calls go through ports.
 
 ### 2.2 Four-tier processing pipeline
 
