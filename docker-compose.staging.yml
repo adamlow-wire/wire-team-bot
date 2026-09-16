@@ -6,7 +6,11 @@
 #
 # Builds the image locally (the SDK's native core-crypto needs glibc >= 2.38, which the
 # image provides even when the host does not). Uses its own volumes and container names
-# so it never touches a production stack on the same host.
+# so it never touches a production stack on the same host. The explicit project
+# name matters: without it, Compose derives the project from the directory and
+# `down` on this file would also remove containers started from docker-compose.yml.
+name: jeeves-staging
+
 services:
   jeeves:
     build: .
