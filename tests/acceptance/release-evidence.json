@@ -139,6 +139,7 @@
     "qualifiedId": "3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io",
     "operator": "@adamhuman",
     "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
-    "secondParticipant": "pending"
+    "secondParticipant": "@adamlow_wire",
+    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check"
   }
 }
