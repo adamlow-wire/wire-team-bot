@@ -1,7 +1,7 @@
 /**
  * Tier 2 Extractor — uses the `extract` model slot (larger, higher-quality model).
  * Receives the sliding window for context. Extracts decisions, actions, entities,
- * relationships, and signals from the conversation. NEVER stores verbatim content.
+ * relationships, and signals from the conversation. Output is validated before persistence.
  *
  * On failure (timeout, malformed JSON): logs error and returns a fallback discussion signal.
  */
@@ -12,11 +12,13 @@ import type { WindowMessage } from "../buffer/SlidingWindowBuffer";
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the Tier 2 knowledge extractor for Jeeves, a discreet British team assistant.
+const SYSTEM_PROMPT = `You are the Tier 2 knowledge extractor for Wire Team Bot, a discreet British team assistant.
 
 Extract structured knowledge from the TRIGGERING MESSAGE ONLY. Use the conversation window purely as context to resolve ambiguous references (pronouns, "it", "that", "this", unnamed actors) — do not extract new facts from window messages as those have already been processed.
 
-Window messages annotated with "→ extracted:" show what Jeeves already recorded from that message. Use these annotations to understand what is already known — do not re-extract the same information.
+Window messages annotated with "→ extracted:" show what Wire Team Bot already recorded from that message. Use these annotations to understand what is already known — do not re-extract the same information.
+
+Only include a rationale when explicitly stated in the triggering message or its context. Do not infer motivations. Use only named current members as decided_by; omit generic labels such as "team".
 
 CRITICAL: Never include verbatim quotes. Synthesise and summarise only. The source text is discarded after extraction.
 
@@ -156,6 +158,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
       return EMPTY_RESULT;
     }
 
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return EMPTY_RESULT;
     const decisions = this.parseDecisions(parsed.decisions);
     const actions = this.parseActions(parsed.actions);
     const completions = this.parseCompletions(parsed.completions, knownActions);
@@ -178,18 +181,18 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
 
   private parseDecisions(raw: unknown): ExtractedDecision[] {
     if (!Array.isArray(raw)) return [];
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const summary = typeof r.summary === "string" ? r.summary.trim() : "";
-      if (!summary) return [];
+      if (!summary || summary.length > 2000) return [];
       return [{
         summary,
-        rationale: typeof r.rationale === "string" ? r.rationale.trim() : undefined,
+        rationale: typeof r.rationale === "string" ? r.rationale.trim().slice(0, 2000) : undefined,
         decidedBy: Array.isArray(r.decided_by)
           ? r.decided_by.filter((x): x is string => typeof x === "string")
           : [],
-        confidence: clamp(Number(r.confidence ?? 0.7)),
+        confidence: validConfidence(r.confidence),
         tags: Array.isArray(r.tags)
           ? r.tags.filter((x): x is string => typeof x === "string")
           : [],
@@ -199,11 +202,11 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
 
   private parseActions(raw: unknown): ExtractedAction[] {
     if (!Array.isArray(raw)) return [];
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const description = typeof r.description === "string" ? r.description.trim() : "";
-      if (!description) return [];
+      if (!description || description.length > 2000) return [];
       const supersedes = typeof r.supersedes === "string" && r.supersedes !== "null"
         ? r.supersedes.trim()
         : undefined;
@@ -211,7 +214,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
         description,
         ownerName: typeof r.owner_name === "string" ? r.owner_name.trim() : undefined,
         deadline: typeof r.deadline === "string" && r.deadline !== "null" ? r.deadline : undefined,
-        confidence: clamp(Number(r.confidence ?? 0.7)),
+        confidence: validConfidence(r.confidence),
         tags: Array.isArray(r.tags)
           ? r.tags.filter((x): x is string => typeof x === "string")
           : [],
@@ -228,25 +231,25 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
   private parseCompletions(raw: unknown, knownActions: KnownAction[]): ExtractedCompletion[] {
     if (!Array.isArray(raw)) return [];
     const knownIds = new Set(knownActions.map(a => a.id));
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const actionId = typeof r.action_id === "string" ? r.action_id.trim() : "";
       if (!actionId || !knownIds.has(actionId)) return [];
       return [{
         actionId,
-        note: typeof r.note === "string" && r.note !== "null" ? r.note.trim() : undefined,
+        note: typeof r.note === "string" && r.note !== "null" ? r.note.trim().slice(0, 500) : undefined,
       }];
     });
   }
 
   private parseEntities(raw: unknown): ExtractedEntity[] {
     if (!Array.isArray(raw)) return [];
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const name = typeof r.name === "string" ? r.name.trim() : "";
-      if (!name) return [];
+      if (!name || name.length > 200) return [];
       const entityType = VALID_ENTITY_TYPES.includes(r.entity_type as EntityType)
         ? (r.entity_type as EntityType)
         : "concept";
@@ -256,16 +259,14 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
         aliases: Array.isArray(r.aliases)
           ? r.aliases.filter((x): x is string => typeof x === "string")
           : [],
-        metadata: typeof r.metadata === "object" && r.metadata !== null
-          ? (r.metadata as Record<string, unknown>)
-          : {},
+        metadata: {}, // Arbitrary model metadata is not an authorised raw-text storage path.
       }];
     });
   }
 
   private parseRelationships(raw: unknown): ExtractedRelationship[] {
     if (!Array.isArray(raw)) return [];
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const sourceName = typeof r.source_name === "string" ? r.source_name.trim() : "";
@@ -278,19 +279,19 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
         sourceName,
         targetName,
         relationship,
-        context: typeof r.context === "string" ? r.context.trim() : undefined,
-        confidence: clamp(Number(r.confidence ?? 0.7)),
+        context: typeof r.context === "string" ? r.context.trim().slice(0, 500) : undefined,
+        confidence: validConfidence(r.confidence),
       }];
     });
   }
 
   private parseSignals(raw: unknown): ExtractedSignal[] {
     if (!Array.isArray(raw)) return [];
-    return raw.flatMap((item) => {
+    return raw.slice(0, 20).flatMap((item) => {
       if (typeof item !== "object" || item === null) return [];
       const r = item as Record<string, unknown>;
       const summary = typeof r.summary === "string" ? r.summary.trim() : "";
-      if (!summary) return [];
+      if (!summary || summary.length > 2000) return [];
       const signalType = VALID_SIGNAL_TYPES.includes(r.signal_type as SignalType)
         ? (r.signal_type as SignalType)
         : "discussion";
@@ -300,7 +301,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
         tags: Array.isArray(r.tags)
           ? r.tags.filter((x): x is string => typeof x === "string")
           : [],
-        confidence: clamp(Number(r.confidence ?? 0.6)),
+        confidence: validConfidence(r.confidence),
       }];
     });
   }
@@ -308,6 +309,6 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function clamp(n: number): number {
-  return Math.min(1, Math.max(0, isNaN(n) ? 0.5 : n));
+function validConfidence(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0;
 }

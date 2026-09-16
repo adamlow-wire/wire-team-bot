@@ -102,34 +102,34 @@ export class LLMClientFactory {
     // Strip internal-only fields before sending to the API
     const { complexity: _c, escalateToSlot: _e, ...apiOptions } = options;
 
-    let res: Response;
     try {
-      res = await fetch(this.url, {
-        method: "POST",
-        headers: this.headers,
-        body: JSON.stringify({ model, messages, ...apiOptions }),
-        signal: controller.signal,
+      const res = await fetch(this.url, {
+        method: "POST", headers: this.headers,
+        body: JSON.stringify({ model, messages, ...apiOptions }), signal: controller.signal,
       });
-    } catch (err) {
-      throw err;
+      if (res.status === 503 || res.status === 529) throw new LLMServiceUnavailableError(model, res.status);
+      if (!res.ok) {
+        // Some models explicitly reject temperature. Retry that read-only model
+        // request once without it; never log the provider body (it may echo input).
+        if (res.status === 400 && apiOptions.temperature !== undefined) {
+          const body = await res.json().catch(() => null) as { error?: { message?: unknown } } | null;
+          const message = body?.error?.message;
+          if (typeof message === "string" && /temperature/i.test(message) && /deprecated|unsupported|not supported/i.test(message)) {
+            clearTimeout(timeout);
+            const { temperature: _temperature, ...compatibleOptions } = options;
+            this.logger.info("Model rejected temperature; retrying without it", { model });
+            return await this.attempt(model, messages, compatibleOptions);
+          }
+        }
+        throw new Error(`LLM request failed (${res.status})`);
+      }
+      const data = (await res.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content !== "string" || !content.trim()) throw new Error("LLM returned no text");
+      return content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     } finally {
       clearTimeout(timeout);
     }
-
-    // 503: generic unavailable. 529: Anthropic's "overloaded" (its OpenAI-compatible endpoint
-    // returns it too). Both are transient, so retry once on the slot's fallback model.
-    if (res.status === 503 || res.status === 529) {
-      throw new LLMServiceUnavailableError(model, res.status);
-    }
-
-    if (!res.ok) {
-      throw new Error(`LLM request failed (${res.status})`);
-    }
-
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
-    // Strip <think>…</think> blocks emitted by reasoning models (e.g. qwen3-think variants)
-    return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   }
 
   private isFallbackable(err: unknown): boolean {

@@ -54,6 +54,8 @@ const emptyExtractResult: ExtractResult = {
 function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
   return {
     auditLog: { append: vi.fn().mockResolvedValue(undefined) },
+    userResolution: { resolveByHandleOrName: vi.fn().mockResolvedValue({ userId: senderId, ambiguous: false }) },
+    dateTimeService: { parse: vi.fn().mockReturnValue(null) },
     classifier: { classify: vi.fn().mockResolvedValue(lowSignalResult) },
     extraction: { extract: vi.fn().mockResolvedValue(emptyExtractResult) },
     embeddingService: {
@@ -398,4 +400,26 @@ describe("pipeline privacy boundary", () => {
       expect(JSON.stringify(vi.mocked(deps.signalRepo.create).mock.calls)).not.toContain("PRIVATE_CONTEXT_MARKER");
     }
   });
+});
+
+it("skips unknown owners and resolves a named owner to their identity", async () => {
+  const deps = makeDeps({classifier:{classify:vi.fn().mockResolvedValue(highSignalResult)},extraction:{extract:vi.fn().mockResolvedValue(fullExtractResult)}});
+  vi.mocked(deps.userResolution.resolveByHandleOrName).mockResolvedValue({userId:null,ambiguous:true});
+  await new ProcessingPipeline(deps).process(baseJob());
+  expect(deps.actionRepo.create).not.toHaveBeenCalled();
+  vi.mocked(deps.userResolution.resolveByHandleOrName).mockResolvedValue({userId:{id:"bob",domain:"wire.com"},ambiguous:false});
+  await new ProcessingPipeline(deps).process(baseJob());
+  expect(deps.actionRepo.create).toHaveBeenCalledWith(expect.objectContaining({assigneeId:{id:"bob",domain:"wire.com"}}));
+});
+it("does not duplicate a repeated source decision", async () => {
+  const deps = makeDeps({classifier:{classify:vi.fn().mockResolvedValue(highSignalResult)},extraction:{extract:vi.fn().mockResolvedValue(fullExtractResult)}});
+  vi.mocked(deps.decisionRepo.query).mockResolvedValue([{rawMessageId:"msg-1",summary:"Use Postgres"}] as never);
+  await new ProcessingPipeline(deps).process(baseJob());
+  expect(deps.decisionRepo.create).not.toHaveBeenCalled();
+});
+it("does not recapture an unchanged active decision from another source event", async () => {
+  const deps = makeDeps({classifier:{classify:vi.fn().mockResolvedValue(highSignalResult)},extraction:{extract:vi.fn().mockResolvedValue(fullExtractResult)}});
+  vi.mocked(deps.decisionRepo.query).mockImplementation(async query => query.rawMessageId ? [] : [{rawMessageId:"earlier-message",summary:"Use Postgres",status:"active"}] as never);
+  await new ProcessingPipeline(deps).process(baseJob());
+  expect(deps.decisionRepo.create).not.toHaveBeenCalled();
 });

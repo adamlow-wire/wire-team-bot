@@ -16,5 +16,6 @@ export function createEmbeddingService(config: JeevesLLMConfig, logger: Logger):
     );
     return new DisabledEmbeddingService();
   }
+  if (config.embedDims !== 2560) throw new Error("Enabled embeddings must match the database vector(2560) column");
   return new JeevesEmbeddingAdapter(config, logger);
 }

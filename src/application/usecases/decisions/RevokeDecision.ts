@@ -22,7 +22,7 @@ export class RevokeDecision {
 
   async execute(input: RevokeDecisionInput): Promise<Decision | null> {
     const decision = await this.decisions.findById(input.decisionId);
-    if (!decision || !sameQualifiedId(decision.conversationId, input.conversationId)) {
+    if (!decision || decision.deleted || !sameQualifiedId(decision.conversationId, input.conversationId)) {
       return null;
     }
 

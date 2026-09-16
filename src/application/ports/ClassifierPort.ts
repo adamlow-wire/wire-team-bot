@@ -29,6 +29,7 @@ export interface ClassifyResult {
 }
 
 export interface ChannelContext {
+  timezone?: string;
   channelId: string;
   purpose?: string;
   contextType?: string;

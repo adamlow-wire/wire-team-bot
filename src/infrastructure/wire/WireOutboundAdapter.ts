@@ -61,7 +61,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
-      logger.debug("sendPlainText", { conversationId: conversationId.id, preview: text.slice(0, 80) });
+      logger.debug("sendPlainText", { conversationId: conversationId.id, textLength: text.length });
       await h.manager.sendMessage(TextMessage.create({ conversationId, text, mentions: options?.mentions }));
     },
 
@@ -73,7 +73,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
-      logger.debug("sendCompositePrompt", { conversationId: conversationId.id, preview: text.slice(0, 80), buttons: buttons.map((b) => b.id) });
+      logger.debug("sendCompositePrompt", { conversationId: conversationId.id, textLength: text.length, buttons: buttons.map((b) => b.id) });
       await h.manager.sendMessage(
         CompositeMessage.create({
           conversationId,

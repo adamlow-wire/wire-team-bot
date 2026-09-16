@@ -10,7 +10,7 @@ export interface StatusCommandInput {
 }
 
 /**
- * Reports the current channel status in Jeeves voice:
+ * Reports the current channel status in Wire Team Bot voice:
  * - Channel state (active / paused / secure)
  * - Time active since joining
  * - Number of entities tracked in the knowledge graph

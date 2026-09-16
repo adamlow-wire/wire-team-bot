@@ -1,53 +1,49 @@
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
+import type { SchedulerPort } from "../../ports/SchedulerPort";
 import type { ReminderRepository } from "../../../domain/repositories/ReminderRepository";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
-export interface FireReminderInput {
-  reminderId: string;
-}
+export interface FireReminderInput { reminderId: string; }
 
-/**
- * Invoked by the scheduler when a reminder's trigger time is reached.
- * Marks the reminder as fired and sends a message to its conversation.
- */
+/** Delivery is at least once: a crash after send but before update can duplicate it. */
 export class FireReminder {
+  private readonly inFlight = new Set<string>();
+
   constructor(
     private readonly reminders: ReminderRepository,
     private readonly wireOutbound: WireOutboundPort,
     private readonly auditLog: AuditLogRepository,
     private readonly systemActorId: QualifiedId,
+    private readonly scheduler: SchedulerPort,
   ) {}
 
   async execute(input: FireReminderInput): Promise<void> {
-    const reminder = await this.reminders.findById(input.reminderId);
-    if (!reminder || reminder.status !== "pending") return;
-
-    const updated = { ...reminder, status: "fired" as const, updatedAt: new Date() };
-    await this.reminders.update(updated);
-
-    await this.auditLog.append({
-      timestamp: new Date(),
-      actorId: this.systemActorId,
-      conversationId: reminder.conversationId ?? undefined,
-      action: "entity_updated",
-      entityType: "Reminder",
-      entityId: reminder.id,
-      details: { status: "fired" },
-    });
-
-    const convId = reminder.conversationId;
-    const text = `**Reminder:** ${reminder.description}`;
+    if (this.inFlight.has(input.reminderId)) return;
+    this.inFlight.add(input.reminderId);
     try {
-      await this.wireOutbound.sendPlainText(convId, text);
-    } catch (err: unknown) {
-      // The reminder is already marked fired — swallow the send error so a stale
-      // MLS conversation (e.g. an e2e test artefact) does not crash the scheduler.
-      console.error("[FireReminder] Failed to send reminder message", {
-        reminderId: input.reminderId,
-        convId,
-        err: (err instanceof Error ? err.name : "UnknownError"),
-      });
+      const reminder = await this.reminders.findById(input.reminderId);
+      if (!reminder || reminder.deleted || reminder.status !== "pending" || !reminder.conversationId) return;
+      // A snooze may have overtaken an already dispatched callback.
+      if (reminder.triggerAt.getTime() > Date.now()) {
+        this.schedule(reminder.id, reminder.triggerAt);
+        return;
+      }
+      await this.wireOutbound.sendPlainText(reminder.conversationId, `**Reminder ${reminder.id}:** ${reminder.description}`);
+      await this.reminders.update({ ...reminder, status: "fired", updatedAt: new Date(), version: reminder.version + 1 });
+      await this.auditLog.append({ timestamp: new Date(), actorId: this.systemActorId,
+        conversationId: reminder.conversationId, action: "entity_updated", entityType: "Reminder",
+        entityId: reminder.id, details: { status: "fired" } });
+    } catch (err) {
+      // Pending remains durable and startup rehydrates overdue work. Also retry without restart.
+      this.schedule(input.reminderId, new Date(Date.now() + 60_000));
+      throw err;
+    } finally {
+      this.inFlight.delete(input.reminderId);
     }
+  }
+
+  private schedule(reminderId: string, runAt: Date): void {
+    this.scheduler.schedule({ id: `rem-${reminderId}`, type: "reminder", runAt, payload: { reminderId } });
   }
 }

@@ -1,3 +1,5 @@
+import type { ChannelConfigRepository } from "../../../domain/repositories/ChannelConfigRepository";
+import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
@@ -20,7 +22,7 @@ const LAST_CHECK_THRESHOLD_MS = 24 * 60 * 60 * 1000;
  *   - past its stalenessAt timestamp
  * AND has not been status-checked within the last 24 hours:
  *
- * Posts a proactive Jeeves-voice nudge to the channel and updates last_status_check.
+ * Posts a proactive Wire Team Bot-voice nudge to the channel and updates last_status_check.
  *
  * This use-case is designed to be called by the InProcessScheduler (twice daily).
  */
@@ -29,6 +31,8 @@ export class CheckStaleness {
     private readonly actionRepo: ActionRepository,
     private readonly wireOutbound: WireOutboundPort,
     private readonly logger: Logger,
+    private readonly channelConfig: ChannelConfigRepository,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   async execute(): Promise<void> {
@@ -71,6 +75,10 @@ export class CheckStaleness {
       const convId = channelActions[0]!.conversationId;
 
       for (const action of channelActions) {
+        try {
+          const state = await this.channelConfig.get(`${convId.id}@${convId.domain}`);
+          if (state?.state !== "active") continue;
+        } catch { continue; }
         const owner = resolveOwner(action);
         const deadlineStr = action.deadline
           ? action.deadline.toISOString().slice(0, 10)
@@ -107,6 +115,9 @@ export class CheckStaleness {
           this.logger.warn("CheckStaleness: failed to update last_status_check", {
             actionId: action.id, err: (err instanceof Error ? err.name : "UnknownError"),
           });
+          await this.auditLog.append({ timestamp: now, actorId: { id: "wire-team-bot", domain: convId.domain },
+            conversationId: convId, action: "entity_updated", entityType: "Action", entityId: action.id,
+            details: { lastStatusCheck: now } });
         }
       }
     }

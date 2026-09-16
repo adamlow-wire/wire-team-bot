@@ -24,7 +24,7 @@ export class SupersedeDecision {
 
   async execute(input: SupersedeDecisionInput): Promise<Decision | null> {
     const oldDecision = await this.decisions.findById(input.supersedesDecisionId);
-    if (!oldDecision || !sameQualifiedId(oldDecision.conversationId, input.conversationId)) {
+    if (!oldDecision || oldDecision.deleted || !sameQualifiedId(oldDecision.conversationId, input.conversationId)) {
       return null;
     }
 

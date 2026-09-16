@@ -2,6 +2,7 @@ import type { Decision, DecisionStatus } from "../entities/Decision";
 import type { QualifiedId } from "../ids/QualifiedId";
 
 export interface DecisionQuery {
+  rawMessageId?: string;
   conversationId?: QualifiedId;
   authorId?: QualifiedId;
   statusIn?: DecisionStatus[];

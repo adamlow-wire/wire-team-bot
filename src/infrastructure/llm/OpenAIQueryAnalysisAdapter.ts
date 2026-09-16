@@ -16,7 +16,7 @@ import type { ChannelContext } from "../../application/ports/ClassifierPort";
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the query planner for Jeeves, a discreet British team assistant.
+const SYSTEM_PROMPT = `You are the query planner for Wire Team Bot, a discreet British team assistant.
 Given a user's question, produce a JSON retrieval plan.
 
 Intents:

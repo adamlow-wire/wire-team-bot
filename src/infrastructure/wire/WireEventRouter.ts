@@ -1,3 +1,4 @@
+import { sameQualifiedId } from "../../domain/ids/QualifiedId";
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
 import { randomUUID } from "node:crypto";
 import type { Conversation, ConversationMember, TextMessage, CompositeButtonAction, TextEditedMessage, WireMessage } from "@wireapp/wire-apps-js-sdk";
@@ -105,7 +106,6 @@ export class WireEventRouter extends WireEventsHandler {
   private readonly lastActivityByConv = new Map<string, number>();
   private readonly knownConvs = new Set<string>();
 
-  private readonly awaitingPurpose = new Set<string>();
 
   constructor(private readonly deps: WireEventRouterDeps) {
     super();
@@ -132,7 +132,7 @@ export class WireEventRouter extends WireEventsHandler {
     const convId = wireMessage.conversationId as QualifiedId;
     const sender = wireMessage.sender as QualifiedId;
     const channelId = toChannelId(convId);
-    let senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
+    let senderMember = this.deps.memberCache.getMembers(convId).find((m) => sameQualifiedId(m.userId, sender));
 
     // Name resolution strategy:
     //   a) Name missing (not yet fetched, or sender not in cache): AWAIT the profile call so
@@ -159,7 +159,7 @@ export class WireEventRouter extends WireEventsHandler {
             }]);
           }
           // Re-read so messageBuffer and handleTextMessage see the resolved name.
-          senderMember = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id);
+          senderMember = this.deps.memberCache.getMembers(convId).find((m) => sameQualifiedId(m.userId, sender));
         }
       } catch { /* non-fatal — proceed without name */ }
     } else if (nameAge > NAME_TTL_MS) {
@@ -238,7 +238,7 @@ export class WireEventRouter extends WireEventsHandler {
     const channelState = this.channelStateCache.get(channelId) ?? "active";
 
     const cachedMembers = this.deps.memberCache.getMembers(convId);
-    const senderEntry = cachedMembers.find((m) => m.userId.id === sender.id);
+    const senderEntry = cachedMembers.find((m) => sameQualifiedId(m.userId, sender));
     const senderDisplayName = senderEntry?.name || undefined;
 
     const members = cachedMembers.map((m) => ({
@@ -249,7 +249,7 @@ export class WireEventRouter extends WireEventsHandler {
 
     // ── PAUSED ────────────────────────────────────────────────────────────────
     if (channelState === "paused") {
-      const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+      const botMentioned = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
       if (!botMentioned) {
         log.debug("Channel paused — message discarded");
         return;
@@ -274,7 +274,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (channelState === "secure") {
       this.scheduleInactivityCheck(convId, channelId);
       this.deps.slidingWindow.flush(channelId);
-      const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+      const botMentioned = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
       if (botMentioned && this.matchesResumeCommand(lowered)) {
         await this.setChannelState(convId, channelId, "active", sender.id, wireMessage.id, log);
         return;
@@ -284,17 +284,17 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ── ACTIVE — state-change commands ────────────────────────────────────────
-    const botMentionedEarly = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
+    const botMentionedEarly = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
 
-    // When addressed via @mention or Jeeves-prefix, strip the bot name so
+    // When addressed via @mention or Wire Team Bot-prefix, strip the bot name so
     // downstream pattern matching works on the bare command regardless of prefix.
-    // e.g. "@Jeeves (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
-    const isJeevesAddressed = botMentionedEarly || this.startsWithJeeves(lowered);
-    const commandLowered = isJeevesAddressed ? this.stripJeevesPrefix(lowered) : lowered;
+    // e.g. "@Wire Team Bot (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
+    const isBotAddressed = botMentionedEarly || this.startsWithBotName(lowered);
+    const commandLowered = isBotAddressed ? this.stripBotPrefix(lowered) : lowered;
     // Original-case stripped text — used for content-preserving matches (decision:, action:, remind, IDs).
-    const commandText = isJeevesAddressed ? this.stripJeevesPrefix(text) : text;
+    const commandText = isBotAddressed ? this.stripBotPrefix(text) : text;
 
-    if (botMentionedEarly || this.startsWithJeeves(lowered)) {
+    if (botMentionedEarly || this.startsWithBotName(lowered)) {
       if (this.matchesPauseCommand(lowered)) {
         await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
         return;
@@ -313,7 +313,7 @@ export class WireEventRouter extends WireEventsHandler {
         return;
       }
 
-      // @Jeeves status
+      // @Wire Team Bot status
       if (/\bstatus\b/i.test(lowered) && this.deps.statusCommand) {
         await this.deps.statusCommand.execute({
           conversationId: convId,
@@ -323,7 +323,7 @@ export class WireEventRouter extends WireEventsHandler {
         return;
       }
 
-      // @Jeeves catch me up / what did I miss
+      // @Wire Team Bot catch me up / what did I miss
       if (
         /catch\s+me\s+up/i.test(lowered) ||
         /what(?:'s|\s+is|\s+was)?\s+(?:new|happening)/i.test(lowered) ||
@@ -460,7 +460,7 @@ export class WireEventRouter extends WireEventsHandler {
     const actionMatch = commandText.match(/^action:\s*(.+)$/i);
     if (actionMatch) {
       const raw = actionMatch[1].trim();
-      const senderName = this.deps.memberCache.getMembers(convId).find((m) => m.userId.id === sender.id)?.name ?? "";
+      const senderName = this.deps.memberCache.getMembers(convId).find((m) => sameQualifiedId(m.userId, sender))?.name ?? "";
       // "Name to <description>" pattern
       const nameToMatch = raw.match(/^([A-Za-z][A-Za-z0-9 ]{0,30}?)\s+to\s+(.+)$/i);
       // "<description> for <Name>" pattern
@@ -508,7 +508,7 @@ export class WireEventRouter extends WireEventsHandler {
         return;
       }
       await this.deps.createReminder.execute({
-        conversationId: convId, authorId: sender, authorName: "",
+        conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
         description: remindMatch[2].trim(), targetId: sender, triggerAt: parsed.value,
       });
@@ -523,9 +523,9 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    // List commands — use commandLowered so "@Jeeves (DEV) show reminders" routes
+    // List commands — use commandLowered so "@Wire Team Bot (DEV) show reminders" routes
     // the same as the bare plain-text equivalent.  Natural-language variants are
-    // matched here so they are handled regardless of whether @Jeeves was mentioned.
+    // matched here so they are handled regardless of whether @Wire Team Bot was mentioned.
     if (commandLowered === "my actions" || commandLowered === "my action"
         || /^(?:what\s+are\s+(?:my|all\s+my)|show\s+(?:me\s+)?my|list\s+my)\s+(?:open\s+|current\s+)?actions?\s*[?]?$/i.test(commandLowered)
         || /^(?:do\s+i\s+have\s+(?:any\s+)?(?:open\s+)?actions?)\s*[?]?$/i.test(commandLowered)) {
@@ -574,48 +574,23 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    // ── Awaiting channel purpose ──────────────────────────────────────────────
-    if (this.awaitingPurpose.has(channelId)) {
-      const trimmed = text.trim();
-      if (trimmed.length >= 10) {
-        this.awaitingPurpose.delete(channelId);
-        const existing = await this.deps.conversationConfig.get(convId);
-        await this.deps.conversationConfig.upsert({
-          conversationId: convId,
-          timezone: existing?.timezone ?? "UTC",
-          locale: existing?.locale ?? "en",
-          secretMode: existing?.secretMode ?? false,
-          implicitDetectionEnabled: existing?.implicitDetectionEnabled,
-          sensitivity: existing?.sensitivity,
-          purpose: trimmed,
-          raw: existing?.raw ?? null,
-        });
-        const channelCfg = await this.deps.channelConfig.get(channelId);
-        if (channelCfg) {
-          await this.deps.channelConfig.upsert({ ...channelCfg, purpose: trimmed });
-        }
-        await this.deps.wireOutbound.sendPlainText(convId, "Thank you — I shall bear that in mind.", { replyToMessageId: wireMessage.id });
-        return;
-      }
-    }
-
     // ── Follow-up detection ───────────────────────────────────────────────────
-    // If Jeeves' most recent message (within the last 3 buffered messages) ended
+    // If Wire Team Bot' most recent message (within the last 3 buffered messages) ended
     // with a question mark, treat the next human message as a follow-up even
     // without an explicit @mention.
     const isFollowUp = (() => {
       if (botMentionedEarly) return false;
       const recent = this.deps.messageBuffer.getLastN(convId, 3);
-      // Find the last message Jeeves sent, ignoring the current one (not yet buffered)
-      const lastJeeves = [...recent].reverse().find(m => m.senderId.id === this.deps.botUserId.id);
-      // Check if the last sentence of Jeeves' message ends with "?" — handles
+      // Find the last message Wire Team Bot sent, ignoring the current one (not yet buffered)
+      const lastBot = [...recent].reverse().find(m => sameQualifiedId(m.senderId, this.deps.botUserId));
+      // Check if the last sentence of Wire Team Bot' message ends with "?" — handles
       // multi-paragraph responses where the offer question isn't the very last line.
-      if (lastJeeves == null) return false;
-      const lastSentence = lastJeeves.text.trim().split(/\n+/).filter(Boolean).pop() ?? "";
+      if (lastBot == null) return false;
+      const lastSentence = lastBot.text.trim().split(/\n+/).filter(Boolean).pop() ?? "";
       return lastSentence.trimEnd().endsWith("?");
     })();
 
-    // ── @Jeeves mention or follow-up — answer question ────────────────────────
+    // ── @Wire Team Bot mention or follow-up — answer question ────────────────────────
     if (botMentionedEarly || isFollowUp) {
       log.info("Message: dispatched to answerQuestion", { isFollowUp });
       const config = await this.deps.conversationConfig.get(convId);
@@ -635,12 +610,12 @@ export class WireEventRouter extends WireEventsHandler {
         orgId,
         userId: isPersonal ? sender.id : undefined,
       });
-      // Push Jeeves' response into both buffers so follow-up messages have context.
+      // Push Wire Team Bot' response into both buffers so follow-up messages have context.
       const botMsgId = `bot-${Date.now()}`;
       this.deps.messageBuffer.push(convId, {
         messageId: botMsgId,
         senderId: this.deps.botUserId,
-        senderName: "Jeeves",
+        senderName: "Wire Team Bot",
         text: answer,
         timestamp: new Date(),
       });
@@ -800,7 +775,7 @@ export class WireEventRouter extends WireEventsHandler {
     const inactiveMs = Date.now() - lastActivity;
     if (inactiveMs >= this.deps.secretModeInactivityMs) {
       await this.deps.wireOutbound.sendPlainText(convId,
-        "This conversation has been quiet for a while. Say _\"resume\"_ whenever you'd like me to start listening again.");
+        "This conversation has been quiet for a while. Mention me with _\"resume\"_ whenever you'd like me to start listening again.");
     } else {
       this.deps.scheduler.schedule({
         id: `secret-inactivity-${channelId}`, type: "secret_inactivity",
@@ -827,7 +802,7 @@ export class WireEventRouter extends WireEventsHandler {
 
     switch (buttonId) {
       default:
-        log.warn("Unhandled button action", { buttonId });
+        await this.deps.wireOutbound.sendPlainText(convId, "This button is no longer supported. Use a text command, for example: action: review the decision for Bob.");
     }
 
     try {
@@ -872,7 +847,7 @@ export class WireEventRouter extends WireEventsHandler {
 
         const rawMembers = await getMembers(conv);
         const members: CachedMember[] = rawMembers
-          .filter((m) => m.userId.id !== this.deps.botUserId.id)
+          .filter((m) => !sameQualifiedId(m.userId, this.deps.botUserId))
           .map((m) => ({
             userId: { id: m.userId.id, domain: m.userId.domain },
             role: toCachedRole(m.role),
@@ -910,7 +885,7 @@ export class WireEventRouter extends WireEventsHandler {
     // any member in this conversation is processed.
     await Promise.allSettled(
       members
-        .filter((m) => m.userId.id !== this.deps.botUserId.id)
+        .filter((m) => !sameQualifiedId(m.userId, this.deps.botUserId))
         .map(async (m) => {
           const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
           if (profile?.name) {
@@ -919,7 +894,7 @@ export class WireEventRouter extends WireEventsHandler {
         }),
     );
 
-    const nonBotMembers = members.filter((m) => m.userId.id !== this.deps.botUserId.id);
+    const nonBotMembers = members.filter((m) => !sameQualifiedId(m.userId, this.deps.botUserId));
     const isPersonalMode = nonBotMembers.length === 1;
     this.personalModeCache.set(channelId, isPersonalMode);
 
@@ -949,10 +924,9 @@ export class WireEventRouter extends WireEventsHandler {
       if (!channelCfg?.purpose) {
         const legacyCfg = await this.deps.conversationConfig.get(convId);
         if (!legacyCfg?.purpose) {
-          this.awaitingPurpose.add(channelId);
           await this.deps.wireOutbound.sendPlainText(
             convId,
-            "Good day. I'm Jeeves, your team assistant. Before I begin, might I ask what this channel is used for? A brief description will help me serve the team more effectively.",
+            "I'm Wire Team Bot. To save the channel purpose, mention me with: context: <brief purpose>. Use decision: or action: to record work, and mention me with pause, secure mode, or resume to control listening.",
           );
         }
       }
@@ -979,7 +953,7 @@ export class WireEventRouter extends WireEventsHandler {
     // Resolve names for newly joined members before returning.
     await Promise.allSettled(
       members
-        .filter((m) => m.userId.id !== this.deps.botUserId.id)
+        .filter((m) => !sameQualifiedId(m.userId, this.deps.botUserId))
         .map(async (m) => {
           const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
           if (profile?.name) {
@@ -997,7 +971,7 @@ export class WireEventRouter extends WireEventsHandler {
   private async updatePersonalMode(convId: QualifiedId): Promise<void> {
     const channelId = toChannelId(convId);
     const allMembers = this.deps.memberCache.getMembers(convId);
-    const nonBotMembers = allMembers.filter((m) => m.userId.id !== this.deps.botUserId.id);
+    const nonBotMembers = allMembers.filter((m) => !sameQualifiedId(m.userId, this.deps.botUserId));
     const isPersonalMode = nonBotMembers.length === 1;
     this.personalModeCache.set(channelId, isPersonalMode);
     try {
@@ -1010,28 +984,28 @@ export class WireEventRouter extends WireEventsHandler {
   // Command matchers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private startsWithJeeves(lowered: string): boolean {
-    return lowered.startsWith("jeeves") || lowered.startsWith("@jeeves");
+  private startsWithBotName(lowered: string): boolean {
+    return /^@?(?:wire team bot|jeeves)\b/i.test(lowered);
   }
 
-  private stripJeevesPrefix(lowered: string): string {
-    // Strip @Jeeves or Jeeves, optionally followed by a parenthetical display-name
+  private stripBotPrefix(lowered: string): string {
+    // Strip @Wire Team Bot or Wire Team Bot, optionally followed by a parenthetical display-name
     // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
-    return lowered.replace(/^@?jeeves(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
+    return lowered.replace(/^@?(?:wire team bot|jeeves)(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
   }
 
   private matchesPauseCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotPrefix(lowered);
     return /^(pause|step out)(\s+please)?$/.test(s) || /^(pause|step out)(\s+please)?$/.test(lowered);
   }
 
   private matchesResumeCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotPrefix(lowered);
     return /^(resume|come back)(\s+please)?$/.test(s) || /^(resume|come back)(\s+please)?$/.test(lowered);
   }
 
   private matchesSecureCommand(lowered: string): boolean {
-    const s = this.stripJeevesPrefix(lowered);
+    const s = this.stripBotPrefix(lowered);
     // "safe mode" is accepted as a natural-language alias for "secure mode".
     return /^(secure mode|safe mode|ears off|secure|safe)(\s+please)?$/.test(s)
         || /^(secure mode|safe mode|ears off)(\s+please)?$/.test(lowered);
@@ -1039,11 +1013,11 @@ export class WireEventRouter extends WireEventsHandler {
 
   private matchContextCommand(text: string): ContextCommandMatch | null {
     const m = (re: RegExp, field: ContextField) => { const r = text.match(re); return r ? { field, value: r[1].trim() } : null; };
-    return m(/^@?[Jj]eeves[,:]?\s+context:\s*(.+)$/i, "purpose")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+type:\s*(.+)$/i, "type")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+tags:\s*(.+)$/i, "tags")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+stakeholders:\s*(.+)$/i, "stakeholders")
-      ?? m(/^@?[Jj]eeves[,:]?\s+context\s+related:\s*(.+)$/i, "related")
+    return m(/^@?(?:wire team bot|jeeves)[,:]?\s+context:\s*(.+)$/i, "purpose")
+      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+type:\s*(.+)$/i, "type")
+      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+tags:\s*(.+)$/i, "tags")
+      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+stakeholders:\s*(.+)$/i, "stakeholders")
+      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+related:\s*(.+)$/i, "related")
       ?? null;
   }
 

@@ -141,7 +141,12 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
       data?: Array<{ embedding?: number[]; index?: number }>;
     };
     const sorted = (data.data ?? []).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-    return sorted.map((d) => d.embedding ?? []);
+    if (sorted.length !== inputs.length || sorted.some(d => !Array.isArray(d.embedding)
+      || d.embedding.length !== this.config.embedDims
+      || d.embedding.some(value => typeof value !== "number" || !Number.isFinite(value)))) {
+      throw new Error("Embedding response dimensions or values are invalid");
+    }
+    return sorted.map(d => d.embedding!);
   }
 }
 

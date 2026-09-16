@@ -102,6 +102,7 @@ export class PrismaDecisionRepository implements DecisionRepository {
     if (criteria.searchText) {
       where.summary = { contains: criteria.searchText, mode: "insensitive" };
     }
+    if (criteria.rawMessageId) where.rawMessageId = criteria.rawMessageId;
     const take = criteria.limit ?? 50;
     const rows = await this.prisma.decision.findMany({ where, take, orderBy: { timestamp: "desc" } });
     return rows.map((r) => this.fromRow(r));

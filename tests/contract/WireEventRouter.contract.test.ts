@@ -305,11 +305,11 @@ function makeButtonAction(buttonId: string, referenceMessageId = "msg-1", id = "
 }
 
 describe("WireEventRouter contract: button action handling", () => {
-  it("unknown button id → warns but does not throw", async () => {
+  it("unknown button id → gives a supported text alternative", async () => {
     const deps = makeDeps();
     const router = new WireEventRouter(deps);
     await router.onButtonClicked(makeButtonAction("unknown_button"));
-    expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(convId, expect.stringContaining("text command"));
   });
 });
 

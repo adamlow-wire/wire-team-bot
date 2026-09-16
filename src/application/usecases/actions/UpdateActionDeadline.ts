@@ -25,7 +25,7 @@ export class UpdateActionDeadline {
 
   async execute(input: UpdateActionDeadlineInput): Promise<Action | null> {
     const action = await this.actions.findById(input.actionId);
-    if (!action || !sameQualifiedId(action.conversationId, input.conversationId)) {
+    if (!action || action.deleted || !sameQualifiedId(action.conversationId, input.conversationId)) {
       return null;
     }
 

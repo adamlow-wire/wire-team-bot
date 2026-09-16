@@ -24,7 +24,7 @@ export class ReassignAction {
 
   async execute(input: ReassignActionInput): Promise<Action | null> {
     const action = await this.actions.findById(input.actionId);
-    if (!action || !sameQualifiedId(action.conversationId, input.conversationId)) {
+    if (!action || action.deleted || !sameQualifiedId(action.conversationId, input.conversationId)) {
       return null;
     }
 

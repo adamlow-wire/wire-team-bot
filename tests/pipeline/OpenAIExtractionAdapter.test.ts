@@ -115,3 +115,12 @@ describe("OpenAIExtractionAdapter", () => {
     expect(result.decisions).toHaveLength(0);
   });
 });
+
+it.each(['null', '[]', '"text"', '{"decisions":'])('handles invalid root/truncation: %s', async raw => {
+  const result = await new OpenAIExtractionAdapter(makeLLM(raw), logger).extract(currentMsg, window, ctx, [], []);
+  expect(result.decisions).toEqual([]);
+});
+it.each([null, '0.9', 2, -1])('does not trust invalid confidence %j', async confidence => {
+  const result = await new OpenAIExtractionAdapter(makeLLM(JSON.stringify({decisions:[{summary:'Bad capture',confidence}]})),logger).extract(currentMsg,window,ctx,[],[]);
+  expect(result.decisions[0].confidence).toBe(0);
+});

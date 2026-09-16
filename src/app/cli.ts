@@ -1,5 +1,5 @@
 /**
- * CLI harness for Jeeves — drives WireEventRouter directly from stdin/stdout.
+ * CLI harness for Wire Team Bot — drives WireEventRouter directly from stdin/stdout.
  *
  * Usage (interactive):
  *   npm run cli
@@ -11,7 +11,7 @@
  *   <message>                    — sent as the default user (Alice)
  *   <Name>: <message>            — sent as a named member (must be in the seeded roster)
  *
- * Jeeves responses are printed prefixed with "[Jeeves]".
+ * Wire Team Bot responses are printed prefixed with "[Wire Team Bot]".
  * All other bot log output goes to stderr so stdout stays clean for scripted use.
  *
  * Exit: send EOF (Ctrl-D) or the word "exit" / "quit".
@@ -19,6 +19,7 @@
 
 import "reflect-metadata";
 import readline from "readline";
+import { randomUUID } from "node:crypto";
 import { loadConfig } from "./config";
 import { initLogging, getLogger } from "./logging";
 import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaClient";
@@ -98,13 +99,18 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
 
 // ── Stub outbound port ────────────────────────────────────────────────────────
 
+const evaluationMode = process.env.E2E_JSON === "1";
+let evaluationReplies: string[] = [];
+
 function createCliOutbound(): WireOutboundPort {
   return {
     async sendPlainText(_convId: QualifiedId, text: string, _opts?: OutboundTextOptions) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      if (evaluationMode) evaluationReplies.push(text);
+      else process.stdout.write(`[Wire Team Bot] ${text}\n`);
     },
     async sendCompositePrompt(_convId: QualifiedId, text: string) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      if (evaluationMode) evaluationReplies.push(text);
+      else process.stdout.write(`[Wire Team Bot] ${text}\n`);
     },
     async sendReaction() {},
     async sendFile() {},
@@ -118,12 +124,12 @@ function createCliOutbound(): WireOutboundPort {
 // ── Fake TextMessage builder ──────────────────────────────────────────────────
 
 function buildMessage(text: string, sender: QualifiedId): object {
-  const botMentionPattern = /^@jeeves\b/i;
+  const botMentionPattern = /^@(?:wire team bot|jeeves)\b/i;
   const mentions = botMentionPattern.test(text.trim())
-    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: "@jeeves".length }]
+    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: text.trim().match(botMentionPattern)![0].length }]
     : [];
   return {
-    id: `cli-msg-${Date.now()}`,
+    id: `cli-msg-${randomUUID()}`,
     conversationId: CHANNEL_ID_RAW,
     sender,
     text,
@@ -195,6 +201,7 @@ async function main() {
   const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
     auditLog: auditLogRepo,
+    userResolution: userResolution, dateTimeService,
     classifier, extraction, embeddingService,
     entityRepo, embeddingRepo, signalRepo,
     decisionRepo: decisionsRepo, actionRepo: actionsRepo,
@@ -260,7 +267,7 @@ async function main() {
   const isInteractive = process.stdin.isTTY;
 
   if (isInteractive) {
-    process.stderr.write(`Jeeves CLI — type messages, prefix with "Name: " to change sender\n`);
+    process.stderr.write(`Wire Team Bot CLI — type messages, prefix with "Name: " to change sender\n`);
     process.stderr.write(`Members: ${MEMBERS.map(m => m.name).join(", ")}\n`);
     process.stderr.write(`Type "exit" or Ctrl-D to quit.\n\n`);
   }
@@ -268,7 +275,10 @@ async function main() {
   const rl = readline.createInterface({ input: process.stdin, output: undefined, terminal: false });
 
   for await (const line of rl) {
-    const trimmed = line.trim();
+    const event = evaluationMode ? JSON.parse(line) as { eventId: string; text: string } : null;
+    const trimmed = (event?.text ?? line).trim();
+    evaluationReplies = [];
+    const started = Date.now();
     if (!trimmed) continue;
     if (trimmed === "exit" || trimmed === "quit") break;
 
@@ -291,17 +301,20 @@ async function main() {
       process.stderr.write(`[${senderName}] ${text}\n`);
     }
 
-    const msg = buildMessage(text, sender);
+    const msg = { ...buildMessage(text, sender), ...(event ? { id: event.eventId } : {}) };
     await router.onTextMessageReceived(msg as Parameters<typeof router.onTextMessageReceived>[0]);
+    if (event) {
+      await processingQueue.waitForIdle(180_000);
+      process.stdout.write(JSON.stringify({ eventId: event.eventId, replies: evaluationReplies, elapsedMs: Date.now() - started }) + "\n");
+    }
   }
 
   // Drain any in-flight pipeline jobs before closing the DB connection.
   // Without this, background-extracted decisions/actions (TC-PIPE) are lost
   // because the Prisma connection closes before the async writes commit.
-  await processingQueue.waitForIdle(15_000).catch(() => {
-    process.stderr.write("CLI: pipeline drain timed out — some extractions may not have persisted\n");
-  });
+  await processingQueue.waitForIdle(180_000);
 
+  scheduler.shutdown();
   await prisma.$disconnect();
 }
 

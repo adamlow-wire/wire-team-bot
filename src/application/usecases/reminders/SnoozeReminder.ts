@@ -28,7 +28,7 @@ export class SnoozeReminder {
   async execute(input: SnoozeReminderInput): Promise<Reminder | null> {
     const reminder = await this.reminders.findById(input.reminderId);
     if (
-      !reminder ||
+      !reminder || reminder.deleted ||
       !reminder.conversationId ||
       !sameQualifiedId(reminder.conversationId, input.conversationId)
     ) {

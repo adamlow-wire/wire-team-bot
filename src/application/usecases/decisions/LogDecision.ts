@@ -25,6 +25,11 @@ export class LogDecision {
   ) {}
 
   async execute(input: LogDecisionInput): Promise<Decision> {
+    const previous = await this.decisions.query({ conversationId: input.conversationId, rawMessageId: input.rawMessageId });
+    if (previous?.length) {
+      await this.wireOutbound.sendPlainText(input.conversationId, `Decision **${previous[0].id}** was already recorded.`, { replyToMessageId: input.rawMessageId });
+      return previous[0];
+    }
     const now = new Date();
     const id = await this.decisions.nextId();
 

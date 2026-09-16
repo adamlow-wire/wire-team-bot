@@ -34,7 +34,7 @@ describe("CheckStaleness", () => {
     };
     const wireOutbound = { sendPlainText: vi.fn().mockResolvedValue(undefined) };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(wireOutbound.sendPlainText).toHaveBeenCalledOnce();
@@ -52,7 +52,7 @@ describe("CheckStaleness", () => {
     };
     const wireOutbound = { sendPlainText: vi.fn().mockResolvedValue(undefined) };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(actionRepo.update).toHaveBeenCalledOnce();
@@ -68,7 +68,7 @@ describe("CheckStaleness", () => {
     };
     const wireOutbound = { sendPlainText: vi.fn() };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(wireOutbound.sendPlainText).not.toHaveBeenCalled();
@@ -82,7 +82,7 @@ describe("CheckStaleness", () => {
     };
     const wireOutbound = { sendPlainText: vi.fn() };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(wireOutbound.sendPlainText).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ describe("CheckStaleness", () => {
     };
     const wireOutbound = { sendPlainText: vi.fn().mockResolvedValue(undefined) };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(wireOutbound.sendPlainText).toHaveBeenCalledOnce();
@@ -111,7 +111,7 @@ describe("CheckStaleness", () => {
     const actionRepo = { query: vi.fn().mockResolvedValue([]) };
     const wireOutbound = { sendPlainText: vi.fn() };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     await uc.execute();
 
     expect(wireOutbound.sendPlainText).not.toHaveBeenCalled();
@@ -121,8 +121,16 @@ describe("CheckStaleness", () => {
     const actionRepo = { query: vi.fn().mockRejectedValue(new Error("DB down")) };
     const wireOutbound = { sendPlainText: vi.fn() };
 
-    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger());
+    const uc = new CheckStaleness(actionRepo as never, wireOutbound as never, makeLogger(), { get: vi.fn().mockResolvedValue({ state: "active" }) } as never, { append: vi.fn() });
     // Should not throw
     await expect(uc.execute()).resolves.toBeUndefined();
   });
+});
+
+it.each(["paused", "secure"])("does not nudge a %s channel", async state => {
+  const wire = { sendPlainText: vi.fn() };
+  const repo = { query: vi.fn().mockResolvedValue([makeAction()]), update: vi.fn() };
+  await new CheckStaleness(repo as never, wire as never, makeLogger(), { get: vi.fn().mockResolvedValue({state}) } as never, {append:vi.fn()}).execute();
+  expect(wire.sendPlainText).not.toHaveBeenCalled();
+  expect(repo.update).not.toHaveBeenCalled();
 });

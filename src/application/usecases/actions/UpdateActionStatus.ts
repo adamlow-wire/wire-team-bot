@@ -25,7 +25,7 @@ export class UpdateActionStatus {
 
   async execute(input: UpdateActionStatusInput): Promise<Action | null> {
     const action = await this.actions.findById(input.actionId);
-    if (!action || !sameQualifiedId(action.conversationId, input.conversationId)) return null;
+    if (!action || action.deleted || !sameQualifiedId(action.conversationId, input.conversationId)) return null;
 
     const updated: Action = {
       ...action,

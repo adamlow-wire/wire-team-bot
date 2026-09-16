@@ -92,11 +92,11 @@ describe("createEmbeddingService", () => {
 
   it("the real adapter calls the embedding endpoint, not the chat endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ data: [{ index: 0, embedding: [0.1, 0.2] }] }), { status: 200 }),
+      new Response(JSON.stringify({ data: [{ index: 0, embedding: Array(2560).fill(0.1) }] }), { status: 200 }),
     );
     try {
       const svc = createEmbeddingService(llmConfig({ baseUrl: "http://ollama:11434/v1", apiKey: "embed-key", enabled: true }), logger);
-      await expect(svc.embed("hello")).resolves.toEqual([0.1, 0.2]);
+      await expect(svc.embed("hello")).resolves.toEqual(Array(2560).fill(0.1));
       const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
       expect(url).toBe("http://ollama:11434/v1/embeddings");
       expect((init.headers as Record<string, string>).Authorization).toBe("Bearer embed-key");
@@ -104,4 +104,12 @@ describe("createEmbeddingService", () => {
       fetchMock.mockRestore();
     }
   });
+});
+
+it("rejects mismatched embedding dimensions rather than storing them", async () => {
+  const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({data:[{embedding:[1,2]}]})));
+  try {
+    const service = createEmbeddingService(llmConfig({baseUrl:"http://model.test",apiKey:"",enabled:true}),logger);
+    expect(await service.embed("test")).toBeNull();
+  } finally { fetchMock.mockRestore(); }
 });

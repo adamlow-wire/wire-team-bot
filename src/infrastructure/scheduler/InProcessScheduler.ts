@@ -19,11 +19,20 @@ export class InProcessScheduler implements SchedulerPort {
     const delay = Math.max(0, job.runAt.getTime() - Date.now());
     this.logger.debug("Job scheduled", { jobId: job.id, type: job.type, runAt: job.runAt.toISOString(), delayMs: delay });
     const timeout = setTimeout(() => {
+      if (job.runAt.getTime() > Date.now()) {
+        this.schedule(job);
+        return;
+      }
       this.timeouts.delete(job.id);
       this.logger.debug("Job fired", { jobId: job.id, type: job.type });
       this.handler?.(job);
-    }, delay);
+    }, Math.min(delay, 2_147_483_647));
     this.timeouts.set(job.id, timeout);
+  }
+
+  shutdown(): void {
+    for (const timeout of this.timeouts.values()) clearTimeout(timeout);
+    this.timeouts.clear();
   }
 
   cancel(jobId: string): void {

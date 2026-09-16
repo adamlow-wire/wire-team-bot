@@ -30,12 +30,24 @@ export class CreateActionFromExplicit {
     private readonly logger: Logger,
   ) {}
 
-  async execute(input: CreateActionFromExplicitInput): Promise<Action> {
+  async execute(input: CreateActionFromExplicitInput): Promise<Action | null> {
+    const previous = await this.actions.query({ conversationId: input.conversationId, rawMessageId: input.rawMessageId });
+    if (previous?.length) {
+      await this.wireOutbound.sendPlainText(input.conversationId, `Action **${previous[0].id}** was already recorded.`, { replyToMessageId: input.rawMessageId });
+      return previous[0];
+    }
     const now = new Date();
     const id = await this.actions.nextId();
 
     const assigneeResult = await this.resolveAssignee(input);
-    const assigneeId = assigneeResult.userId ?? input.creatorId;
+    if (!assigneeResult.userId || assigneeResult.ambiguous) {
+      await this.wireOutbound.sendPlainText(input.conversationId,
+        assigneeResult.ambiguous ? "Multiple members match that name. Please use a unique member ID."
+          : "I could not find that member. Please use a current member's name or ID.",
+        { replyToMessageId: input.rawMessageId });
+      return null;
+    }
+    const assigneeId = assigneeResult.userId;
     const assigneeName = input.assigneeReference ?? input.authorName;
 
     const deadline = await this.parseDeadline(input.deadlineText, input.conversationId);

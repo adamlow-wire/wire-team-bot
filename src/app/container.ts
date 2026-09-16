@@ -99,6 +99,7 @@ export function createContainer(config: Config, logger: Logger): Container {
 
   const pipeline = new ProcessingPipeline({
     auditLog: auditLogRepo,
+    userResolution: userResolutionService, dateTimeService,
     classifier,
     extraction,
     embeddingService,
@@ -145,7 +146,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     logger,
   );
   const catchMeUpCommand = new CatchMeUpCommand(summaryRepo, generateSummary, wireOutbound);
-  const checkStaleness = new CheckStaleness(actionsRepo, wireOutbound, logger);
+  const checkStaleness = new CheckStaleness(actionsRepo, wireOutbound, logger, channelConfigRepo, auditLogRepo);
   const summaryPath = new SummaryRetrievalPath(summaryRepo, logger);
 
   const retrievalEngine = new MultiPathRetrievalEngine(structuredPath, semanticPath, graphPath, summaryPath, logger);
@@ -182,7 +183,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const listOverdueActions = new ListOverdueActions(actionsRepo, wireOutbound);
   const reassignAction = new ReassignAction(actionsRepo, userResolutionService, wireOutbound, auditLogRepo);
 
-  const fireReminder = new FireReminder(remindersRepo, wireOutbound, auditLogRepo, systemActorId);
+  const fireReminder = new FireReminder(remindersRepo, wireOutbound, auditLogRepo, systemActorId, scheduler);
   const cancelReminder = new CancelReminder(remindersRepo, scheduler, wireOutbound, auditLogRepo);
   const snoozeReminder = new SnoozeReminder(remindersRepo, dateTimeService, scheduler, wireOutbound, auditLogRepo);
   const listMyReminders = new ListMyReminders(remindersRepo, wireOutbound);

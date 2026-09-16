@@ -2,6 +2,7 @@ import type { Action, ActionStatus } from "../entities/Action";
 import type { QualifiedId } from "../ids/QualifiedId";
 
 export interface ActionQuery {
+  rawMessageId?: string;
   conversationId?: QualifiedId;
   assigneeId?: QualifiedId;
   creatorId?: QualifiedId;

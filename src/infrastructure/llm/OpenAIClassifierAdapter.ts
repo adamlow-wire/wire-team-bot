@@ -8,7 +8,7 @@ import type { ClassifierPort, ClassifyResult, ChannelContext, MessageCategory } 
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the Tier 1 classifier for Jeeves, a discreet British team assistant.
+const SYSTEM_PROMPT = `You are the Tier 1 classifier for Wire Team Bot, a discreet British team assistant.
 
 Classify the message into one or more of these categories:
 - decision: a conclusion or choice has been made or recorded
@@ -84,6 +84,7 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
       return FALLBACK;
     }
 
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return FALLBACK;
     const rawCategories = Array.isArray(parsed.categories) ? parsed.categories : [];
     const categories = rawCategories.filter(
       (c): c is MessageCategory => typeof c === "string" && VALID_CATEGORIES.includes(c as MessageCategory),
@@ -94,7 +95,8 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
       ? parsed.entities.filter((e): e is string => typeof e === "string")
       : [];
 
-    const confidence = Math.min(1, Math.max(0, Number(parsed.confidence ?? 0.5)));
+    const confidence = typeof parsed.confidence === "number" && Number.isFinite(parsed.confidence)
+      ? Math.min(1, Math.max(0, parsed.confidence)) : 0;
     const is_high_signal =
       typeof parsed.is_high_signal === "boolean"
         ? parsed.is_high_signal

@@ -16,7 +16,7 @@ export interface CatchMeUpInput {
 }
 
 /**
- * Handles "@Jeeves catch me up" / "what did I miss".
+ * Handles "@Wire Team Bot catch me up" / "what did I miss".
  *
  * 1. Check for a fresh daily summary (< 25 h). If found, post it.
  * 2. Otherwise, generate an on-demand summary for the last 24 h.

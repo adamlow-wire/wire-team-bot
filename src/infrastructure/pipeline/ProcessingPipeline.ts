@@ -1,3 +1,5 @@
+import type { UserResolutionService } from "../../domain/services/UserResolutionService";
+import type { DateTimeService } from "../../domain/services/DateTimeService";
 import type { AuditLogRepository } from "../../domain/repositories/AuditLogRepository";
 /**
  * ProcessingPipeline — three-tier background processing of conversation messages.
@@ -43,6 +45,8 @@ export interface MessageJob {
 
 export interface PipelineDeps {
   auditLog: AuditLogRepository;
+  userResolution: UserResolutionService;
+  dateTimeService: DateTimeService;
   classifier: ClassifierPort;
   extraction: ExtractionPort;
   embeddingService: EmbeddingService;
@@ -78,6 +82,7 @@ export class ProcessingPipeline {
         channelId,
         purpose: cfg?.purpose,
         contextType: cfg?.contextType ?? undefined,
+        timezone: cfg?.timezone,
       };
     } catch {
       log.warn("Pipeline: channel state unavailable — processing stopped");
@@ -161,6 +166,12 @@ export class ProcessingPipeline {
       signals: extracted.signals.length,
     });
 
+    const recentDecisions = await this.deps.decisionRepo.query({ conversationId, statusIn: ["active"], limit: 50 });
+    const priorDecisions = await this.deps.decisionRepo.query({ conversationId, rawMessageId: messageId });
+    const priorActions = await this.deps.actionRepo.query({ conversationId, rawMessageId: messageId });
+    if (signal?.aborted) return;
+    const decisionKeys = new Set((priorDecisions ?? []).map(d => `${d.rawMessageId}:${d.summary.trim().toLowerCase()}`));
+    const actionKeys = new Set((priorActions ?? []).map(a => `${a.rawMessageId}:${a.description.trim().toLowerCase()}`));
     const now = new Date();
 
     // ── Entities (resolve IDs for relationship wiring) ────────────────────
@@ -169,6 +180,7 @@ export class ProcessingPipeline {
       if (signal?.aborted) return;
       try {
         const id = await this.deps.entityRepo.upsertWithDedup(entity, channelId, orgId);
+        await this.audit(job, "Entity", id, "entity_updated");
         entityNameToId.set(entity.name.toLowerCase(), id);
         for (const alias of entity.aliases) {
           entityNameToId.set(alias.toLowerCase(), id);
@@ -186,6 +198,7 @@ export class ProcessingPipeline {
       if (!sourceId || !targetId) continue;
       try {
         await this.deps.entityRepo.upsertRelationship(sourceId, targetId, rel);
+        await this.audit(job, "EntityRelationship", `${sourceId}:${targetId}:${rel.relationship}`, "entity_updated");
       } catch (err) {
         log.warn("Pipeline: relationship upsert failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       }
@@ -195,8 +208,18 @@ export class ProcessingPipeline {
     const newDecisionIds: string[] = [];
     for (const d of extracted.decisions) {
       if (signal?.aborted) return;
-      if (d.confidence < this.deps.extractConfidenceMin) continue;
+      if (!Number.isFinite(d.confidence) || d.confidence < this.deps.extractConfidenceMin) continue;
+      if ((recentDecisions ?? []).some(existing => normaliseFact(existing.summary) === normaliseFact(d.summary))) continue;
+      const key = `${messageId}:${d.summary.trim().toLowerCase()}`;
+      if (decisionKeys.has(key)) continue;
+      decisionKeys.add(key);
       try {
+        const validatedDeciders: string[] = [];
+        for (const name of d.decidedBy) {
+          const person = await this.deps.userResolution.resolveByHandleOrName(name, { conversationId });
+          if (person.userId && !person.ambiguous) validatedDeciders.push(name);
+        }
+        if (signal?.aborted) return;
         const id = await this.deps.decisionRepo.nextId();
         if (signal?.aborted) return;
         const decision: Decision = {
@@ -221,7 +244,7 @@ export class ProcessingPipeline {
           // Phase 2 extraction metadata
           decidedAt: timestamp,
           rationale: d.rationale,
-          decidedBy: d.decidedBy,
+          decidedBy: validatedDeciders,
           confidence: d.confidence,
           organisationId: orgId,
           sourceRef: {
@@ -253,13 +276,14 @@ export class ProcessingPipeline {
     for (const c of extracted.completions) {
       if (signal?.aborted) return;
       const target = openActions.find(a => a.id === c.actionId);
-      if (!target) continue;
+      if (!target || target.assigneeId.id !== senderId.id || target.assigneeId.domain !== senderId.domain) continue;
       try {
         await this.deps.actionRepo.update({
           ...target,
           status: "done",
           completionNote: c.note ?? null,
           updatedAt: now,
+          version: target.version + 1,
         });
         await this.audit(job, "Action", target.id, "entity_updated");
         log.info("Pipeline: action completed via NL announcement", { actionId: target.id });
@@ -271,22 +295,24 @@ export class ProcessingPipeline {
     // ── Actions ───────────────────────────────────────────────────────────
     for (const a of extracted.actions) {
       if (signal?.aborted) return;
-      if (a.confidence < this.deps.extractConfidenceMin) continue;
+      if (!Number.isFinite(a.confidence) || a.confidence < this.deps.extractConfidenceMin) continue;
+      const key = `${messageId}:${a.description.trim().toLowerCase()}`;
+      if (actionKeys.has(key)) continue;
+      actionKeys.add(key);
       try {
-        // If this action supersedes an existing one, close the old one first
-        if (a.supersedes) {
-          const toClose = openActions.find(oa => oa.id === a.supersedes);
-          if (toClose) {
-            await this.deps.actionRepo.update({
-              ...toClose,
-              status: "done",
-              completionNote: `Superseded by: ${a.description}`,
-              updatedAt: now,
-            });
-            await this.audit(job, "Action", toClose.id, "entity_updated");
-            log.info("Pipeline: action superseded", { closedId: toClose.id });
-          }
+        const resolved = a.ownerName
+          ? await this.deps.userResolution.resolveByHandleOrName(a.ownerName, { conversationId })
+          : { userId: null, ambiguous: false };
+        if (signal?.aborted) return;
+        if (!resolved.userId || resolved.ambiguous) {
+          log.info("Pipeline: skipped action with unresolved owner");
+          continue;
         }
+        if (openActions.some(existing => normaliseFact(existing.description) === normaliseFact(a.description)
+          && existing.assigneeId.id === resolved.userId!.id && existing.assigneeId.domain === resolved.userId!.domain)) continue;
+        // Ownership corrections use the existing explicit reassign command. Passive
+        // supersedes may be ambiguous and must not silently close someone else's work.
+        if (a.supersedes) continue;
 
         const id = await this.deps.actionRepo.nextId();
         // Owner resolution: reject any UUID that leaked through from an unresolved
@@ -300,11 +326,11 @@ export class ProcessingPipeline {
           conversationId,
           creatorId: senderId,
           authorName: resolvedSender,
-          assigneeId: senderId,
+          assigneeId: resolved.userId,
           assigneeName: resolvedOwner || resolvedSender || "",
           rawMessageId: messageId,
           description: a.description,
-          deadline: null,  // natural language deadline deferred to Phase 3 (NLP parsing)
+          deadline: a.deadline ? this.deps.dateTimeService.parse(a.deadline, { timezone: channelCtx.timezone ?? "UTC" })?.value ?? null : null,
           status: "open",
           linkedIds: [],
           reminderAt: [],
@@ -429,6 +455,9 @@ export class ProcessingPipeline {
           timestamp_range: { start: occurredAt.toISOString(), end: occurredAt.toISOString() },
         },
       });
+      await this.deps.auditLog.append({ timestamp: new Date(), actorId: { id: "wire-team-bot", domain: orgId },
+        conversationId: { id: channelId.slice(0, channelId.lastIndexOf("@")), domain: orgId },
+        action: "entity_created", entityType: "ConversationSignal", details: { sourceMessageId: messageId } });
     } catch (err) {
       log.warn("Pipeline: signal write failed", { err: (err instanceof Error ? err.name : "UnknownError") });
     }
@@ -520,4 +549,8 @@ export class ProcessingPipeline {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function looksLikeUuid(s: string | undefined): boolean {
   return !!s && UUID_RE.test(s);
+}
+
+function normaliseFact(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }

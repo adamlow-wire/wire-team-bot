@@ -1,6 +1,6 @@
 /**
  * Structured logging setup. Correlates by conversation ID, user ID, entity IDs.
- * Uses pino when available; falls back to console with structured fields.
+ * Emits content-free structured diagnostic fields to stderr.
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -17,7 +17,9 @@ function createConsoleLogger(level: LogLevel, bindings: Record<string, unknown> 
   const numericLevel = { debug: 0, info: 1, warn: 2, error: 3 }[level];
   const min = numericLevel;
   const log = (l: string, msg: string, data?: Record<string, unknown>) => {
-    const out = { level: l, msg, time: new Date().toISOString(), ...bindings, ...data };
+    const fields = { ...bindings, ...data };
+    for (const key of ["text", "preview", "raw", "context", "prompt", "response", "stack"]) delete fields[key];
+    const out = { level: l, msg, time: new Date().toISOString(), ...fields };
     process.stderr.write(JSON.stringify(out) + "\n");
   };
   return {

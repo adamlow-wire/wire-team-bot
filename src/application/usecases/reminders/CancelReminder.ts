@@ -24,7 +24,7 @@ export class CancelReminder {
   async execute(input: CancelReminderInput): Promise<Reminder | null> {
     const reminder = await this.reminders.findById(input.reminderId);
     if (
-      !reminder ||
+      !reminder || reminder.deleted ||
       !reminder.conversationId ||
       !sameQualifiedId(reminder.conversationId, input.conversationId)
     ) {

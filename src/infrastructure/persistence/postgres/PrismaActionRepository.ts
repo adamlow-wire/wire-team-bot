@@ -105,6 +105,7 @@ export class PrismaActionRepository implements ActionRepository {
     if (criteria.deadlineBefore != null) {
       where.deadline = { lt: criteria.deadlineBefore };
     }
+    if (criteria.rawMessageId) where.rawMessageId = criteria.rawMessageId;
     const take = criteria.limit ?? 50;
     const rows = await this.prisma.action.findMany({ where, take, orderBy: { timestamp: "desc" } });
     return rows.map((r) => this.fromRow(r));
