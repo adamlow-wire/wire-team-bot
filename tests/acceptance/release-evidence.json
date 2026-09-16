@@ -48,7 +48,7 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 205,
+      "passed": 207,
       "integrationTests": 6,
       "testFiles": 35
     },
@@ -116,7 +116,8 @@
     "medianKnownQuestionMs": 7985.0,
     "unsolicitedMessages": 0,
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
-    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
+    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
+    "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
   "wireSmoke": "pending designated conversation and operator",
   "productionDeployment": "not performed",

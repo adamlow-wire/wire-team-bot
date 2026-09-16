@@ -296,7 +296,7 @@ Human review and designated Wire acceptance still prevent closing P0–P2.
 [Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
 and check boundaries without credentials.
 
-- Fresh final build, `npx tsc --noEmit` and lint pass. **205 tests pass** in 35 files, including
+- Fresh final build, `npx tsc --noEmit` and lint pass. **207 tests pass** in 35 files, including
   six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
   image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
 - Full real-model e2e: **53/55**, with original assertions retained in
@@ -372,6 +372,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Deadline regression | `2be6486`: end-of-month dates now resolve in the conversation timezone (UTC, leap-year and DST tests); both owner/deadline command orders work. The model judge still rejected the literal correct “end of month: 30 Sept 2026” confirmation against a stale March-oriented assertion. Stored date and deterministic tests pass; the raw judge result is retained. | Human adjudication; do not weaken the assertion or change a correct date to March |
 | 2026-09-16 | SDK diagnostic privacy | SDK free-form messages and nested payloads were found to bypass model-log sanitisation. Severity-only bridge and content-free top-level failure diagnostics now have a marker regression. Fresh container run: 205 tests passed, including six isolated DB tests; build/type-check/lint passed. | Rebuild final image; application event IDs remain available, SDK message detail is intentionally suppressed |
 | 2026-09-16 | Final release image and quality | `bde0d0a` image built; native SDK load and CLI pause/secure restart smoke passed. Final-image fixed sample: 20/20/20, zero duplicates/markers, 10 answer outputs and unknown response inspected, human review pending. Full e2e remains 53/55 with the two cases above retained. | Human review, two adjudications and designated Wire smoke; no production deployment |
+| 2026-09-16 | Capture scoring order regression | Reproduced a duplicate returned before its valid source being omitted from the duplicate counter (precision already penalised it). Source-first matching and order-independent duplicate grouping fixed; two regression tests added. Fresh build/type-check/lint and 207 unit/contract/isolated DB tests pass. Re-scoring both saved inventories preserves baseline 10/10/20 and candidate 20/20/20, zero duplicates. Runtime image unchanged. | Complete unchanged e2e suite against the immutable image; human/Wire gates remain pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
