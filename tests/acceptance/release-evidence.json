@@ -108,7 +108,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: stored assignment passed; caller routing repair validated automatically; Wire retest pending",
+  "wireSmoke": "in progress: stored assignment, caller-specific list/Q&A and post-restart round trip passed; remaining Wire journeys pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -142,7 +142,7 @@
     "memberCacheHydration": "passed",
     "sdkErrorDiagnostics": 0,
     "containerRestarts": 0,
-    "transportRoundTrip": "pending operator repeat on this image"
+    "transportRoundTrip": "passed: operator screenshot on 2ba7a1f confirms mentioned action list and model-backed responsibility answer after restart"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -172,7 +172,9 @@
     "callerIdentityRepair": {
       "runtimeCommit": "2ba7a1f",
       "automated": "passed: qualified mention routing contracts and real-model same-conversation caller switch",
-      "wire": "pending operator repeat after staging update"
+      "wire": "passed",
+      "evidence": "Operator screenshot: Adam Low sends actual bot mentions for my actions and what am I responsible for here; both return ACT-0001 and ACT-0002, correctly identify Adam Low as requester/owner and retain the ACT-0002 September 18 deadline. No incorrect prior-speaker disclaimer.",
+      "boundary": "Screenshot verifies visible replies and post-restart transport; no new database inspection or automated rerun in this documentation update."
     }
   },
   "previousImageSmoke": {

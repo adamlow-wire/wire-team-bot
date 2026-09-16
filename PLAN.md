@@ -400,9 +400,12 @@ The 20-event stored-record and 11-question evaluation was repeated on this image
 
 Staging now runs `wire-team-bot:v3-rc-2ba7a1f`; database and crypto volumes were preserved.
 Fresh readable snapshots and override: `/tmp/wire-v3-caller-backup-tbxaea25/`. Startup connected,
-hydrated the member cache and reported zero SDK errors and zero container restarts. The operator
-must repeat mentioned `my actions` and `What am I responsible for here?` as @adamlow_wire;
-`ACT-0002` already exists and must not be recreated. Wire caller acceptance remains pending.
+hydrated the member cache and reported zero SDK errors and zero container restarts. The next
+operator screenshot confirms both mentioned `my actions` and `What am I responsible for here?`
+correctly return Adam Low’s two open actions, including `ACT-0002` with its September 18 deadline.
+The Q&A identifies Adam Low as the current requester, with no incorrect Adam (Human) disclaimer.
+Caller-specific list/Q&A and post-restart receive/decrypt/reply now pass on this image. This
+does not yet verify reassignment, deadline changes, completion, reminders or privacy-state restart.
 Rollback to the preceding image while keeping current volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-owner-backup-QFDF2p/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
@@ -451,6 +454,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Assignment fix validated and staged | `82fe04b`: 213 tests, build/type-check/lint pass; real-model owner smoke verifies persisted Bob attribution and unknown-owner refusal. Immutable-image full regression 53/55, same two retained failures. Staging updated with fresh backups and existing volumes; startup has zero SDK errors. | Operator handle assignment and post-restart Wire check |
 | 2026-09-16 | Wire handle assignment and caller confusion | Operator screenshot confirms ACT-0002 was assigned to @adamlow_wire with Friday deadline; scoped DB confirms qualified Adam Low owner, Adam (Human) creator and one audit entry. Mentioned `my actions` incorrectly went through Q&A and addressed the prior speaker as you. Reproduced custom-display-name mention parsing failure in contract tests; repair uses bounded UTF-16 mention spans and explicitly passes the current caller to query analysis/answering. | Validate and stage the repair, then repeat caller-specific list and privacy controls on Wire |
 | 2026-09-16 | Caller fix validated and staged | `2ba7a1f`: 222 tests and build/type-check/lint pass; immutable-image real-model regression 54/56, same two discrepancies; caller-switch answers inspected. Fresh stored-record evaluation 20/20/20, zero duplicates/markers, human review pending. Staging updated with readable backups and preserved volumes; connected without SDK errors. | Repeat caller-specific list and Q&A as @adamlow_wire, then continue remaining Wire journeys |
+| 2026-09-16 | Wire caller repair confirmed | Operator screenshot on `2ba7a1f`: mentioned `my actions` and first-person responsibility Q&A both return Adam Low’s two open actions and correct ACT-0002 deadline. No prior-speaker confusion; post-restart round trip passes. Evidence is the live screenshot, not a fresh automated run. | Test ACT-0002 reassignment, deadline change and completion; remaining Wire and human acceptance stays pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
