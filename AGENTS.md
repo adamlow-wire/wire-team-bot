@@ -1,6 +1,6 @@
 # AGENTS.md – AI agent guidance for Wire Team Bot
 
-This file gives AI agents working on this repository a concise contract: where the plan lives, how the app is structured, and how to keep the codebase maintainable, secure, and testable. **PLAN_v2.md** is the single source of truth for architecture, phases, and delivery state. This document summarises rules and desires for agent behaviour.
+This file gives AI agents working on this repository a concise contract: where the plan lives, how the app is structured, and how to keep the codebase maintainable, secure, and testable. **GOALS.md** states what the bot is for and the principles every change must respect; read it before proposing features. **PLAN_v2.md** is the single source of truth for architecture, phases, and delivery state. This document summarises rules and desires for agent behaviour.
 
 ---
 

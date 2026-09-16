@@ -241,6 +241,25 @@ Everything below runs from a dev box with Docker. The image is built locally, so
 `npm run staging:down` stops the stack. Add `-v` manually (`docker compose -f docker-compose.staging.yml down -v`) only
 when you want to throw away the staging identity's crypto store and start over with a new `create`.
 
+## Production cutover from the fork-based image
+
+The official-SDK image (any build from `main` after 2026-09-16) uses a Wire **application** identity
+and a new local store. Moving a running deployment across is a one-time procedure:
+
+1. List the channels the bot is in: `SELECT channel_id, channel_name FROM channel_config;`
+2. Register the production app and mint its token with `scripts/register-app.mjs create` against the
+   production host. Write the result to the production `.env` and add `WIRE_SDK_CRYPTO_KEY`.
+3. `docker compose down`. Keep the old `jeeves-crypto` volume as a backup but do not reuse it: the
+   old store belongs to a different identity and schema. Point the service at a fresh volume.
+4. `docker compose pull && docker compose up -d`. Postgres data is untouched; everything keys on
+   conversation IDs. Expect migrations, `CoreCrypto initialized`, then a websocket connection.
+5. A team admin adds the app to each channel from step 1. The greeting appears only where no purpose
+   was ever set.
+6. Restart the container once and send a message. It must still decrypt; this is the check that the
+   persistent keystore is working.
+7. Rollback is the previous image tag, the old volume, and the old `.env`. The old bot account still
+   exists until you delete it.
+
 ## Environment variables
 
 ### Wire application (all required)
