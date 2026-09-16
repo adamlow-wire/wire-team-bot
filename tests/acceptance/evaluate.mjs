@@ -49,12 +49,23 @@ try {
   const scope = { conversationId: channel, conversationDom: 'cli.local' };
   const decisions = await prisma.decision.findMany({ where: scope });
   const actions = await prisma.action.findMany({ where: scope });
+  const channelId = `${channel}@cli.local`;
+  const retained = await Promise.all([
+    prisma.auditLog.findMany({where:scope}), prisma.reminder.findMany({where:scope}),
+    prisma.conversationSignal.findMany({where:{channelId}}), prisma.entity.findMany({where:{channelId}}),
+    prisma.channelConfig.findMany({where:{channelId}}), prisma.conversationSummary.findMany({where:{scopeId:channelId}}),
+    prisma.entityRelationship.findMany({where:{source:{channelId}}}),
+  ]);
+  const marker = 'PRIVATE_CONTEXT_MARKER';
+  const privacyMarkers = { storedOccurrences: JSON.stringify([decisions,actions,...retained]).split(marker).length-1,
+    diagnosticOccurrences: diagnostics.split(marker).length-1 };
   const records = [...decisions.map(d => ({ type: 'decision', source: d.rawMessageId, content: d.summary, context: d.context, author: d.authorName, rationale: d.rationale, status: d.status })),
     ...actions.map(a => ({ type: 'action', source: a.rawMessageId, content: a.description, owner: a.assigneeId, ownerName: a.assigneeName, status: a.status, deadline: a.deadline }))];
   const expected = fixture.events.filter(e => e.expected);
   const config = loadConfig().llm.jeeves;
   const report = { runAt: new Date().toISOString(), commit: process.env.EVALUATION_COMMIT ?? 'working-tree (set EVALUATION_COMMIT for release evidence)',
-    channel, configuration: { slots: config.slots, embeddings: config.embed }, reviewStatus: fixture.reviewStatus,
+    channel, privacyMarkers, configuration: { slots: config.slots, embeddings: config.embed }, reviewStatus: fixture.reviewStatus,
+    reminders: retained[1].map(r => ({ type: "reminder", source: r.rawMessageId, content: r.description, owner: r.targetId, status: r.status, triggerAt: r.triggerAt })),
     overall: score(records, expected), decisions: score(records.filter(r=>r.type==='decision'),expected.filter(e=>e.expected.type==='decision')),
     actions: score(records.filter(r=>r.type==='action'),expected.filter(e=>e.expected.type==='action')), exchanges,
     failures: diagnostics.split('\n').filter(l => /"level":"(?:warn|error)"/.test(l)).map(l => {try {const x=JSON.parse(l); return {level:x.level,msg:x.msg};} catch {return {msg:'unparsed diagnostic'};}}),

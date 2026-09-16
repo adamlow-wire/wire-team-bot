@@ -11,3 +11,14 @@ it.each([false,true])("does not guess an unknown/ambiguous assignee (%s)",async 
   expect(audit.append).not.toHaveBeenCalled();
   expect(wire.sendPlainText).toHaveBeenCalled();
 });
+it("stores the parsed deadline instead of only echoing it in the description", async () => {
+  const due=new Date("2026-10-02T09:00:00Z");
+  const repo={nextId:vi.fn().mockResolvedValue("ACT-1"),query:vi.fn().mockResolvedValue([]),create:vi.fn(async a=>a)};
+  const actor={id:"alice",domain:"d"};
+  const wire={sendPlainText:vi.fn()};
+  const logger={info:vi.fn()};
+  const useCase=new CreateActionFromExplicit(repo as never,{get:vi.fn().mockResolvedValue({timezone:"UTC"})} as never,{parse:vi.fn().mockReturnValue({value:due})} as never,{resolveByHandleOrName:vi.fn()},wire as never,{append:vi.fn()},logger as never);
+  const result=await useCase.execute({conversationId:{id:"c",domain:"d"},creatorId:actor,authorName:"Alice",rawMessageId:"m",description:"Review",deadlineText:"Friday"});
+  expect(result?.deadline).toEqual(due);
+  expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({deadline:due}));
+});

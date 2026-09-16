@@ -474,11 +474,15 @@ export class WireEventRouter extends WireEventsHandler {
         description = forNameMatch[1].trim();
         assigneeReference = forNameMatch[2].trim();
       }
+      const due = description.match(/\s+(?:by|due)\s+(.+)$/i);
+      const deadlineText = due?.[1]?.trim();
+      if (due) description = description.slice(0, due.index).trim();
       await this.deps.createActionFromExplicit.execute({
         conversationId: convId, creatorId: sender, authorName: senderName,
         rawMessageId: wireMessage.id,
         description,
         assigneeReference,
+        deadlineText,
       });
       return;
     }
@@ -699,7 +703,7 @@ export class WireEventRouter extends WireEventsHandler {
         { replyToMessageId });
     } else {
       this.deps.scheduler.cancel(`secret-inactivity-${channelId}`);
-      await this.deps.wireOutbound.sendPlainText(convId, "Very good. I shall resume my duties forthwith.", { replyToMessageId });
+      await this.deps.wireOutbound.sendPlainText(convId, "Listening has resumed. I am active again.", { replyToMessageId });
     }
   }
 

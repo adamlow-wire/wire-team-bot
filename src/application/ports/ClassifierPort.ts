@@ -2,9 +2,6 @@
  * Port: Tier 1 — classify a single message and decide whether deep extraction is warranted.
  * Returns structured categories and a high-signal flag, NOT a single intent.
  *
- * TODO: Confirm qwen3-embedding:4b output dimensions before running the Phase 2 migration
- * to widen the embeddings.embedding column. Current default is 1024 (bge-m3:567m).
- * Set JEEVES_EMBED_DIMS accordingly if qwen3-embedding:4b uses 1536 dims.
  */
 
 export type MessageCategory =
@@ -24,7 +21,7 @@ export interface ClassifyResult {
   confidence: number;
   /** Named entities mentioned in the message (used by Tier 2 as hints). */
   entities: string[];
-  /** True if categories include 'decision', 'action', or 'blocker' — triggers Tier 2 extraction. */
+  /** True if categories include 'decision', 'action', 'update', or 'blocker' — triggers Tier 2 extraction. */
   is_high_signal: boolean;
 }
 

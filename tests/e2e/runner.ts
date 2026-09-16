@@ -90,6 +90,7 @@ interface StepFailure {
   step: string;
   assertion: string;
   reason: string;
+  botOutput: string;
 }
 
 /**
@@ -141,7 +142,7 @@ async function runScenario(
         const assertion = applyCaptures(step.assert, captures);
         const result = await judge(stepOut, assertion);
         if (!result.pass) {
-          failures.push({ step: step.input.slice(0, 60), assertion, reason: result.reason });
+          failures.push({ step: step.input.slice(0, 60), assertion, reason: result.reason, botOutput: stepOut });
         } else if (verbose) {
           process.stdout.write(`    [judge] PASS — ${result.reason}\n`);
         }
@@ -187,6 +188,7 @@ async function runScenario(
           step: resolvedInput.slice(0, 60),
           assertion,
           reason: result.reason,
+          botOutput: output,
         });
       } else if (verbose) {
         process.stdout.write(`    [judge] PASS — ${result.reason}\n`);
@@ -206,6 +208,7 @@ async function runScenario(
         step: "(overall)",
         assertion: scenario.assert,
         reason: result.reason,
+        botOutput: combined,
       });
     } else if (verbose) {
       process.stdout.write(`    [judge] PASS (overall) — ${result.reason}\n`);
@@ -289,7 +292,7 @@ async function main() {
   }
 
   if (!jsonOut) {
-    console.log(`\nJeeves E2E — running ${toRun.length} scenario(s)  [run: ${suiteRunId}]\n${"─".repeat(70)}`);
+    console.log(`\nWire Team Bot E2E — running ${toRun.length} scenario(s)  [run: ${suiteRunId}]\n${"─".repeat(70)}`);
   }
 
   let passed = 0;
@@ -297,6 +300,7 @@ async function main() {
   const jsonResults: ScenarioResult[] = [];
 
   for (const scenario of toRun) {
+    process.stderr.write(`Running ${scenario.id}\n`);
     if (!jsonOut) {
       process.stdout.write(`  ${scenario.id.padEnd(16)} ${scenario.description.padEnd(50)} `);
     }
@@ -310,11 +314,7 @@ async function main() {
       step:        f.step,
       assertion:   f.assertion,
       judgeReason: f.reason,
-      // Match the failure's step text to its output segment
-      botOutput:   result.stepOutputs.find((_, i) =>
-        result.stepOutputs[i] !== undefined &&
-        f.step === (result.stepOutputs[i] ?? "").slice(0, f.step.length)
-      ) ?? result.stepOutputs.join("\n").trim(),
+      botOutput: f.botOutput,
     }));
 
     if (result.passed) {

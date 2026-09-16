@@ -51,6 +51,10 @@ export class CreateActionFromExplicit {
     const assigneeName = input.assigneeReference ?? input.authorName;
 
     const deadline = await this.parseDeadline(input.deadlineText, input.conversationId);
+    if (input.deadlineText && !deadline) {
+      await this.wireOutbound.sendPlainText(input.conversationId, "I could not parse that deadline. Please give a date or time.", { replyToMessageId: input.rawMessageId });
+      return null;
+    }
     const linkedIds = input.linkedDecisionId ? [input.linkedDecisionId] : [];
 
     const action: Action = {
@@ -89,7 +93,7 @@ export class CreateActionFromExplicit {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Action **${saved.id}** created for **${assigneeName}**: ${saved.description}`,
+      `Action **${saved.id}** created for **${assigneeName}**: ${saved.description}${saved.deadline ? ` (due ${saved.deadline.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })})` : ""}`,
       { replyToMessageId: input.rawMessageId },
     );
 

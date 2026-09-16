@@ -22,8 +22,8 @@ Classify the message into one or more of these categories:
 
 Named entities: extract any proper nouns that are project names, people, services, tools, or teams.
 
-High signal: set is_high_signal=true when categories includes 'decision', 'action', or 'blocker'.
-Low signal (discussion-only, question, update, routine): is_high_signal=false.
+High signal: set is_high_signal=true when categories include decision, action, blocker, or update. Completion announcements such as 'I have sent the NDA' are updates and must reach extraction to close existing work.
+Low signal (discussion-only, question, routine): is_high_signal=false.
 
 Return ONLY valid JSON — no markdown, no explanation:
 {"categories":["<cat1>","<cat2>"],"confidence":<0.0-1.0>,"entities":["<name1>"],"is_high_signal":<true|false>}`;
@@ -98,6 +98,7 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
     const confidence = typeof parsed.confidence === "number" && Number.isFinite(parsed.confidence)
       ? Math.min(1, Math.max(0, parsed.confidence)) : 0;
     const is_high_signal =
+      categories.includes("update") && confidence >= 0.6 ? true :
       typeof parsed.is_high_signal === "boolean"
         ? parsed.is_high_signal
         : categories.some((c) => c === "decision" || c === "action" || c === "blocker");

@@ -26,7 +26,7 @@ CRITICAL: Never include verbatim quotes. Synthesise and summarise only. The sour
 If the triggering message announces that a Known open action has been completed (past tense: "I've sent", "we signed", "it's done", "all sorted"), do NOT create a new action. Instead add an entry to "completions" referencing the action ID. Completion language is not a new commitment.
 
 ── SUPERSEDES ───────────────────────────────────────────────────────────────
-If the triggering message is a personal commitment ("I'll handle it", "I will do that") and the same task already exists in Known open actions (unassigned or under a different owner), set "supersedes" to that action's ID. The pipeline will close the old one and create the new owned version.
+If the triggering message is a personal commitment ("I'll handle it", "I will do that") and the same task already exists in Known open actions (unassigned or under a different owner), set "supersedes" to that action's ID. The pipeline will require an explicit ownership correction; do not silently reassign another member's commitment.
 
 Extract from the triggering message:
 - decisions: firm conclusions or choices made ("we agreed to...", "we're going with...", "decided that...") — not hypotheticals or questions

@@ -11,7 +11,7 @@ import { DisabledEmbeddingService } from "./DisabledEmbeddingService";
 export function createEmbeddingService(config: JeevesLLMConfig, logger: Logger): EmbeddingService {
   if (!config.embed.enabled) {
     logger.warn(
-      "Embeddings disabled: semantic retrieval, entity dedup and contradiction detection are off. " +
+      "Embeddings disabled: semantic retrieval and contradiction detection are off. " +
         "Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force.",
     );
     return new DisabledEmbeddingService();

@@ -9,7 +9,7 @@ const directory = mkdtempSync(join(tmpdir(), "wire-team-bot-simulation-"));
 const fixture = join(directory, "fixture.json");
 writeFileSync(fixture, JSON.stringify({
   reviewStatus: "Stored-record inventory only; human fact matching and missed-event review required",
-  events: CONVERSATION.map((message, index) => ({ ...message, eventId: `simulation-${index + 1}`, text: message.text })),
+  events: CONVERSATION.map((message, index) => ({ ...message, eventId: `simulation-${index + 1}`, text: `${message.sender}: ${message.text}` })),
   questions: [],
 }));
 try {

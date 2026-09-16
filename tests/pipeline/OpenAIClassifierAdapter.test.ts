@@ -96,3 +96,7 @@ describe("OpenAIClassifierAdapter", () => {
     expect(result.is_high_signal).toBe(true);
   });
 });
+it("routes completion updates to extraction even if the model marks them low signal", async () => {
+  const adapter=new OpenAIClassifierAdapter(makeLLM(JSON.stringify({categories:["update"],confidence:0.9,is_high_signal:false})),logger);
+  expect((await adapter.classify("I've sent the NDA",ctx,[])).is_high_signal).toBe(true);
+});

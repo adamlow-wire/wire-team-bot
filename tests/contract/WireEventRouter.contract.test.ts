@@ -519,3 +519,18 @@ describe("privacy state contract", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 });
+
+it("passes a named action's deadline separately from its description", async () => {
+  const deps=makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(makeMessage("action: Bob to review the contract by Friday"));
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({description:"review the contract",assigneeReference:"Bob",deadlineText:"Friday"}));
+});
+
+it("accepts the Wire Team Bot name for control and explicit capture commands", async () => {
+  const deps=makeDeps();
+  const router=new WireEventRouter(deps);
+  await router.onTextMessageReceived(makeMessage("@Wire Team Bot decision: use Postgres"));
+  expect(deps.logDecision.execute).toHaveBeenCalledWith(expect.objectContaining({summary:"use Postgres"}));
+  await router.onTextMessageReceived(makeMessage("@Wire Team Bot pause"));
+  expect(deps.channelConfig.setState).toHaveBeenCalledWith("conv-1@wire.com","paused",sender.id,expect.any(Date));
+});

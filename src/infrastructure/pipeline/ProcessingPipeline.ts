@@ -70,6 +70,11 @@ export class ProcessingPipeline {
   constructor(private readonly deps: PipelineDeps) {}
 
   async process(job: MessageJob, signal?: AbortSignal): Promise<void> {
+    try { await this.processActive(job, signal); }
+    catch (err) { this.deps.logger.error("Pipeline processing failed", { channelId: job.channelId, messageId: job.messageId, errorType: err instanceof Error ? err.name : "UnknownError" }); }
+  }
+
+  private async processActive(job: MessageJob, signal?: AbortSignal): Promise<void> {
     const { channelId, conversationId, senderId, senderName, text, timestamp, orgId, messageId } = job;
     const log = this.deps.logger.child({ channelId, messageId, senderName: senderName || undefined });
 
