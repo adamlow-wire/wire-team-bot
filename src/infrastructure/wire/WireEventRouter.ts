@@ -237,6 +237,10 @@ export class WireEventRouter extends WireEventsHandler {
   ): Promise<void> {
     const lowered = text.trim().toLowerCase();
     const channelState = this.channelStateCache.get(channelId) ?? "active";
+    const botMentionedEarly = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
+    const isBotAddressed = botMentionedEarly || this.startsWithBotName(lowered);
+    const commandText = isBotAddressed ? this.stripAddressedBotPrefix(text, wireMessage) : text.trim();
+    const commandLowered = commandText.toLowerCase();
 
     const cachedMembers = this.deps.memberCache.getMembers(convId);
     const senderEntry = cachedMembers.find((m) => sameQualifiedId(m.userId, sender));
@@ -255,11 +259,11 @@ export class WireEventRouter extends WireEventsHandler {
         log.debug("Channel paused — message discarded");
         return;
       }
-      if (this.matchesResumeCommand(lowered)) {
+      if (this.matchesResumeCommand(commandLowered)) {
         await this.setChannelState(convId, channelId, "active", sender.id, wireMessage.id, log);
         return;
       }
-      if (this.matchesSecureCommand(lowered)) {
+      if (this.matchesSecureCommand(commandLowered)) {
         await this.setChannelState(convId, channelId, "secure", sender.id, wireMessage.id, log);
         return;
       }
@@ -276,7 +280,7 @@ export class WireEventRouter extends WireEventsHandler {
       this.scheduleInactivityCheck(convId, channelId);
       this.deps.slidingWindow.flush(channelId);
       const botMentioned = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
-      if (botMentioned && this.matchesResumeCommand(lowered)) {
+      if (botMentioned && this.matchesResumeCommand(commandLowered)) {
         await this.setChannelState(convId, channelId, "active", sender.id, wireMessage.id, log);
         return;
       }
@@ -285,37 +289,27 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ── ACTIVE — state-change commands ────────────────────────────────────────
-    const botMentionedEarly = wireMessage.mentions?.some((m) => sameQualifiedId(m.userId, this.deps.botUserId)) ?? false;
-
-    // When addressed via @mention or Wire Team Bot-prefix, strip the bot name so
-    // downstream pattern matching works on the bare command regardless of prefix.
-    // e.g. "@Wire Team Bot (DEV) remind me at 3pm to call John" → "remind me at 3pm to call John"
-    const isBotAddressed = botMentionedEarly || this.startsWithBotName(lowered);
-    const commandLowered = isBotAddressed ? this.stripBotPrefix(lowered) : lowered;
-    // Original-case stripped text — used for content-preserving matches (decision:, action:, remind, IDs).
-    const commandText = isBotAddressed ? this.stripBotPrefix(text) : text;
-
-    if (botMentionedEarly || this.startsWithBotName(lowered)) {
-      if (this.matchesPauseCommand(lowered)) {
+    if (isBotAddressed) {
+      if (this.matchesPauseCommand(commandLowered)) {
         await this.setChannelState(convId, channelId, "paused", sender.id, wireMessage.id, log);
         return;
       }
-      if (this.matchesSecureCommand(lowered)) {
+      if (this.matchesSecureCommand(commandLowered)) {
         await this.setChannelState(convId, channelId, "secure", sender.id, wireMessage.id, log);
         return;
       }
-      if (this.matchesResumeCommand(lowered)) {
+      if (this.matchesResumeCommand(commandLowered)) {
         await this.deps.wireOutbound.sendPlainText(convId, "I am already at your service.", { replyToMessageId: wireMessage.id });
         return;
       }
-      const contextMatch = this.matchContextCommand(text);
+      const contextMatch = this.matchContextCommand(commandText);
       if (contextMatch) {
         await this.handleContextCommand(contextMatch, convId, channelId, sender, wireMessage.id, log);
         return;
       }
 
       // @Wire Team Bot status
-      if (/\bstatus\b/i.test(lowered) && this.deps.statusCommand) {
+      if (/\bstatus\b/i.test(commandLowered) && this.deps.statusCommand) {
         await this.deps.statusCommand.execute({
           conversationId: convId,
           channelId,
@@ -326,9 +320,9 @@ export class WireEventRouter extends WireEventsHandler {
 
       // @Wire Team Bot catch me up / what did I miss
       if (
-        /catch\s+me\s+up/i.test(lowered) ||
-        /what(?:'s|\s+is|\s+was)?\s+(?:new|happening)/i.test(lowered) ||
-        /what\s+did\s+i\s+miss/i.test(lowered)
+        /catch\s+me\s+up/i.test(commandLowered) ||
+        /what(?:'s|\s+is|\s+was)?\s+(?:new|happening)/i.test(commandLowered) ||
+        /what\s+did\s+i\s+miss/i.test(commandLowered)
       ) {
         if (this.deps.catchMeUpCommand) {
           const orgId = this.deps.orgId ?? convId.domain;
@@ -605,7 +599,8 @@ export class WireEventRouter extends WireEventsHandler {
       const orgId = this.deps.orgId ?? convId.domain;
       const isPersonal = this.personalModeCache.get(channelId) ?? false;
       const answer = await this.deps.answerQuestion.execute({
-        question: text,
+        question: commandText,
+        requester: { id: sender.id, domain: sender.domain, name: senderDisplayName },
         conversationContext: recentContext,
         conversationId: convId,
         replyToMessageId: wireMessage.id,
@@ -993,6 +988,19 @@ export class WireEventRouter extends WireEventsHandler {
     return /^@?(?:wire team bot|jeeves)\b/i.test(lowered);
   }
 
+  private stripAddressedBotPrefix(text: string, message: TextMessage): string {
+    // Wire protobuf mention offsets count UTF-16 code units, as does JS slice.
+    // Use the qualified mention identity; registered app labels can change.
+    const mention = message.mentions?.find(m =>
+      sameQualifiedId(m.userId, this.deps.botUserId)
+      && Number.isInteger(m.offset) && Number.isInteger(m.length)
+      && m.offset >= 0 && m.length > 0 && m.offset + m.length <= text.length
+      && text.slice(0, m.offset).trim() === "" && text[m.offset] === "@",
+    );
+    if (mention) return text.slice(mention.offset + mention.length).replace(/^[,:]?\s*/, "").trim();
+    return this.stripBotPrefix(text);
+  }
+
   private stripBotPrefix(lowered: string): string {
     // Strip @Wire Team Bot or Wire Team Bot, optionally followed by a parenthetical display-name
     // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
@@ -1017,12 +1025,13 @@ export class WireEventRouter extends WireEventsHandler {
   }
 
   private matchContextCommand(text: string): ContextCommandMatch | null {
-    const m = (re: RegExp, field: ContextField) => { const r = text.match(re); return r ? { field, value: r[1].trim() } : null; };
-    return m(/^@?(?:wire team bot|jeeves)[,:]?\s+context:\s*(.+)$/i, "purpose")
-      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+type:\s*(.+)$/i, "type")
-      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+tags:\s*(.+)$/i, "tags")
-      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+stakeholders:\s*(.+)$/i, "stakeholders")
-      ?? m(/^@?(?:wire team bot|jeeves)[,:]?\s+context\s+related:\s*(.+)$/i, "related")
+    const command = this.stripBotPrefix(text);
+    const m = (re: RegExp, field: ContextField) => { const r = command.match(re); return r ? { field, value: r[1].trim() } : null; };
+    return m(/^context:\s*(.+)$/i, "purpose")
+      ?? m(/^context\s+type:\s*(.+)$/i, "type")
+      ?? m(/^context\s+tags:\s*(.+)$/i, "tags")
+      ?? m(/^context\s+stakeholders:\s*(.+)$/i, "stakeholders")
+      ?? m(/^context\s+related:\s*(.+)$/i, "related")
       ?? null;
   }
 

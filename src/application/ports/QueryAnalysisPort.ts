@@ -33,6 +33,7 @@ export interface QueryPlan {
 
 export interface MemberContext {
   id: string;
+  domain?: string;
   name?: string;
 }
 
@@ -47,5 +48,6 @@ export interface QueryAnalysisPort {
     question: string,
     channelContext: ChannelContext,
     members: MemberContext[],
+    requester?: MemberContext,
   ): Promise<QueryPlan>;
 }

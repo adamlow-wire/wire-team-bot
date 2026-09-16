@@ -19,6 +19,51 @@ function makeMessage(text: string, id = "msg-1") {
   return { id, text, conversationId: convId, sender };
 }
 
+function customMention(command: string) {
+  const label = "@AI Team Bot 🤖 (test, staging)";
+  return { ...makeMessage(`${label} ${command}`), mentions: [
+    { userId: { id: "bot-1", domain: "wire.com" }, offset: 0, length: label.length },
+  ] };
+}
+
+it("routes a real mention with an arbitrary display name to the caller's action list", async () => {
+  const deps = makeDeps();
+  const caller = { id: "second-user", domain: "wire.com" };
+  await new WireEventRouter(deps).onTextMessageReceived({ ...customMention("my actions"), sender: caller });
+  expect(deps.listMyActions.execute).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: caller, conversationId: convId }));
+  expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+});
+
+it.each(["pause", "secure mode"])("routes %s and resume by qualified mention span", async command => {
+  const deps = makeDeps();
+  const router = new WireEventRouter(deps);
+  await router.onTextMessageReceived(customMention(command));
+  expect(deps.channelConfig.setState).toHaveBeenCalledWith("conv-1@wire.com", command === "pause" ? "paused" : "secure", sender.id, expect.any(Date));
+  await router.onTextMessageReceived(customMention("resume"));
+  expect(deps.channelConfig.setState).toHaveBeenLastCalledWith("conv-1@wire.com", "active", sender.id, expect.any(Date));
+});
+
+it("passes the actual caller and cleaned question after a custom bot mention", async () => {
+  const caller = { id: "second-user", domain: "wire.com" };
+  const memberCache = new InMemoryMemberCache();
+  memberCache.setMembers(convId, [{ userId: caller, role: "member", name: "Second User" }]);
+  const deps = makeDeps({ memberCache });
+  await new WireEventRouter(deps).onTextMessageReceived({ ...customMention("What am I responsible for?"), sender: caller });
+  expect(deps.answerQuestion.execute).toHaveBeenCalledWith(expect.objectContaining({
+    question: "What am I responsible for?", requester: { ...caller, name: "Second User" },
+  }));
+});
+
+it.each(["foreign", "invalid", "nonleading"])("does not strip a %s mention into a command", async variant => {
+  const deps = makeDeps();
+  const message = customMention("my actions");
+  if (variant === "foreign") message.mentions[0].userId.domain = "other.test";
+  if (variant === "invalid") message.mentions[0].length = 10000;
+  if (variant === "nonleading") { message.text = `hello ${message.text}`; message.mentions[0].offset = 6; }
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.listMyActions.execute).not.toHaveBeenCalled();
+});
+
 it.each([
   ["action: review the smoke checklist for @second_test by Friday", "@second_test"],
   ["action: @second_test to review the smoke checklist by Friday", "@second_test"],

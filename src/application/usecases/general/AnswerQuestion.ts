@@ -7,7 +7,7 @@ import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Logger } from "../../ports/Logger";
 
 /**
- * Scans `text` for `@Name` tokens and returns Wire mention objects with byte offsets.
+ * Scans `text` for `@Name` tokens and returns Wire mention objects with UTF-16 offsets.
  * Only members that have both a name and a domain are eligible.
  */
 function extractMentions(text: string, members: ConversationMemberContext[]): OutboundMention[] {
@@ -34,6 +34,8 @@ export interface AnswerQuestionInput {
   conversationId: QualifiedId;
   replyToMessageId: string;
   members?: ConversationMemberContext[];
+  /** Authoritative sender of this question, independent of recent participants. */
+  requester?: ConversationMemberContext;
   conversationPurpose?: string;
   /** Phase 3: channel_id string for retrieval scoping. */
   channelId?: string;
@@ -80,6 +82,7 @@ export class AnswerQuestion {
 
       const members: MemberContext[] = (input.members ?? []).map((m) => ({
         id: m.id,
+        domain: m.domain,
         name: m.name,
       }));
 
@@ -88,6 +91,7 @@ export class AnswerQuestion {
           input.question,
           channelContext,
           members,
+          input.requester,
         );
         complexity = plan.complexity;
 
@@ -111,6 +115,7 @@ export class AnswerQuestion {
       input.members,
       input.conversationPurpose,
       complexity,
+      input.requester,
     );
 
     const mentions = extractMentions(answer, input.members ?? []);

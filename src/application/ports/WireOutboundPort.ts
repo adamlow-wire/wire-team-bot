@@ -2,9 +2,9 @@ import type { QualifiedId } from "../../domain/ids/QualifiedId";
 
 export interface OutboundMention {
   userId: QualifiedId;
-  /** Byte offset of the `@Name` token in the message text. */
+  /** UTF-16 offset of the `@Name` token, as specified by Wire protobuf. */
   offset: number;
-  /** Byte length of the `@Name` token. */
+  /** UTF-16 length of the `@Name` token. */
   length: number;
 }
 
@@ -68,4 +68,3 @@ export interface WireOutboundPort {
     retention?: string,
   ): Promise<void>;
 }
-

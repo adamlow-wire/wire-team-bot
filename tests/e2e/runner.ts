@@ -264,6 +264,8 @@ interface ScenarioResult {
   description: string;
   passed: boolean;
   elapsedMs: number;
+  /** Preserve successful synthetic replies too, so judge verdicts can be reviewed. */
+  outputs: string[];
   failures: Array<{ step: string; assertion: string; judgeReason: string; botOutput: string }>;
 }
 
@@ -343,7 +345,7 @@ async function main() {
     }
 
     if (jsonOut) {
-      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, failures });
+      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, failures });
     } else if (verbose && result.passed) {
       const lines = result.stepOutputs.join("\n").trim().split("\n").filter(Boolean);
       if (lines.length > 0) {

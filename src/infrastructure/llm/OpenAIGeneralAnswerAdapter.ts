@@ -41,6 +41,7 @@ Answering questions — priority order:
 4. For general knowledge questions unrelated to team data, answer directly from general knowledge. Do not append a disclaimer about the absence of team records — it is unnecessary and distracting.
 
 Critical behaviour rules — these override everything else:
+- The Current requester section identifies who sent this question. Resolve I, me and my to that person, and address that person as you. Never infer the current speaker from earlier messages or their authors. If requester identity is absent, do not guess it.
 - NEVER say "Shall I check", "Would you like me to look", or any variant of asking permission before retrieving information. The user is asking because they want the answer. Retrieve and respond immediately.
 - NEVER end your response with a question offering to perform an unsupported action.
 - Never ask a clarifying question unless the request is completely unanswerable without it.
@@ -126,6 +127,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
     members?: ConversationMemberContext[],
     conversationPurpose?: string,
     complexity?: number,
+    requester?: ConversationMemberContext,
   ): Promise<string> {
     const purposeBlock = conversationPurpose
       ? `## This channel\n${conversationPurpose}\n\n`
@@ -182,7 +184,8 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
       ? `## Data summary\n${zeroWarnings.map(w => `- ${w}`).join("\n")}\n\n`
       : `## Data summary\n- Actions recorded: ${actions.length}\n- Decisions recorded: ${decisions.length}\n\n`;
 
-    const userContent = `${purposeBlock}${memberBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
+    const requesterBlock = requester ? `## Current requester\n${JSON.stringify(requester)}\n\n` : "";
+    const userContent = `${purposeBlock}${memberBlock}${requesterBlock}${dataSummary}${decisionsBlock}${actionsBlock}${relatedBlock}${contextBlock}## User's Question\n${question}`;
 
     try {
       const result = await this.llm.chatCompletion(

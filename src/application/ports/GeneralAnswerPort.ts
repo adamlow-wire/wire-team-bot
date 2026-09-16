@@ -14,5 +14,6 @@ export interface GeneralAnswerService {
     members?: ConversationMemberContext[],
     conversationPurpose?: string,
     complexity?: number,
+    requester?: ConversationMemberContext,
   ): Promise<string>;
 }

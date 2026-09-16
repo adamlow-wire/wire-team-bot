@@ -71,6 +71,7 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
     question: string,
     channelContext: ChannelContext,
     members: MemberContext[],
+    requester?: MemberContext,
   ): Promise<QueryPlan> {
     const memberBlock =
       members.length > 0
@@ -78,7 +79,10 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
         : "";
     const purposeBlock = channelContext.purpose ? `Channel purpose: ${channelContext.purpose}\n` : "";
 
-    const userPrompt = `${purposeBlock}${memberBlock}Question: ${question}`;
+    const requesterBlock = requester
+      ? `Current requester: ${JSON.stringify(requester)}\nResolve I, me and my to this requester, not another conversation member.\n`
+      : "";
+    const userPrompt = `${purposeBlock}${memberBlock}${requesterBlock}Question: ${question}`;
 
     let raw: string;
     try {

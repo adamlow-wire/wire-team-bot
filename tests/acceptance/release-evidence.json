@@ -108,7 +108,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
-  "wireSmoke": "in progress: bde0d0a status and decision checks passed; 82fe04b active for explicit-handle assignment and restart checks",
+  "wireSmoke": "in progress: assignment persistence passed; custom-mention routing and caller-identity repair under validation",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -156,6 +156,17 @@
       "runtimeCommit": "bde0d0a",
       "record": "DEC-0002",
       "evidence": "Operator screenshot: correct Postgres decision, rationale and Adam (Human) attribution; scoped DB inspection confirms empty context and one audit entry"
+    },
+    "handleAssignment": {
+      "runtimeCommit": "82fe04b",
+      "result": "passed for stored assignment; caller-specific reply failed",
+      "record": "ACT-0002",
+      "ownerHandle": "@adamlow_wire",
+      "ownerId": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io",
+      "creatorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab@staging.zinfra.io",
+      "deadline": "2026-09-18T12:00:00.000Z",
+      "auditEntries": 1,
+      "evidence": "Operator screenshot plus scoped DB inspection; my-actions answer addressed the previous speaker as you"
     }
   },
   "previousImageSmoke": {

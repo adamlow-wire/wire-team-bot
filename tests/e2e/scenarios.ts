@@ -828,4 +828,17 @@ export const scenarios: Scenario[] = [
     ],
   },
 
+  {
+    id: "TC-ID-06",
+    description: "Current caller remains Bob after Alice's questions in the same conversation",
+    steps: [
+      { input: "Alice: action: review the launch checklist for Bob by Friday", captureAs: "ACT", shareProcess: true },
+      { input: "Alice: action: prepare the retrospective slides", shareProcess: true },
+      { input: "Alice: @Wire Team Bot What am I responsible for here?", shareProcess: true },
+      {
+        input: "Bob: @Wire Team Bot What am I responsible for here?", shareProcess: true,
+        assert: "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action {{ACT}}. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
+      },
+    ],
+  },
 ];
