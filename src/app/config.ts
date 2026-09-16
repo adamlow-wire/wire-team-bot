@@ -41,12 +41,14 @@ export interface JeevesLLMConfig {
 
 export interface Config {
   wire: {
-    userEmail: string;
-    userPassword: string;
-    userId: string;
-    userDomain: string;
+    /** App authentication token issued by the Wire backend for this application. */
+    apiToken: string;
     apiHost: string;
-    cryptoPassword: string;
+    /** 32-byte key protecting the SDK's local CoreCrypto store (WIRE_SDK_CRYPTO_KEY, 64 hex chars). */
+    cryptoKey: Uint8Array;
+    /** Qualified ID of the application; verified against the backend at startup. */
+    appId: string;
+    appDomain: string;
   };
   database: {
     url: string;
@@ -54,7 +56,6 @@ export interface Config {
   app: {
     logLevel: string;
     messageBufferSize: number;
-    storageDir: string;
     /** Inactivity period in ms before the bot prompts to exit secret mode. Default 1800000 (30 min). */
     secretModeInactivityMs: number;
   };
@@ -63,19 +64,24 @@ export interface Config {
   };
 }
 
-const REQUIRED_WIRE = [
-  "WIRE_SDK_USER_EMAIL",
-  "WIRE_SDK_USER_PASSWORD",
-  "WIRE_SDK_USER_ID",
-  "WIRE_SDK_USER_DOMAIN",
-  "WIRE_SDK_API_HOST",
-  "WIRE_SDK_CRYPTO_PASSWORD",
-] as const;
-
 function getEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} must be set`);
   return value;
+}
+
+const CRYPTO_KEY_BYTES = 32;
+
+/**
+ * Decode WIRE_SDK_CRYPTO_KEY: exactly 32 bytes, hex-encoded (64 chars).
+ * Generate one with `openssl rand -hex 32`. Losing it means losing the crypto store.
+ */
+function parseCryptoKey(name: string): Uint8Array {
+  const raw = getEnv(name).trim();
+  if (!/^[0-9a-fA-F]{64}$/.test(raw)) {
+    throw new Error(`${name} must be ${CRYPTO_KEY_BYTES} bytes hex-encoded (${CRYPTO_KEY_BYTES * 2} hex characters)`);
+  }
+  return new Uint8Array(Buffer.from(raw, "hex"));
 }
 
 function envStr(name: string, defaultVal: string): string {
@@ -126,12 +132,11 @@ function loadJeevesConfig(): JeevesLLMConfig {
 
 export function loadConfig(): Config {
   const wire = {
-    userEmail: getEnv(REQUIRED_WIRE[0]),
-    userPassword: getEnv(REQUIRED_WIRE[1]),
-    userId: getEnv(REQUIRED_WIRE[2]),
-    userDomain: getEnv(REQUIRED_WIRE[3]),
-    apiHost: getEnv(REQUIRED_WIRE[4]),
-    cryptoPassword: getEnv(REQUIRED_WIRE[5]),
+    apiToken: getEnv("WIRE_SDK_API_TOKEN"),
+    apiHost: getEnv("WIRE_SDK_API_HOST"),
+    cryptoKey: parseCryptoKey("WIRE_SDK_CRYPTO_KEY"),
+    appId: getEnv("WIRE_SDK_APP_ID"),
+    appDomain: getEnv("WIRE_SDK_APP_DOMAIN"),
   };
 
   const database = {
@@ -143,7 +148,6 @@ export function loadConfig(): Config {
     Math.max(1, parseInt(process.env.MESSAGE_BUFFER_SIZE ?? "50", 10)),
     500,
   );
-  const storageDir = process.env.STORAGE_DIR ?? "storage";
   const secretModeInactivityMs = Math.max(60_000, parseInt(process.env.SECRET_MODE_INACTIVITY_MS ?? "1800000", 10));
 
   const jeeves = loadJeevesConfig();
@@ -151,7 +155,7 @@ export function loadConfig(): Config {
   return {
     wire,
     database,
-    app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
+    app: { logLevel, messageBufferSize, secretModeInactivityMs },
     llm: { jeeves },
   };
 }

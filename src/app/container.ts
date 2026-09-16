@@ -1,7 +1,6 @@
 import "reflect-metadata";
-import fs from "fs";
-import path from "node:path";
-import type { WireAppSdk } from "wire-apps-js-sdk";
+import type { WireAppSdk } from "@wireapp/wire-apps-js-sdk";
+import { QualifiedId as SdkQualifiedId } from "@wireapp/wire-apps-js-sdk";
 import type { Config } from "./config";
 import type { Logger } from "./logging";
 import { createWireOutboundAdapter, type HandlerManagerRef } from "../infrastructure/wire/WireOutboundAdapter";
@@ -80,7 +79,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const channelConfigRepo = new PrismaChannelConfigRepository();
   const slidingWindow = new SlidingWindowBuffer();
   const auditLogRepo = new PrismaAuditLogRepository();
-  const systemActorId = { id: config.wire.userId, domain: config.wire.userDomain };
+  const systemActorId = { id: config.wire.appId, domain: config.wire.appDomain };
   const dateTimeService = new SystemDateTimeService();
   const memberCache = new InMemoryMemberCache();
   const userResolutionService = new MemberCacheUserResolutionService(memberCache);
@@ -276,7 +275,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     slidingWindow,
     processingQueue,
     pipeline,
-    orgId: config.wire.userDomain,
+    orgId: config.wire.appDomain,
   });
   handlerRef.current = router as unknown as HandlerManagerRef["current"];
 
@@ -290,13 +289,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   return {
     async getWireClient(): Promise<WireAppSdk> {
       if (!sdkPromise) {
-        const storageDir = path.isAbsolute(config.app.storageDir)
-          ? config.app.storageDir
-          : path.join(process.cwd(), config.app.storageDir);
-        if (!fs.existsSync(storageDir)) {
-          fs.mkdirSync(storageDir, { recursive: true });
-        }
-        sdkPromise = createWireClient(config, router, path.join(storageDir, "apps.db"), logger).then(async (sdk) => {
+        sdkPromise = createWireClient(config, router, logger).then(async (sdk) => {
           // Rehydrate pending reminders only after the Wire SDK is fully initialised.
           // Scheduling before this point causes overdue reminders to fire before the
           // crypto client is ready, crashing with "Cannot read properties of undefined".
@@ -326,22 +319,15 @@ export function createContainer(config: Config, logger: Logger): Container {
               logger.error("Failed to rehydrate pending reminders", { err: String(err) });
             });
 
-          // Hydrate the member cache from the SDK's persisted SQLite store before
+          // Hydrate the member cache from the SDK's persisted conversation store before
           // startListening() is called. This ensures display names are available for
           // the first message after a restart (onAppAddedToConversation only fires on
           // first-ever join, not on reconnect).
           try {
-            const [{ ConversationRepository }, { ConversationMemberRepository }, { container: sdkContainer }] =
-              await Promise.all([
-                import("wire-apps-js-sdk/build/db/ConversationRepository.js") as Promise<{ ConversationRepository: new (...a: unknown[]) => { getAll(): Array<{ id: string; domain: string }> } }>,
-                import("wire-apps-js-sdk/build/db/ConversationMemberRepository.js") as Promise<{ ConversationMemberRepository: new (...a: unknown[]) => { getMembersByConversationId(id: string, domain: string): Array<{ user_id: string; user_domain: string; role: string }> } }>,
-                import("tsyringe"),
-              ]);
-            const convRepo = sdkContainer.resolve(ConversationRepository);
-            const memberRepo = sdkContainer.resolve(ConversationMemberRepository);
-            const allConvs = convRepo.getAll();
+            const manager = sdk.getApplicationManager();
+            const allConvs = await manager.getAllConversations();
             await router.hydrateFromSdkStore(allConvs, (conv) =>
-              memberRepo.getMembersByConversationId(conv.id, conv.domain),
+              manager.getMembersInConversation(new SdkQualifiedId(conv.id, conv.domain)),
             );
             if (allConvs.length > 0) {
               logger.info("Member cache hydrated from SDK store", { conversations: allConvs.length });
