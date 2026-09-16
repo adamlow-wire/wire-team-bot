@@ -2,7 +2,7 @@
  * Unit tests for ProcessingPipeline.
  * All dependencies are mocked — no DB, no network.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ProcessingPipeline } from "../../src/infrastructure/pipeline/ProcessingPipeline";
 import type { PipelineDeps, MessageJob } from "../../src/infrastructure/pipeline/ProcessingPipeline";
 import type { ClassifyResult } from "../../src/application/ports/ClassifierPort";
@@ -42,12 +42,13 @@ const fullExtractResult: ExtractResult = {
   decisions: [{ summary: "Use Postgres", decidedBy: ["Alice"], confidence: 0.85, tags: [] }],
   actions: [{ description: "Set up Postgres", ownerName: "Alice", confidence: 0.8, tags: [] }],
   entities: [{ name: "Postgres", entityType: "service", aliases: ["PostgreSQL"] }],
+  completions: [],
   relationships: [],
   signals: [{ signalType: "update", summary: "Postgres chosen", tags: [], confidence: 0.75 }],
 };
 
 const emptyExtractResult: ExtractResult = {
-  decisions: [], actions: [], entities: [], relationships: [], signals: [],
+  decisions: [], actions: [], completions: [], entities: [], relationships: [], signals: [],
 };
 
 function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
@@ -73,14 +74,14 @@ function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
       create: vi.fn().mockImplementation(async (d) => d),
       update: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
-      query: vi.fn(),
+      query: vi.fn().mockResolvedValue([]),
     },
     actionRepo: {
       nextId: vi.fn().mockResolvedValue("ACT-0001"),
       create: vi.fn().mockImplementation(async (a) => a),
       update: vi.fn(),
       findById: vi.fn(),
-      query: vi.fn(),
+      query: vi.fn().mockResolvedValue([]),
     },
     channelConfig: { get: vi.fn().mockResolvedValue(null), upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn(), listByState: vi.fn().mockResolvedValue([]) },
     slidingWindow: {

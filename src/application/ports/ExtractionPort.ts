@@ -3,8 +3,27 @@
  * Receives the sliding window (last ≤30 messages) as context; NEVER stores verbatim content.
  */
 
-import type { WindowMessage } from "../../infrastructure/buffer/SlidingWindowBuffer";
 import type { ChannelContext } from "./ClassifierPort";
+import type {
+  EntityType,
+  ExtractedEntity,
+  ExtractedRelationship,
+  SignalType,
+  ExtractedSignal,
+} from "../../domain/entities/Extraction";
+
+/** One message of the sliding window handed to Tier 2 extraction. Never persisted. */
+export interface WindowMessage {
+  messageId: string;
+  authorId: string;
+  authorName?: string;
+  text: string;
+  timestamp: Date;
+}
+
+// Extraction result types are domain concepts (repositories persist them); re-exported
+// here so existing importers of the port keep working.
+export type { EntityType, ExtractedEntity, ExtractedRelationship, SignalType, ExtractedSignal };
 
 export interface ExtractedDecision {
   summary: string;
@@ -28,37 +47,6 @@ export interface ExtractedAction {
   supersedes?: string;
 }
 
-export type EntityType = "person" | "service" | "project" | "team" | "tool" | "concept";
-
-export interface ExtractedEntity {
-  name: string;
-  entityType: EntityType;
-  aliases: string[];
-  metadata?: Record<string, unknown>;
-}
-
-export interface ExtractedRelationship {
-  sourceName: string;
-  targetName: string;
-  relationship: "owns" | "depends_on" | "works_on" | "blocks" | "reports_to";
-  context?: string;
-  confidence?: number;
-}
-
-export type SignalType = "discussion" | "question" | "blocker" | "update" | "concern";
-
-export interface ExtractedSignal {
-  signalType: SignalType;
-  summary: string;    // 1–2 sentences synthesised — NO verbatim quotes
-  tags: string[];
-  confidence: number;
-}
-
-/**
- * Signals that the triggering message announces completion of an existing open action.
- * The pipeline uses this to mark the referenced action as done rather than creating a
- * new action from a past-tense completion announcement.
- */
 export interface ExtractedCompletion {
   /** ID of the KnownAction being completed (e.g. "ACT-0002"). */
   actionId: string;

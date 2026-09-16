@@ -9,13 +9,8 @@
  * behaviour — extraction quality degrades briefly then recovers.
  */
 
-export interface WindowMessage {
-  messageId: string;
-  authorId: string;
-  authorName?: string;
-  text: string;
-  timestamp: Date;
-}
+import type { WindowMessage } from "../../application/ports/ExtractionPort";
+export type { WindowMessage };
 
 const MAX_WINDOW_SIZE = 30;
 

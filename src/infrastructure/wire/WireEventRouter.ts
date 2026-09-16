@@ -33,7 +33,7 @@ import type { ActionStatus } from "../../domain/entities/Action";
 import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
-import { toChannelId } from "./channelId";
+import { toChannelId } from "../../domain/ids/channelId";
 
 const CONTEXT_WINDOW = 10;
 const NAME_TTL_MS = 24 * 60 * 60 * 1000; // re-fetch display names after 24 h to catch renames

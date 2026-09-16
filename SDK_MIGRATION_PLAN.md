@@ -103,8 +103,8 @@ Staging: `docker-compose.staging.yml` + `npm run staging:up` runs the bot agains
 - **`npm ci` + better-sqlite3 13.** The package ships prebuilt binaries and sets `gypfile: false`, but npm 10's `npm ci` takes metadata from the lockfile (which lacks that flag), sees `binding.gyp`, and runs an implicit `node-gyp rebuild` that fails on a toolchain-free image. Fix used in Dockerfile and CI: `npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines`. Prisma is the only dependency whose install hooks we need.
 - **Stale better-sqlite3 12.8 / prebuild-install** entries inherited from the fork are gone from the lockfile.
 - **Verified in `node:22-trixie-slim`:** SDK loads via CommonJS `require()`, full image builds (862 MB), runner stage has the Prisma client and no devDependencies, config validation fails fast on a malformed `WIRE_SDK_CRYPTO_KEY`.
-- **Unit tests:** 126 pass in the container. 15 failures across 4 files (`tests/pipeline/OpenAIExtractionAdapter`, `OpenAIQueryAnalysisAdapter`, `ProcessingPipeline`, `tests/retrieval/StructuredRetrievalPath`) are **pre-existing on `main`** and unrelated to the SDK.
-- **Lint:** 0 errors, 22 pre-existing warnings, none in touched files.
+- **Unit tests:** 141 pass, 0 fail, in the container. 15 tests inherited from `main` had drifted from deliberate code changes (`extract()` gained a `knownActions` parameter, `ExtractResult` gained `completions`, query analysis always injects a structured path, structured retrieval dropped the entity text filter); the tests were brought in line with the code.
+- **Lint:** 0 problems. The 22 warnings inherited from `main` were fixed: three were real layer violations (`WindowMessage` now lives in the extraction port, extraction result types in `src/domain/entities/Extraction.ts`, `channelId` helpers in `src/domain/ids/channelId.ts`); the rest were unused imports.
 - **Not exercised yet:** anything requiring a real app token (`WireAppSdk.create`, hydration, message send/receive). That's cutover step 4 onwards.
 
 ## 8. Risks

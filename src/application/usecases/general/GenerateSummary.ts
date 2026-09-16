@@ -5,7 +5,7 @@ import type { ConversationSignalRepository } from "../../../domain/repositories/
 import type { ConversationSummaryRepository } from "../../../domain/repositories/ConversationSummaryRepository";
 import type { ConversationSummary, SummaryGranularity } from "../../../domain/entities/ConversationSummary";
 import type { Logger } from "../../ports/Logger";
-import { fromChannelId } from "../../../infrastructure/wire/channelId";
+import { fromChannelId } from "../../../domain/ids/channelId";
 
 export interface GenerateSummaryInput {
   channelId: string;

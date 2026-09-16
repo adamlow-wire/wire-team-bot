@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { OpenAIQueryAnalysisAdapter } from "../../src/infrastructure/llm/OpenAIQueryAnalysisAdapter";
 
 function makeLLM(content: string) {
@@ -46,7 +46,8 @@ describe("OpenAIQueryAnalysisAdapter", () => {
     const adapter = new OpenAIQueryAnalysisAdapter(llm as never, makeLogger());
     const plan = await adapter.analyse("What was decided?", channelCtx, []);
     expect(plan.intent).toBe("factual_recall");
-    expect(plan.paths[0]?.path).toBe("semantic");
+    // The adapter always guarantees a structured path first; the LLM-requested path must survive.
+    expect(plan.paths.map((p) => p.path)).toContain("semantic");
   });
 
   it("returns default plan on LLM error", async () => {

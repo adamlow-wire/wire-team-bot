@@ -82,16 +82,18 @@ describe("StructuredRetrievalPath", () => {
     expect(results.some((r) => r.type === "action")).toBe(true);
   });
 
-  it("passes searchText derived from entities in plan", async () => {
+  it("fetches active channel decisions without an entity text filter (LLM judges relevance)", async () => {
     const decisionRepo = { query: vi.fn().mockResolvedValue([]), findById: vi.fn() };
     const actionRepo = { query: vi.fn().mockResolvedValue([]), findById: vi.fn() };
     const path = new StructuredRetrievalPath(decisionRepo as never, actionRepo as never);
 
     await path.retrieve({ ...basePlan, entities: ["Alice", "ProjectX"] }, scope);
 
-    expect(decisionRepo.query).toHaveBeenCalledWith(
-      expect.objectContaining({ searchText: "Alice ProjectX" }),
-    );
+    expect(decisionRepo.query).toHaveBeenCalledOnce();
+    const query = decisionRepo.query.mock.calls[0]![0] as Record<string, unknown>;
+    expect(query.conversationId).toEqual({ id: "conv-1", domain: "wire.com" });
+    expect(query.statusIn).toEqual(["active"]);
+    expect(query).not.toHaveProperty("searchText");
   });
 
   it("returns empty array when no channelId in scope", async () => {
