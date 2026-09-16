@@ -122,7 +122,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
-  "wireSmoke": "pending candidate Wire smoke; designated conversation and operator identified",
+  "wireSmoke": "in progress: staging candidate active; operator status round trip pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -141,5 +141,20 @@
     "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
     "secondParticipant": "@adamlow_wire",
     "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check"
+  },
+  "stagingActivation": {
+    "startedAt": "2026-09-16T16:11:50.582516172Z",
+    "image": "wire-team-bot:v3-rc-bde0d0a",
+    "imageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
+    "previousImageId": "sha256:2a4568a601435903a131c210ab5b48bfbd9e58c16d3bea741c726b39a9492879",
+    "existingDatabaseAndCryptoPreserved": true,
+    "backupDirectory": "/tmp/wire-v3-staging-backup-kcqACp",
+    "backupReadChecks": "passed",
+    "pendingRemindersBeforeSwitch": 0,
+    "joinedConversationsBeforeSwitch": 1,
+    "memberCacheHydratedConversations": 1,
+    "applicationStartup": "Wire client connected, listening for events",
+    "sdkErrorDiagnostics": 1,
+    "transportRoundTrip": "pending operator status message"
   }
 }

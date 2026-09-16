@@ -291,7 +291,8 @@ Provisional thresholds for this small pilot (not production SLAs):
 ### Candidate disposition — 2026-09-16
 
 **Implemented and packaged; not yet pilot ready.** Runtime `bde0d0a` is available locally as
-`wire-team-bot:v3-rc-bde0d0a`. No production deployment or real Wire smoke was performed.
+`wire-team-bot:v3-rc-bde0d0a`. This image is now active on the designated staging backend;
+user-driven Wire smoke checks are underway. No production deployment was performed.
 Human review and designated Wire acceptance still prevent closing P0–P2.
 [Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
 and check boundaries without credentials.
@@ -346,6 +347,20 @@ to the operator and can be used for assignment/attribution checks. This identifi
 location and accounts; it is not a completed candidate smoke test. Human reviewer remains
 to be identified.
 
+Staging activation (2026-09-16 16:11 UTC): the running `jeeves-staging` container now uses
+`wire-team-bot:v3-rc-bde0d0a` with the tested digest and existing identity/volumes. Only the
+designated conversation was present and no reminders were pending before the switch. Models
+match the accepted synthetic configuration; embeddings are off. Startup hydrated one conversation
+and reported the Wire client listening, with one content-free SDK error still unexplained.
+Actual receive/decrypt/reply remains pending the operator's mentioned `status` message.
+
+Rollback snapshots (private, outside Git): `/tmp/wire-v3-staging-backup-kcqACp/database.dump`
+and `crypto-store.tar.gz`; both were checked readable. The candidate override is in that same
+directory as `candidate.override.yml`. The old `jeeves:staging` image was retained. If rollback
+is needed, use `docker compose -f docker-compose.staging.yml up -d --no-deps --no-build jeeves`;
+retain the current database and crypto volume. Do not reset or restore identity storage for an
+ordinary image rollback.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -384,6 +399,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Final release image and quality | `bde0d0a` image built; native SDK load and CLI pause/secure restart smoke passed. Final-image fixed sample: 20/20/20, zero duplicates/markers, 10 answer outputs and unknown response inspected, human review pending. Full e2e remains 53/55 with the two cases above retained. | Human review, two adjudications and designated Wire smoke; no production deployment |
 | 2026-09-16 | Capture scoring order regression | Reproduced a duplicate returned before its valid source being omitted from the duplicate counter (precision already penalised it). Source-first matching and order-independent duplicate grouping fixed; two regression tests added. Fresh build/type-check/lint and 207 unit/contract/isolated DB tests pass. Re-scoring both saved inventories preserves baseline 10/10/20 and candidate 20/20/20, zero duplicates. Runtime image unchanged. | Complete unchanged e2e suite against the immutable image; human/Wire gates remain pending |
 | 2026-09-16 | Immutable-image full regression | Unchanged real-model suite run against `wire-team-bot:v3-rc-bde0d0a`: 53/55, same TC-PIPE-06 ownership expectation and TC-ACT-07 judge false negative. Runtime/dependencies were taken from the image; harness mounted read-only. Raw results and exact README command committed. | Human quality review, two adjudications and designated Wire smoke remain pending |
+| 2026-09-16 | Staging candidate activation | User requested continuation after naming the test conversation/accounts. Database and stopped crypto store backed up; existing volumes retained. Pinned image started at 16:11 UTC; one conversation hydrated and client startup completed. One SDK error remains unexplained; operator status round trip requested. | Verify actual Wire receive/decrypt/reply before marking transport passed |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
