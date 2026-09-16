@@ -16,8 +16,10 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      # Wire SDK crypto store — must persist across restarts.
+      # Wire SDK store (SQLite + CoreCrypto keystore) — must persist across restarts.
       # Losing this means the bot loses all E2EE session state.
+      # NOTE: a volume created by the pre-2026-09 fork-based image is not compatible;
+      # start the official-SDK image on a fresh volume (see SDK_MIGRATION_PLAN.md §7).
       - jeeves-crypto:/app/storage
 
   postgres:
