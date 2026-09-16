@@ -1,6 +1,7 @@
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
-import type { Conversation, ConversationMember, TextMessage, ButtonActionMessage, MessageEditMessage } from "wire-apps-js-sdk";
-import { WireEventsHandler, ButtonActionConfirmationMessage } from "wire-apps-js-sdk";
+import { randomUUID } from "node:crypto";
+import type { Conversation, ConversationMember, TextMessage, CompositeButtonAction, TextEditedMessage, WireMessage } from "@wireapp/wire-apps-js-sdk";
+import { WireEventsHandler, ConversationRole } from "@wireapp/wire-apps-js-sdk";
 import type { LogDecision } from "../../application/usecases/decisions/LogDecision";
 import type { CreateActionFromExplicit } from "../../application/usecases/actions/CreateActionFromExplicit";
 import type { UpdateActionStatus } from "../../application/usecases/actions/UpdateActionStatus";
@@ -32,11 +33,20 @@ import type { ActionStatus } from "../../domain/entities/Action";
 import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
-import { toChannelId } from "./channelId";
+import { toChannelId } from "../../domain/ids/channelId";
 
 const CONTEXT_WINDOW = 10;
 const NAME_TTL_MS = 24 * 60 * 60 * 1000; // re-fetch display names after 24 h to catch renames
 
+/**
+ * The SDK serialises and accepts this message type but does not export its factory
+ * from the package entrypoint, so we build it from the exported union instead.
+ */
+type ButtonActionConfirmation = Extract<WireMessage, { type: "composite_button_action_confirmation" }>;
+
+function toCachedRole(role: ConversationRole): CachedMember["role"] {
+  return role === ConversationRole.ADMIN ? "admin" : "member";
+}
 
 export interface WireEventRouterDeps {
   logger: Logger;
@@ -803,12 +813,12 @@ export class WireEventRouter extends WireEventsHandler {
   // Button actions
   // ─────────────────────────────────────────────────────────────────────────
 
-  async onMessageEdited(_wireMessage: MessageEditMessage): Promise<void> {
+  async onTextMessageEdited(_wireMessage: TextEditedMessage): Promise<void> {
     // Edits are intentionally ignored — re-processing an edited message would
     // re-extract actions/decisions from the sliding window and create duplicates.
   }
 
-  async onButtonActionReceived(wireMessage: ButtonActionMessage): Promise<void> {
+  async onButtonClicked(wireMessage: CompositeButtonAction): Promise<void> {
     const convId = wireMessage.conversationId as QualifiedId;
     const senderId = wireMessage.sender as QualifiedId;
     const { buttonId, referenceMessageId } = wireMessage;
@@ -820,11 +830,18 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     try {
-      await this.manager.sendMessage(
-        ButtonActionConfirmationMessage.create({ conversationId: convId, referenceMessageId, buttonId }),
-      );
-    } catch {
-      // manager not available in tests — safe to ignore
+      const confirmation: ButtonActionConfirmation = {
+        type: "composite_button_action_confirmation",
+        id: randomUUID(),
+        conversationId: convId,
+        referenceMessageId,
+        buttonId,
+      };
+      await this.manager.sendMessage(confirmation);
+      log.debug("Button action confirmation sent", { referenceMessageId });
+    } catch (err) {
+      // Also reached in unit tests where the SDK manager is not wired; harmless there.
+      log.warn("Failed to send button action confirmation", { err: String(err) });
     }
   }
 
@@ -833,17 +850,18 @@ export class WireEventRouter extends WireEventsHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Pre-populate the member cache from the SDK's persisted SQLite store so that
+   * Pre-populate the member cache from the SDK's persisted conversation store so that
    * display names are available before the first message arrives after a restart.
    *
    * onAppAddedToConversation only fires when the bot is first added to a conversation,
-   * not on subsequent restarts. This method covers that gap by reading the SDK's local DB.
+   * not on subsequent restarts. This method covers that gap using the SDK's public
+   * getAllConversations() / getMembersInConversation() API.
    *
    * Awaiting this before startListening() ensures no message arrives with an empty cache.
    */
   async hydrateFromSdkStore(
-    conversations: Array<{ id: string; domain: string }>,
-    getMembers: (conv: { id: string; domain: string }) => Array<{ user_id: string; user_domain: string; role: string }>,
+    conversations: Conversation[],
+    getMembers: (conv: Conversation) => Promise<ConversationMember[]>,
   ): Promise<void> {
     await Promise.allSettled(
       conversations.map(async (conv) => {
@@ -851,12 +869,12 @@ export class WireEventRouter extends WireEventsHandler {
         // Skip if the cache was already populated by a live onAppAddedToConversation event.
         if (this.deps.memberCache.getMembers(convId).length > 0) return;
 
-        const rawMembers = getMembers(conv);
+        const rawMembers = await getMembers(conv);
         const members: CachedMember[] = rawMembers
-          .filter((m) => m.user_id !== this.deps.botUserId.id)
+          .filter((m) => m.userId.id !== this.deps.botUserId.id)
           .map((m) => ({
-            userId: { id: m.user_id, domain: m.user_domain } as QualifiedId,
-            role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
+            userId: { id: m.userId.id, domain: m.userId.domain },
+            role: toCachedRole(m.role),
           }));
 
         this.deps.memberCache.setMembers(convId, members);
@@ -883,7 +901,7 @@ export class WireEventRouter extends WireEventsHandler {
     const channelId = toChannelId(convId);
     this.deps.memberCache.setMembers(convId, members.map((m) => ({
       userId: m.userId as QualifiedId,
-      role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
+      role: toCachedRole(m.role),
     })));
 
     // Resolve display names for all non-bot members before returning.
@@ -909,7 +927,7 @@ export class WireEventRouter extends WireEventsHandler {
       const existing = await this.deps.channelConfig.get(channelId);
       await this.deps.channelConfig.upsert({
         channelId,
-        channelName: (conversation as { name?: string }).name ?? existing?.channelName,
+        channelName: conversation.name ?? existing?.channelName,
         organisationId: convId.domain,
         state: existing?.state ?? "active",
         secureRanges: existing?.secureRanges ?? [],
@@ -951,7 +969,7 @@ export class WireEventRouter extends WireEventsHandler {
   async onUserJoinedConversation(conversationId: QualifiedId, members: ConversationMember[]): Promise<void> {
     this.deps.memberCache.addMembers(conversationId as QualifiedId, members.map((m) => ({
       userId: m.userId as QualifiedId,
-      role: (m.role === "wire_admin" ? "admin" : "member") as CachedMember["role"],
+      role: toCachedRole(m.role),
     })));
     await this.updatePersonalMode(conversationId as QualifiedId);
 

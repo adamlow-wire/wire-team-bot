@@ -3,21 +3,21 @@ import type {
   WireOutboundPort,
   OutboundTextOptions,
   CompositePromptOptions,
-  CompositeButton,
+  CompositeButton as PromptButton,
   UserProfile,
 } from "../../application/ports/WireOutboundPort";
 import type { Logger } from "../../application/ports/Logger";
-import { TextMessage, CompositeMessage, ReactionMessage } from "wire-apps-js-sdk";
-import type { WireMessage } from "wire-apps-js-sdk";
+import { TextMessage, CompositeMessage, CompositeButton, Reaction } from "@wireapp/wire-apps-js-sdk";
+import type { WireMessage, WireUser } from "@wireapp/wire-apps-js-sdk";
 
 /**
- * Minimal interface for the Wire SDK manager methods used by the outbound adapter.
- * Defined here to avoid importing the un-exported WireApplicationManager class directly.
+ * The subset of WireApplicationManager the outbound adapter needs.
+ * Kept narrow so tests can supply a fake without the SDK's native dependencies.
  */
 export interface ManagerHandle {
   sendMessage(message: WireMessage): Promise<string>;
   sendAsset(conversationId: QualifiedId, asset: { data: Uint8Array; name: string; mimeType: string }): Promise<string>;
-  getUser(userId: QualifiedId): Promise<{ id: QualifiedId; name: string; handle?: string }>;
+  getUsers(userIds: QualifiedId[]): Promise<Array<Pick<WireUser, "id" | "name" | "handle">>>;
 }
 
 export interface HandlerManagerRef {
@@ -34,7 +34,7 @@ async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8A
 }
 
 /**
- * Implements WireOutboundPort using wire-apps-js-sdk.
+ * Implements WireOutboundPort using @wireapp/wire-apps-js-sdk.
  */
 export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger: Logger): WireOutboundPort {
   return {
@@ -42,8 +42,13 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
       const h = handlerRef.current;
       if (!h?.manager) return null;
       try {
-        const profile = await h.manager.getUser(userId);
-        return { id: profile.id, name: profile.name, handle: profile.handle };
+        const [profile] = await h.manager.getUsers([userId]);
+        if (!profile) return null;
+        return {
+          id: { id: profile.id.id, domain: profile.id.domain },
+          name: profile.name,
+          handle: profile.handle,
+        };
       } catch {
         return null;
       }
@@ -63,17 +68,19 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
     async sendCompositePrompt(
       conversationId: QualifiedId,
       text: string,
-      buttons: CompositeButton[],
+      buttons: PromptButton[],
       _options?: CompositePromptOptions,
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
       logger.debug("sendCompositePrompt", { conversationId: conversationId.id, preview: text.slice(0, 80), buttons: buttons.map((b) => b.id) });
-      const items = [
-        { text: { content: text } },
-        ...buttons.map((b) => ({ button: { id: b.id, text: b.label } })),
-      ];
-      await h.manager.sendMessage(CompositeMessage.create({ conversationId, items }));
+      await h.manager.sendMessage(
+        CompositeMessage.create({
+          conversationId,
+          text,
+          itemList: buttons.map((b) => CompositeButton.create({ id: b.id, text: b.label })),
+        }),
+      );
     },
 
     async sendReaction(
@@ -85,7 +92,7 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
       if (!h?.manager) return;
       logger.debug("sendReaction", { conversationId: conversationId.id, messageId, emoji });
       await h.manager.sendMessage(
-        ReactionMessage.create({ conversationId, emoji, targetMessageId: messageId }),
+        Reaction.create({ conversationId, messageId, emojiSet: new Set([emoji]) }),
       );
     },
 

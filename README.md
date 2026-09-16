@@ -168,7 +168,9 @@ Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, th
 ### Prerequisites
 
 - Docker and Docker Compose v2
-- A Wire account for the bot (`WIRE_SDK_USER_*` credentials)
+- A linux/x86_64 host. The Wire SDK's CoreCrypto native library needs glibc 2.38 or newer, which the
+  `node:22-trixie-slim` image provides. It does not run on Alpine (musl) or on linux/arm64.
+- A Wire **application** registered by a team admin, with its app token (`WIRE_SDK_API_TOKEN`). This is not a user login.
 - An Ollama instance (or any OpenAI-compatible LLM endpoint)
 
 ### 1. Clone and configure
@@ -177,7 +179,8 @@ Each slot also has a fallback model (`JEEVES_FALLBACK_*`). On timeout or 503, th
 git clone <repo-url>
 cd wire-team-bot
 cp .env.example .env
-# Edit .env — set Wire credentials and JEEVES_LLM_BASE_URL
+# Edit .env — set the Wire app token / app ID, generate WIRE_SDK_CRYPTO_KEY, set JEEVES_LLM_BASE_URL
+openssl rand -hex 32   # paste as WIRE_SDK_CRYPTO_KEY
 ```
 
 ### 2. Start the stack
@@ -186,24 +189,72 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### 3. Add the bot to a Wire conversation
+### 3. Add the app to a Wire conversation
 
-Add the bot user to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
+A team admin adds the Jeeves app to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
 
 ---
 
+## Testing against the Wire staging backend
+
+Everything below runs from a dev box with Docker. The image is built locally, so the host's glibc does not matter.
+
+1. **Register Jeeves as a Wire app** (needs a staging team account with admin/owner rights; the backend checks the
+   `CreateApp` team permission). The token is the `zuid` cookie the backend hands back; the script checks it against
+   `/access` before writing anything.
+
+   ```bash
+   node scripts/register-app.mjs versions --host https://staging-nginz-https.zinfra.io          # sanity: API v15+ available
+   node scripts/register-app.mjs create   --host https://staging-nginz-https.zinfra.io \
+        --email <team-admin@staging> --name "Jeeves (staging)" --out .env.staging
+   ```
+
+   You are prompted for the admin password (never echoed). If the account has a second factor enabled, run
+   `send-code` first and pass `--code`. `.env.staging` is written with mode 0600 and is gitignored. It contains
+   `WIRE_SDK_API_HOST`, `WIRE_SDK_APP_ID`, `WIRE_SDK_APP_DOMAIN`, `WIRE_SDK_API_TOKEN`, and a freshly generated
+   `WIRE_SDK_CRYPTO_KEY`.
+
+2. **Add your LLM settings** (`JEEVES_LLM_BASE_URL`, `JEEVES_LLM_API_KEY`, model overrides) to `.env.staging`.
+
+3. **Start the staging stack** (own container names, volumes, and Postgres port 5433, so it coexists with a production stack):
+
+   ```bash
+   npm run staging:up
+   npm run staging:logs        # expect: migrations, "CoreCrypto initialized", websocket connected
+   ```
+
+4. **Add the app to a conversation** as a team admin in the staging Wire client. Jeeves greets and asks for the
+   channel purpose. Then try `decision: ship it`, `@Jeeves what did we decide?`, `remind me in 2 minutes to test`.
+
+5. **Restart test**: `docker restart jeeves-staging`, then send another message. It must still decrypt; the SDK's
+   persistent keystore is the point of this migration.
+
+6. **Token expired or revoked?** Mint a new one without creating a new identity, then restart:
+
+   ```bash
+   node scripts/register-app.mjs refresh --host https://staging-nginz-https.zinfra.io \
+        --email <team-admin@staging> --app-id <WIRE_SDK_APP_ID> --print-token
+   ```
+
+   Keep the existing `WIRE_SDK_CRYPTO_KEY` and volume; only `WIRE_SDK_API_TOKEN` changes.
+
+`npm run staging:down` stops the stack. Add `-v` manually (`docker compose -f docker-compose.staging.yml down -v`) only
+when you want to throw away the staging identity's crypto store and start over with a new `create`.
+
 ## Environment variables
 
-### Wire credentials (all required)
+### Wire application (all required)
 
 | Variable | Description |
 |---|---|
-| `WIRE_SDK_USER_EMAIL` | Email of the bot's Wire account |
-| `WIRE_SDK_USER_PASSWORD` | Password |
-| `WIRE_SDK_USER_ID` | Wire UUID of the bot user |
-| `WIRE_SDK_USER_DOMAIN` | Wire federation domain (e.g. `wire.example.com`) |
-| `WIRE_SDK_API_HOST` | Wire backend API hostname |
-| `WIRE_SDK_CRYPTO_PASSWORD` | Passphrase for the local crypto store |
+| `WIRE_SDK_API_TOKEN` | App authentication token minted by a team admin for the Jeeves application |
+| `WIRE_SDK_API_HOST` | Wire backend API base URL (e.g. `https://prod-nginz-https.wire.com`) |
+| `WIRE_SDK_APP_ID` | Wire UUID of the application; verified against the backend at startup |
+| `WIRE_SDK_APP_DOMAIN` | Wire federation domain of the application (e.g. `wire.example.com`) |
+| `WIRE_SDK_CRYPTO_KEY` | 32 random bytes, hex-encoded (64 chars), protecting the local CoreCrypto keystore. Generate with `openssl rand -hex 32`. Losing it means losing all E2EE state. |
+
+The SDK stores its SQLite database and keystore under `./storage` relative to the process working directory
+(`/app/storage` in the container, mounted as the `jeeves-crypto` volume).
 
 ### Database
 
@@ -218,6 +269,9 @@ Add the bot user to any group conversation. Jeeves will ask for a brief channel 
 | `JEEVES_LLM_BASE_URL` | *(from `LLM_CAPABLE_BASE_URL`)* | Shared endpoint for all model slots |
 | `JEEVES_LLM_API_KEY` | *(from `LLM_CAPABLE_API_KEY`)* | Shared API key |
 | `JEEVES_LLM_TIMEOUT_MS` | `60000` | Per-call timeout in milliseconds |
+| `JEEVES_EMBED_BASE_URL` | *(= `JEEVES_LLM_BASE_URL`)* | Separate OpenAI-compatible `/embeddings` provider, for chat providers without one (Anthropic) |
+| `JEEVES_EMBED_API_KEY` | *(= `JEEVES_LLM_API_KEY`)* | API key for the embedding provider |
+| `JEEVES_EMBEDDINGS` | `auto` | `auto` disables embeddings when the embedding host is `api.anthropic.com`; `on` / `off` force it |
 | `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` | Tier 1 classification model |
 | `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` | Tier 2 extraction model |
 | `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` | Embedding model |
@@ -231,6 +285,23 @@ Add the bot user to any group conversation. Jeeves will ask for a brief channel 
 | `JEEVES_EXTRACT_CONFIDENCE_MIN` | `0.6` | Minimum extraction confidence to persist a result |
 | `JEEVES_CONTRADICTION_THRESHOLD` | `0.78` | Cosine similarity to trigger contradiction detection |
 | `JEEVES_ENTITY_DEDUP_THRESHOLD` | `0.92` | Cosine similarity for entity deduplication |
+
+#### Using Claude
+
+Anthropic's API serves OpenAI-style chat completions at `https://api.anthropic.com/v1`, so the six chat slots work with a
+Claude API key and Claude model IDs (`claude-opus-5`, `claude-haiku-4-5` for the high-volume `classify` slot). Two
+caveats, both handled:
+
+- **No embeddings.** Anthropic has no `/embeddings` endpoint. With `JEEVES_EMBEDDINGS=auto` (the default) and no
+  `JEEVES_EMBED_BASE_URL`, embeddings switch off at startup with one warning, and Jeeves runs without semantic
+  retrieval, entity dedup and contradiction detection. Structured retrieval, summaries, commands and Q&A still work.
+  To keep the vector features, point `JEEVES_EMBED_BASE_URL` at Ollama or another OpenAI-compatible provider and set
+  `JEEVES_MODEL_EMBED` / `JEEVES_EMBED_DIMS` to match. The staging compose file ships an optional Ollama for this:
+  `docker compose -f docker-compose.staging.yml --profile embeddings up -d`, then
+  `docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b`.
+- **JSON mode is ignored** by Anthropic's compatibility layer. The structured slots ask for JSON in their prompts and
+  strip code fences, so this works in practice; occasional fallback-path warnings are expected. Anthropic documents the
+  layer as intended for evaluation rather than production; the native Anthropic SDK is the long-term path.
 
 ### Legacy v1 LLM tiers (still active)
 
@@ -250,7 +321,6 @@ These power the foreground intent router (`create_decision`, `create_action`, et
 |---|---|---|
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `MESSAGE_BUFFER_SIZE` | `50` | Recent messages kept per conversation for Q&A context (max 500). Does not affect the Tier 2 extraction window, which is always 30. |
-| `STORAGE_DIR` | `storage` | Wire SDK local crypto store directory |
 | `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Jeeves prompts the team to resume (minimum 60 000) |
 
 ---
@@ -315,8 +385,8 @@ All channel mode commands accept an optional trailing _"please"_.
 ## Development
 
 ```bash
-npm install
-cp .env.example .env          # fill in credentials
+npm ci                        # see "Dependency notes" below before using plain `npm install`
+cp .env.example .env          # fill in the Wire app token, app ID and crypto key
 npx prisma migrate dev        # create the local DB schema
 npm run dev                   # start with ts-node watch
 
@@ -330,6 +400,24 @@ npm run simulate:review                     # annotate report as golden baseline
 ```
 
 Database migrations live in `prisma/migrations/`. The schema is in `prisma/schema.prisma`.
+
+### Dependency notes
+
+- **Runtime requirement.** `@wireapp/wire-apps-js-sdk` pulls in `@wireapp/core-crypto`, whose native library needs
+  glibc 2.38+ on linux/x86_64 (or macOS). Importing the SDK on an older glibc (for example Ubuntu 22.04 / WSL) fails at
+  load time, which also breaks `npm test` and the CLI/e2e harness locally. Run them in a container instead:
+
+  ```bash
+  docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/app -w /app node:22-trixie-slim npx vitest run
+  ```
+
+- **`npm install` on npm 10.9.x** fails with `Cannot read properties of null (reading 'edgesOut')` while resolving
+  this tree. Use `npm ci` with the committed lockfile, or npm 11+ (`npx npm@12 install`) when you need to change
+  dependencies.
+- **`npm ci` compiles better-sqlite3 unnecessarily** on npm 10 (it ignores the package's `gypfile: false` when
+  reading from the lockfile). The Dockerfile and CI therefore run
+  `npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines`; Prisma is the only dependency whose
+  install hooks are needed. On a machine with a C++ toolchain, plain `npm ci` also works, just slower.
 
 ### Test layout
 

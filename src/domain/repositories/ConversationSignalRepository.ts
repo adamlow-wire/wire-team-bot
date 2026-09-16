@@ -1,4 +1,4 @@
-import type { SignalType } from "../../application/ports/ExtractionPort";
+import type { SignalType } from "../entities/Extraction";
 
 export interface SourceRef {
   wire_msg_ids: string[];

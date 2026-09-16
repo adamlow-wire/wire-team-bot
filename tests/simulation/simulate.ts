@@ -15,7 +15,7 @@
 import { spawn }  from "child_process";
 import path       from "path";
 import fs         from "fs";
-import { CONVERSATION, type SimMessage } from "./conversation";
+import { CONVERSATION } from "./conversation";
 
 const ROOT   = path.resolve(__dirname, "../..");
 const CLI    = path.join(ROOT, "dist/app/cli.js");

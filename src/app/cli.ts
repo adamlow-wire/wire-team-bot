@@ -25,7 +25,7 @@ import { getPrismaClient } from "../infrastructure/persistence/postgres/PrismaCl
 import { WireEventRouter } from "../infrastructure/wire/WireEventRouter";
 import type { WireOutboundPort, OutboundTextOptions } from "../application/ports/WireOutboundPort";
 import type { QualifiedId } from "../domain/ids/QualifiedId";
-import { toChannelId } from "../infrastructure/wire/channelId";
+import { toChannelId } from "../domain/ids/channelId";
 import { PrismaDecisionRepository } from "../infrastructure/persistence/postgres/PrismaDecisionRepository";
 import { PrismaActionRepository } from "../infrastructure/persistence/postgres/PrismaActionRepository";
 import { PrismaReminderRepository } from "../infrastructure/persistence/postgres/PrismaReminderRepository";
@@ -49,7 +49,7 @@ import { LLMClientFactory } from "../infrastructure/llm/LLMClientFactory";
 import { OpenAIGeneralAnswerAdapter } from "../infrastructure/llm/OpenAIGeneralAnswerAdapter";
 import { OpenAIClassifierAdapter } from "../infrastructure/llm/OpenAIClassifierAdapter";
 import { OpenAIExtractionAdapter } from "../infrastructure/llm/OpenAIExtractionAdapter";
-import { JeevesEmbeddingAdapter } from "../infrastructure/llm/JeevesEmbeddingAdapter";
+import { createEmbeddingService } from "../infrastructure/llm/createEmbeddingService";
 import { OpenAIQueryAnalysisAdapter } from "../infrastructure/llm/OpenAIQueryAnalysisAdapter";
 import { OpenAISummarisationAdapter } from "../infrastructure/llm/OpenAISummarisationAdapter";
 import { LogDecision } from "../application/usecases/decisions/LogDecision";
@@ -66,14 +66,12 @@ import { UpdateActionDeadline } from "../application/usecases/actions/UpdateActi
 import { ListOverdueActions } from "../application/usecases/actions/ListOverdueActions";
 import { CreateReminder } from "../application/usecases/reminders/CreateReminder";
 import { ListMyReminders } from "../application/usecases/reminders/ListMyReminders";
-import { FireReminder } from "../application/usecases/reminders/FireReminder";
 import { CancelReminder } from "../application/usecases/reminders/CancelReminder";
 import { SnoozeReminder } from "../application/usecases/reminders/SnoozeReminder";
 import { AnswerQuestion } from "../application/usecases/general/AnswerQuestion";
 import { StatusCommand } from "../application/usecases/general/StatusCommand";
 import { GenerateSummary } from "../application/usecases/general/GenerateSummary";
 import { CatchMeUpCommand } from "../application/usecases/general/CatchMeUpCommand";
-import { CheckStaleness } from "../application/usecases/actions/CheckStaleness";
 import { StructuredRetrievalPath } from "../infrastructure/retrieval/StructuredRetrievalPath";
 import { SemanticRetrievalPath } from "../infrastructure/retrieval/SemanticRetrievalPath";
 import { GraphRetrievalPath } from "../infrastructure/retrieval/GraphRetrievalPath";
@@ -100,7 +98,7 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
 
 // ── Stub outbound port ────────────────────────────────────────────────────────
 
-function createCliOutbound(memberCache: InMemoryMemberCache): WireOutboundPort {
+function createCliOutbound(): WireOutboundPort {
   return {
     async sendPlainText(_convId: QualifiedId, text: string, _opts?: OutboundTextOptions) {
       process.stdout.write(`[Jeeves] ${text}\n`);
@@ -189,12 +187,12 @@ async function main() {
   }
 
   // Outbound
-  const wireOutbound = createCliOutbound(memberCache);
+  const wireOutbound = createCliOutbound();
 
   // Pipeline
   const classifier       = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
-  const embeddingService = new JeevesEmbeddingAdapter(config.llm.jeeves, logger);
+  const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
     classifier, extraction, embeddingService,
     entityRepo, embeddingRepo, signalRepo,

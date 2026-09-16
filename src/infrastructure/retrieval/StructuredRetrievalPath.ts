@@ -10,7 +10,7 @@ import type { RetrievalResult, RetrievalScope } from "../../application/ports/Re
 import type { QueryPlan } from "../../application/ports/QueryAnalysisPort";
 import type { Decision } from "../../domain/entities/Decision";
 import type { Action } from "../../domain/entities/Action";
-import { fromChannelId } from "../wire/channelId";
+import { fromChannelId } from "../../domain/ids/channelId";
 
 const MAX_RESULTS = 20;
 

@@ -16,23 +16,29 @@
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "sdk:setup": "cd wire-apps-js-sdk && npm install && npm run build:setup && npm run build",
-    "postinstall": "npm run sdk:setup"
+    "register-app": "node scripts/register-app.mjs",
+    "staging:up": "docker compose -f docker-compose.staging.yml up --build -d",
+    "staging:logs": "docker compose -f docker-compose.staging.yml logs -f jeeves",
+    "staging:down": "docker compose -f docker-compose.staging.yml down",
+    "staging:up:embeddings": "docker compose -f docker-compose.staging.yml --profile embeddings up --build -d"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "@wireapp/wire-apps-js-sdk": "^0.1.0",
     "chrono-node": "^2.9.0",
     "dotenv": "^16.4.5",
     "prisma": "^6.0.0",
-    "reflect-metadata": "^0.1.13",
-    "wire-apps-js-sdk": "file:./wire-apps-js-sdk"
+    "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "*",
-    "@typescript-eslint/parser": "*",
-    "eslint": "*",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.39.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

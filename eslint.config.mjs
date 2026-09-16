@@ -20,7 +20,7 @@ export default tseslint.config(
       // while the team evaluates any edge cases. Change to "error" when stable.
       "no-restricted-imports": "off",
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", ignoreRestSiblings: true }],
     },
   },
   {

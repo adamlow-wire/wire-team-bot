@@ -1,24 +1,28 @@
 # ── Stage 1: build ───────────────────────────────────────────────────────────
-# Install all dependencies (including devDeps so pbjs is available for the
-# SDK's proto:generate step), compile TypeScript, then prune to prod-only deps.
-FROM node:22-alpine AS builder
+# Debian trixie (glibc 2.41) is required: @wireapp/wire-apps-js-sdk depends on
+# @wireapp/core-crypto's native library, which needs glibc >= 2.38 on x86-64.
+# Alpine (musl) and Debian bookworm (glibc 2.36) cannot load it.
+FROM node:22-trixie-slim AS builder
 
 WORKDIR /app
 
+# OpenSSL is needed by the Prisma engines at generate time.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json tsconfig.json ./
-COPY wire-apps-js-sdk ./wire-apps-js-sdk
 COPY prisma ./prisma
 
-# Full install — devDependencies required for sdk:setup (pbjs) and tsc.
-RUN npm ci
-
-# npm hoists @wireapp/core-crypto to the root node_modules, but the SDK's
-# fix-core-crypto-main script only patches wire-apps-js-sdk/node_modules/.
-# Run it again from the project root so it targets the hoisted copy.
-RUN node wire-apps-js-sdk/scripts/fix-core-crypto-main.js
+# Full install — devDependencies required for tsc.
+#
+# --ignore-scripts: npm 10's `npm ci` reads package metadata from the lockfile, which
+# does not carry better-sqlite3's `gypfile: false`, so it wrongly runs an implicit
+# `node-gyp rebuild` that fails on this toolchain-free image. better-sqlite3 13 ships
+# prebuilt binaries in its tarball and needs no build step. Prisma is the only
+# dependency whose install hooks we actually need, so rebuild just those.
+RUN npm ci --ignore-scripts \
+ && npm rebuild prisma @prisma/client @prisma/engines
 
 # Generate the Prisma client from the schema before compiling TypeScript.
-# Without this the @prisma/client types (InputJsonValue etc.) don't exist.
 RUN npx prisma generate
 
 COPY src ./src
@@ -28,20 +32,23 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # ── Stage 2: run ─────────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:22-trixie-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+
 COPY package.json ./
 COPY entrypoint.sh ./entrypoint.sh
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/wire-apps-js-sdk ./wire-apps-js-sdk
 # Migrations run at startup via entrypoint.sh
 COPY prisma ./prisma
 
-RUN chmod +x entrypoint.sh
+# The Wire SDK keeps its SQLite DB and CoreCrypto keystore under ./storage
+# (relative to WORKDIR). Mount a persistent volume at /app/storage.
+RUN mkdir -p /app/storage && chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

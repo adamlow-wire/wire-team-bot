@@ -10,15 +10,42 @@ permissions:
   packages: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - name: Install
+        # Mirrors the Dockerfile: npm 10's `npm ci` ignores better-sqlite3's
+        # `gypfile: false` and tries to compile it; only Prisma needs its install hooks.
+        run: npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.SUBMODULES_READ_TOKEN != '' && secrets.SUBMODULES_READ_TOKEN || github.token }}
 
       - name: Set image name
         id: image

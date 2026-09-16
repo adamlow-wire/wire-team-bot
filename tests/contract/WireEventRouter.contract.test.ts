@@ -308,7 +308,7 @@ describe("WireEventRouter contract: button action handling", () => {
   it("unknown button id → warns but does not throw", async () => {
     const deps = makeDeps();
     const router = new WireEventRouter(deps);
-    await router.onButtonActionReceived(makeButtonAction("unknown_button"));
+    await router.onButtonClicked(makeButtonAction("unknown_button"));
     expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
   });
 });
