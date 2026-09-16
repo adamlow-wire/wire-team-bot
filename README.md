@@ -319,6 +319,7 @@ These power the foreground intent router (`create_decision`, `create_action`, et
 
 | Variable | Default | Description |
 |---|---|---|
+| `BOT_NAME` | `Jeeves` | Persona name used in prompts, greetings and prefix addressing (`<name> pause`). The display name shown in Wire is set on the app in Wire, not here. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `MESSAGE_BUFFER_SIZE` | `50` | Recent messages kept per conversation for Q&A context (max 500). Does not affect the Tier 2 extraction window, which is always 30. |
 | `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Jeeves prompts the team to resume (minimum 60 000) |

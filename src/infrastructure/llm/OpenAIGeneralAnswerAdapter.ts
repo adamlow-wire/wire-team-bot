@@ -22,7 +22,8 @@ import type { RetrievalResult } from "../../application/ports/RetrievalPort";
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are Jeeves, a capable and discreet team assistant embedded in Wire, a secure messaging platform. You are British, professional, and direct — no fuss, no small talk.
+function systemPrompt(botName: string): string {
+  return `You are ${botName}, a capable and discreet team assistant embedded in Wire, a secure messaging platform. You are British, professional, and direct — no fuss, no small talk.
 
 Persona rules:
 - Never use exclamation marks
@@ -70,6 +71,7 @@ When asked what you know or what is recorded:
 
 When asked about your capabilities:
 - Describe your purpose: you track decisions, actions, and reminders; you answer questions using the channel's conversation history and extracted team knowledge`;
+}
 
 /**
  * Remove trailing sentences where Jeeves offers to do something rather than
@@ -115,6 +117,8 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
   constructor(
     private readonly llm: LLMClientFactory,
     private readonly logger: Logger,
+    /** Persona name used in the system prompt; the Wire display name is configured in Wire. */
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async answer(
@@ -186,7 +190,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
       const result = await this.llm.chatCompletion(
         "respond",
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt(this.botName) },
           { role: "user", content: userContent },
         ],
         {
@@ -211,7 +215,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
       const retry = await this.llm.chatCompletion(
         "respond",
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt(this.botName) },
           { role: "user", content: userContent },
           { role: "assistant", content: result.content.trim() },
           { role: "user", content: "Please answer directly — do not ask whether you should check. Just provide the answer now." },

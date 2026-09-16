@@ -8,7 +8,8 @@ import type { ClassifierPort, ClassifyResult, ChannelContext, MessageCategory } 
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the Tier 1 classifier for Jeeves, a discreet British team assistant.
+function systemPrompt(botName: string): string {
+  return `You are the Tier 1 classifier for ${botName}, a discreet British team assistant.
 
 Classify the message into one or more of these categories:
 - decision: a conclusion or choice has been made or recorded
@@ -27,6 +28,7 @@ Low signal (discussion-only, question, update, routine): is_high_signal=false.
 
 Return ONLY valid JSON — no markdown, no explanation:
 {"categories":["<cat1>","<cat2>"],"confidence":<0.0-1.0>,"entities":["<name1>"],"is_high_signal":<true|false>}`;
+}
 
 const VALID_CATEGORIES: MessageCategory[] = [
   "decision", "action", "question", "blocker",
@@ -44,6 +46,8 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
   constructor(
     private readonly llm: LLMClientFactory,
     private readonly logger: Logger,
+    /** Persona name used in the system prompt; the Wire display name is configured in Wire. */
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async classify(text: string, context: ChannelContext, window: string[]): Promise<ClassifyResult> {
@@ -62,7 +66,7 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
     let result: ChatResult;
     try {
       result = await this.llm.chatCompletion("classify", [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt(this.botName) },
         { role: "user", content: userContent },
       ], { max_tokens: 150, temperature: 0 });
     } catch (err) {

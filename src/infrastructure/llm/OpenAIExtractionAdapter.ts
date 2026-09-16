@@ -12,11 +12,12 @@ import type { WindowMessage } from "../buffer/SlidingWindowBuffer";
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the Tier 2 knowledge extractor for Jeeves, a discreet British team assistant.
+function systemPrompt(botName: string): string {
+  return `You are the Tier 2 knowledge extractor for ${botName}, a discreet British team assistant.
 
 Extract structured knowledge from the TRIGGERING MESSAGE ONLY. Use the conversation window purely as context to resolve ambiguous references (pronouns, "it", "that", "this", unnamed actors) — do not extract new facts from window messages as those have already been processed.
 
-Window messages annotated with "→ extracted:" show what Jeeves already recorded from that message. Use these annotations to understand what is already known — do not re-extract the same information.
+Window messages annotated with "→ extracted:" show what ${botName} already recorded from that message. Use these annotations to understand what is already known — do not re-extract the same information.
 
 CRITICAL: Never include verbatim quotes. Synthesise and summarise only. The source text is discarded after extraction.
 
@@ -49,6 +50,7 @@ Return ONLY valid JSON — no markdown, no explanation:
 }
 
 If nothing to extract in a category, return an empty array.`;
+}
 
 const VALID_ENTITY_TYPES: EntityType[] = ["person", "service", "project", "team", "tool", "concept"];
 const VALID_SIGNAL_TYPES: SignalType[] = ["discussion", "question", "blocker", "update", "concern"];
@@ -67,6 +69,8 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
   constructor(
     private readonly llm: LLMClientFactory,
     private readonly logger: Logger,
+    /** Persona name used in the system prompt; the Wire display name is configured in Wire. */
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async extract(
@@ -129,7 +133,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     let raw: string;
     try {
       const result = await this.llm.chatCompletion("extract", [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt(this.botName) },
         { role: "user", content: userContent },
       ], { max_tokens: 1500, temperature: 0 });
       raw = result.content;

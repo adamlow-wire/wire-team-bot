@@ -12,7 +12,8 @@ import type { SummaryGranularity, SummarySentiment } from "../../domain/entities
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the summarisation engine for Jeeves, a discreet British team assistant.
+function systemPrompt(botName: string): string {
+  return `You are the summarisation engine for ${botName}, a discreet British team assistant.
 
 Your task is to produce a rolling channel summary from structured data — decisions, actions, and signals.
 Never reproduce verbatim quotes. Synthesise. Be concise and objective.
@@ -29,6 +30,7 @@ Return ONLY valid JSON:
   "sentiment": "<sentiment>",
   "messageCount": <integer>
 }`;
+}
 
 const VALID_SENTIMENTS = new Set<string>(["productive", "contentious", "blocked", "routine"]);
 
@@ -36,6 +38,8 @@ export class OpenAISummarisationAdapter implements SummarisationPort {
   constructor(
     private readonly llm: LLMClientFactory,
     private readonly logger: Logger,
+    /** Persona name used in the system prompt; the Wire display name is configured in Wire. */
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async summarise(
@@ -96,7 +100,7 @@ export class OpenAISummarisationAdapter implements SummarisationPort {
       const result = await this.llm.chatCompletion(
         "summarise",
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt(this.botName) },
           { role: "user", content: userContent },
         ],
         { max_tokens: 600, temperature: 0.3 },

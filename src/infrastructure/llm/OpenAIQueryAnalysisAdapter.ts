@@ -16,7 +16,8 @@ import type { ChannelContext } from "../../application/ports/ClassifierPort";
 import type { LLMClientFactory } from "./LLMClientFactory";
 import type { Logger } from "../../application/ports/Logger";
 
-const SYSTEM_PROMPT = `You are the query planner for Jeeves, a discreet British team assistant.
+function systemPrompt(botName: string): string {
+  return `You are the query planner for ${botName}, a discreet British team assistant.
 Given a user's question, produce a JSON retrieval plan.
 
 Intents:
@@ -47,6 +48,7 @@ Return ONLY valid JSON — no markdown, no explanation:
   "responseFormat": "<format>",
   "complexity": <0.0-1.0>
 }`;
+}
 
 const DEFAULT_PLAN: QueryPlan = {
   intent: "factual_recall",
@@ -65,6 +67,8 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
   constructor(
     private readonly llm: LLMClientFactory,
     private readonly logger: Logger,
+    /** Persona name used in the system prompt; the Wire display name is configured in Wire. */
+    private readonly botName: string = "Jeeves",
   ) {}
 
   async analyse(
@@ -85,7 +89,7 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
       const result = await this.llm.chatCompletion(
         "queryAnalyse",
         [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt(this.botName) },
           { role: "user", content: userPrompt },
         ],
         { max_tokens: 400, temperature: 0.1 },

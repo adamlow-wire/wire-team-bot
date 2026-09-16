@@ -86,7 +86,9 @@ const CHANNEL_ID_RAW: QualifiedId = {
   id: process.env.E2E_CHANNEL_ID ?? "cli-channel",
   domain: DOMAIN,
 };
-const BOT_ID: QualifiedId = { id: "jeeves", domain: DOMAIN };
+/** Persona name; mirrors config.app.botName but is needed before loadConfig() runs. */
+const BOT_NAME = (process.env.BOT_NAME ?? "Jeeves").trim() || "Jeeves";
+const BOT_ID: QualifiedId = { id: BOT_NAME.toLowerCase(), domain: DOMAIN };
 
 /** Seeded roster — members available to send messages as. */
 const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
@@ -101,10 +103,10 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
 function createCliOutbound(): WireOutboundPort {
   return {
     async sendPlainText(_convId: QualifiedId, text: string, _opts?: OutboundTextOptions) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      process.stdout.write(`[${BOT_NAME}] ${text}\n`);
     },
     async sendCompositePrompt(_convId: QualifiedId, text: string) {
-      process.stdout.write(`[Jeeves] ${text}\n`);
+      process.stdout.write(`[${BOT_NAME}] ${text}\n`);
     },
     async sendReaction() {},
     async sendFile() {},
@@ -118,9 +120,9 @@ function createCliOutbound(): WireOutboundPort {
 // ── Fake TextMessage builder ──────────────────────────────────────────────────
 
 function buildMessage(text: string, sender: QualifiedId): object {
-  const botMentionPattern = /^@jeeves\b/i;
+  const botMentionPattern = new RegExp(`^@${BOT_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
   const mentions = botMentionPattern.test(text.trim())
-    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: "@jeeves".length }]
+    ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: `@${BOT_NAME}`.length }]
     : [];
   return {
     id: `cli-msg-${Date.now()}`,
@@ -190,8 +192,8 @@ async function main() {
   const wireOutbound = createCliOutbound();
 
   // Pipeline
-  const classifier       = new OpenAIClassifierAdapter(llmFactory, logger);
-  const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
+  const classifier       = new OpenAIClassifierAdapter(llmFactory, logger, BOT_NAME);
+  const extraction       = new OpenAIExtractionAdapter(llmFactory, logger, BOT_NAME);
   const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
     classifier, extraction, embeddingService,
@@ -206,11 +208,11 @@ async function main() {
   processingQueue.setWorker(job => pipeline.process(job.payload));
 
   // Retrieval
-  const queryAnalysis    = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
+  const queryAnalysis    = new OpenAIQueryAnalysisAdapter(llmFactory, logger, BOT_NAME);
   const structuredPath   = new StructuredRetrievalPath(decisionsRepo, actionsRepo);
   const semanticPath     = new SemanticRetrievalPath(embeddingService, embeddingRepo, decisionsRepo, actionsRepo, logger);
   const graphPath        = new GraphRetrievalPath(logger);
-  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger);
+  const summarisationAdapter = new OpenAISummarisationAdapter(llmFactory, logger, BOT_NAME);
   const generateSummary  = new GenerateSummary(summarisationAdapter, signalRepo, decisionsRepo, actionsRepo, summaryRepo, logger);
   const summaryPath      = new SummaryRetrievalPath(summaryRepo, logger);
   const retrievalEngine  = new MultiPathRetrievalEngine(structuredPath, semanticPath, graphPath, summaryPath, logger);
@@ -223,6 +225,7 @@ async function main() {
   const router = new WireEventRouter({
     logger,
     botUserId: BOT_ID,
+    botName: BOT_NAME,
     logDecision:            new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger),
     searchDecisions:        new SearchDecisions(decisionsRepo, wireOutbound),
     listDecisions:          new ListDecisions(decisionsRepo, wireOutbound),
@@ -262,7 +265,7 @@ async function main() {
   const isInteractive = process.stdin.isTTY;
 
   if (isInteractive) {
-    process.stderr.write(`Jeeves CLI — type messages, prefix with "Name: " to change sender\n`);
+    process.stderr.write(`${BOT_NAME} CLI — type messages, prefix with "Name: " to change sender\n`);
     process.stderr.write(`Members: ${MEMBERS.map(m => m.name).join(", ")}\n`);
     process.stderr.write(`Type "exit" or Ctrl-D to quit.\n\n`);
   }
@@ -309,7 +312,7 @@ async function main() {
 
 // Tiny helper — avoids duplicating the adapter construction
 function generalAnswerAdapter(llmFactory: LLMClientFactory, logger: ReturnType<typeof getLogger>) {
-  return new OpenAIGeneralAnswerAdapter(llmFactory, logger);
+  return new OpenAIGeneralAnswerAdapter(llmFactory, logger, BOT_NAME);
 }
 
 main().catch(err => {
