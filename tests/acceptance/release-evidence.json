@@ -122,7 +122,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
-  "wireSmoke": "in progress: staging candidate active; operator status round trip pending",
+  "wireSmoke": "in progress: initial actual-mention status round trip passed; record/model/reminder/privacy/reconnect journeys pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -140,7 +140,9 @@
     "operator": "@adamhuman",
     "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
     "secondParticipant": "@adamlow_wire",
-    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check"
+    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check",
+    "displayedBotName": "AI Team Bot (adamlow, staging)",
+    "displayNameAcceptance": "pending change to Wire Team Bot"
   },
   "stagingActivation": {
     "startedAt": "2026-09-16T16:11:50.582516172Z",
@@ -155,6 +157,16 @@
     "memberCacheHydratedConversations": 1,
     "applicationStartup": "Wire client connected, listening for events",
     "sdkErrorDiagnostics": 1,
-    "transportRoundTrip": "pending operator status message"
+    "transportRoundTrip": "passed: user screenshot of actual mention status request and ACTIVE reply"
+  },
+  "wireChecks": {
+    "mentionStatusRoundTrip": {
+      "result": "passed",
+      "evidence": "Operator screenshot in conversation; no surrounding channel text persisted",
+      "observedState": "active",
+      "containerRestarts": 0,
+      "sdkErrorCountAfterRoundTrip": 1
+    },
+    "decisionCaptureAndRecall": "pending"
   }
 }

@@ -352,7 +352,12 @@ Staging activation (2026-09-16 16:11 UTC): the running `jeeves-staging` containe
 designated conversation was present and no reminders were pending before the switch. Models
 match the accepted synthetic configuration; embeddings are off. Startup hydrated one conversation
 and reported the Wire client listening, with one content-free SDK error still unexplained.
-Actual receive/decrypt/reply remains pending the operator's mentioned `status` message.
+The operator's screenshot confirms a mentioned `status` request received a channel-status reply
+showing ACTIVE: initial receive/decrypt/reply and mention routing pass. The container remains on
+the pinned image with zero restarts; SDK error count has not increased from startup. This does
+not yet verify record writes, model answers, reminders or a subsequent reconnect. The registered
+app display name is still **AI Team Bot (adamlow, staging)**; changing it to **Wire Team Bot**
+remains an operational naming check.
 
 Rollback snapshots (private, outside Git): `/tmp/wire-v3-staging-backup-kcqACp/database.dump`
 and `crypto-store.tar.gz`; both were checked readable. The candidate override is in that same
@@ -378,7 +383,7 @@ Known limits: transient queued work is lost at restart; reminder delivery is at 
 source/exact-fact dedup does not guarantee semantic dedup; already-dispatched provider requests
 cannot be recalled; retrieval is channel-scoped; historical data was not scrubbed. SDK diagnostics
 retain severity but intentionally omit free-form message/payload detail. Human usefulness and
-real Wire transport remain unverified for this candidate.
+the remaining Wire journeys/reconnect checks remain unverified for this candidate.
 
 ### Progress and evidence log
 
@@ -400,6 +405,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Capture scoring order regression | Reproduced a duplicate returned before its valid source being omitted from the duplicate counter (precision already penalised it). Source-first matching and order-independent duplicate grouping fixed; two regression tests added. Fresh build/type-check/lint and 207 unit/contract/isolated DB tests pass. Re-scoring both saved inventories preserves baseline 10/10/20 and candidate 20/20/20, zero duplicates. Runtime image unchanged. | Complete unchanged e2e suite against the immutable image; human/Wire gates remain pending |
 | 2026-09-16 | Immutable-image full regression | Unchanged real-model suite run against `wire-team-bot:v3-rc-bde0d0a`: 53/55, same TC-PIPE-06 ownership expectation and TC-ACT-07 judge false negative. Runtime/dependencies were taken from the image; harness mounted read-only. Raw results and exact README command committed. | Human quality review, two adjudications and designated Wire smoke remain pending |
 | 2026-09-16 | Staging candidate activation | User requested continuation after naming the test conversation/accounts. Database and stopped crypto store backed up; existing volumes retained. Pinned image started at 16:11 UTC; one conversation hydrated and client startup completed. One SDK error remains unexplained; operator status round trip requested. | Verify actual Wire receive/decrypt/reply before marking transport passed |
+| 2026-09-16 | Initial Wire round trip | Operator screenshot confirms actual bot mention + `status` produced an ACTIVE channel-status reply on the pinned candidate. Container has zero restarts; no additional SDK errors beyond startup. Screenshot shows registered name AI Team Bot (adamlow, staging). No surrounding channel text copied into evidence. | Test decision capture/recall next; rename registered app and finish remaining Wire journeys |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
