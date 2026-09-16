@@ -20,7 +20,7 @@ export interface JudgeResult {
   raw: string;
 }
 
-const SYSTEM_PROMPT = `You are a test evaluator for a team assistant bot called Jeeves.
+const SYSTEM_PROMPT = `You are a test evaluator for a team assistant bot called Wire Team Bot (legacy test assertions may call it Jeeves).
 You will be given a bot response and an assertion describing what a correct response should contain or do.
 Evaluate whether the bot response satisfies the assertion.
 Reply with exactly one line in this format: PASS: <brief reason> or FAIL: <brief reason>

@@ -15,6 +15,8 @@
  *   npm run test:e2e -- --bail              # stop after first failure
  */
 
+import { createInterface } from "node:readline";
+import { randomUUID } from "node:crypto";
 import { spawn }   from "child_process";
 import fs          from "fs";
 import path        from "path";
@@ -215,89 +217,39 @@ async function runScenario(
 
 // ── CLI process spawner ───────────────────────────────────────────────────────
 
-/**
- * Spawns a fresh CLI process, sends one line, collects stdout until the process
- * exits or the kill deadline is reached.
- *
- * Timeline:
- *   200ms  — write the input line
- *   2200ms — close stdin (signals EOF to the CLI readline loop)
- *   7000ms — force-kill if still running (scheduler timers keep Node alive)
- */
-function runOneLine(input: string, env: Record<string, string>): Promise<string> {
-  return new Promise((resolve) => {
-    const proc = spawn("node", [CLI], {
-      cwd: ROOT,
-      env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    proc.stdout.on("data", (d: Buffer) => { stdout += d.toString(); });
-
-    // Write the line then close stdin
-    const writeTimer = setTimeout(() => {
-      proc.stdin.write(input + "\n");
-      setTimeout(() => proc.stdin.end(), 2000);
-    }, 200);
-
-    // Hard kill if process hasn't exited 4.5s after stdin closed
-    const killTimer = setTimeout(() => {
-      proc.kill("SIGKILL");
-    }, 7000);
-
-    proc.on("close", () => {
-      clearTimeout(writeTimer);
-      clearTimeout(killTimer);
-      resolve(stdout);
-    });
-  });
+/** Responses are framed by completed source event, after the processing queue drains. */
+async function runOneLine(input: string, env: Record<string, string>): Promise<string> {
+  return (await runMultiLine([input], env))[0] ?? "";
 }
 
-/**
- * Spawns one CLI process, sends multiple lines sequentially (3.5 s apart), and
- * returns the stdout segments captured between each write.  Used for follow-up
- * / context-dependent exchanges where conversation state must persist.
- *
- * The 3.5 s gap and 2.8 s segment-advance give the bot up to 2.8 s to respond
- * before output is attributed to the next message.  This is more conservative
- * than the previous 2 s / 3 s values to reduce response-bleed on slower models.
- */
-function runMultiLine(inputs: string[], env: Record<string, string>): Promise<string[]> {
-  return new Promise((resolve) => {
-    const proc = spawn("node", [CLI], {
-      cwd: ROOT,
-      env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    const segments: string[] = inputs.map(() => "");
-    let currentIdx = 0;
-    proc.stdout.on("data", (d: Buffer) => {
-      if (currentIdx < segments.length) segments[currentIdx] += d.toString();
-    });
-
-    const killTimer = setTimeout(() => proc.kill("SIGKILL"), inputs.length * 5000 + 3000);
-
-    // Send each line with a 3.5 s gap; advance the segment pointer after 2.8 s
-    // so responses don't bleed into the next segment.
-    let delay = 300;
-    for (let i = 0; i < inputs.length; i++) {
-      const idx = i;
-      setTimeout(() => {
-        proc.stdin.write(inputs[idx]! + "\n");
-        setTimeout(() => { currentIdx = idx + 1; }, 2800);
-      }, delay);
-      delay += 3500;
+async function runMultiLine(inputs: string[], env: Record<string, string>): Promise<string[]> {
+  const proc = spawn("node", [CLI], { cwd: ROOT, env: { ...env, E2E_JSON: "1" }, stdio: ["pipe", "pipe", "pipe"] });
+  const reader = createInterface({ input: proc.stdout });
+  const iterator = reader[Symbol.asyncIterator]();
+  const outputs: string[] = [];
+  proc.stderr.resume();
+  try {
+    for (const input of inputs) {
+      const eventId = randomUUID();
+      proc.stdin.write(JSON.stringify({ eventId, text: input }) + "\n");
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        const next = await Promise.race([
+          iterator.next(),
+          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("CLI event timed out")), 240_000); }),
+        ]);
+        if (next.done) throw new Error("CLI exited before completing the event");
+        const result = JSON.parse(next.value) as { eventId: string; replies: string[] };
+        if (result.eventId !== eventId) throw new Error("CLI event mismatch");
+        outputs.push(result.replies.join("\n"));
+      } finally { clearTimeout(timer); }
     }
-    // Close stdin after all lines have been sent and responses collected
-    setTimeout(() => proc.stdin.end(), delay);
-
-    proc.on("close", () => {
-      clearTimeout(killTimer);
-      resolve(segments);
-    });
-  });
+    return outputs;
+  } finally {
+    proc.stdin.end();
+    reader.close();
+    proc.kill();
+  }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

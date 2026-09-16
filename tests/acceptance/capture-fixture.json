@@ -1,0 +1,39 @@
+{
+  "reviewStatus": "Developer-defined synthetic expectations; independent human review pending",
+  "events": [
+    {"eventId":"d1","text":"decision: use Postgres for the ledger because transactions are required","expected":{"type":"decision","terms":["Postgres","ledger"]}},
+    {"eventId":"a1","text":"action: write the ledger migration for Bob","expected":{"type":"action","terms":["ledger","migration"],"owner":"bob"}},
+    {"eventId":"d2","text":"decision: use REST for the billing API","expected":{"type":"decision","terms":["REST","billing"]}},
+    {"eventId":"a2","text":"Carol: action: review the billing API contract","expected":{"type":"action","terms":["billing","contract"],"owner":"carol"}},
+    {"eventId":"d3","text":"decision: deploy the dashboard in the London region","expected":{"type":"decision","terms":["dashboard","London"]}},
+    {"eventId":"a3","text":"action: prepare the dashboard rollout for Dave","expected":{"type":"action","terms":["dashboard","rollout"],"owner":"dave"}},
+    {"eventId":"d4","text":"decision: retain backups for thirty days","expected":{"type":"decision","terms":["backup"],"anyTerms":["thirty","30"]}},
+    {"eventId":"a4","text":"Bob: action: test the backup restoration","expected":{"type":"action","terms":["backup","restor"],"owner":"bob"}},
+    {"eventId":"d5","text":"decision: release the mobile app behind a feature flag","expected":{"type":"decision","terms":["mobile","feature flag"]}},
+    {"eventId":"a5","text":"action: document the mobile release process for Carol","expected":{"type":"action","terms":["mobile","release"],"owner":"carol"}},
+    {"eventId":"d6","text":"We have agreed to use Redis for the session cache.","expected":{"type":"decision","terms":["Redis","session"]}},
+    {"eventId":"a6","text":"Bob: I will configure the session cache monitoring.","expected":{"type":"action","terms":["session","monitor"],"owner":"bob"}},
+    {"eventId":"d7","text":"We decided that all invoice exports will be CSV files.","expected":{"type":"decision","terms":["invoice","CSV"]}},
+    {"eventId":"a7","text":"Carol: I will write the invoice export guide.","expected":{"type":"action","terms":["invoice","guide"],"owner":"carol"}},
+    {"eventId":"d8","text":"The team has decided to use Grafana for service dashboards.","expected":{"type":"decision","terms":["Grafana","dashboard"]}},
+    {"eventId":"a8","text":"Dave: I will build the service health dashboard.","expected":{"type":"action","terms":["service","dashboard"],"owner":"dave"}},
+    {"eventId":"d9","text":"We agreed that the support rota will rotate weekly.","expected":{"type":"decision","terms":["support","weekly"]}},
+    {"eventId":"a9","text":"Alice: I will publish the support rota.","expected":{"type":"action","terms":["support","rota"],"owner":"alice"}},
+    {"eventId":"d10","text":"We have decided to require two reviewers for security changes.","expected":{"type":"decision","terms":["review","security"],"anyTerms":["two","2"]}},
+    {"eventId":"a10","text":"Bob: I will update the security review checklist.","expected":{"type":"action","terms":["security","checklist"],"owner":"bob"}},
+    {"eventId":"noise","text":"Good morning everyone. PRIVATE_CONTEXT_MARKER"}
+  ],
+  "questions": [
+    {"eventId":"q1","text":"@Jeeves Which database did we choose for the ledger and why?","answer":"Postgres; transactions are required"},
+    {"eventId":"q2","text":"@Jeeves Who owns the ledger migration?","answer":"Bob"},
+    {"eventId":"q3","text":"@Jeeves What interface did we choose for the billing API?","answer":"REST"},
+    {"eventId":"q4","text":"@Jeeves Where are we deploying the dashboard?","answer":"London region"},
+    {"eventId":"q5","text":"@Jeeves How long do we keep backups?","answer":"Thirty days"},
+    {"eventId":"q6","text":"@Jeeves How are we releasing the mobile app?","answer":"Behind a feature flag"},
+    {"eventId":"q7","text":"@Jeeves What did we choose for the session cache?","answer":"Redis"},
+    {"eventId":"q8","text":"@Jeeves What format are invoice exports?","answer":"CSV"},
+    {"eventId":"q9","text":"@Jeeves Who will publish the support rota?","answer":"Alice"},
+    {"eventId":"q10","text":"@Jeeves How many reviewers do security changes require?","answer":"Two"},
+    {"eventId":"unknown","text":"@Jeeves What is the approved budget for the Mars office?","answer":"No record of that budget; must not invent an answer or a write"}
+  ]
+}
