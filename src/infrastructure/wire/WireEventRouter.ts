@@ -459,7 +459,10 @@ export class WireEventRouter extends WireEventsHandler {
     // action: <description> [for <Name>] or action: <Name> to <description>
     const actionMatch = commandText.match(/^action:\s*(.+)$/i);
     if (actionMatch) {
-      const raw = actionMatch[1].trim();
+      const rawWithDeadline = actionMatch[1].trim();
+      const due = rawWithDeadline.match(/\s+(?:by|due)\s+(.+)$/i);
+      const deadlineText = due?.[1]?.trim();
+      const raw = due ? rawWithDeadline.slice(0, due.index).trim() : rawWithDeadline;
       const senderName = this.deps.memberCache.getMembers(convId).find((m) => sameQualifiedId(m.userId, sender))?.name ?? "";
       // "Name to <description>" pattern
       const nameToMatch = raw.match(/^([A-Za-z][A-Za-z0-9 ]{0,30}?)\s+to\s+(.+)$/i);
@@ -474,9 +477,6 @@ export class WireEventRouter extends WireEventsHandler {
         description = forNameMatch[1].trim();
         assigneeReference = forNameMatch[2].trim();
       }
-      const due = description.match(/\s+(?:by|due)\s+(.+)$/i);
-      const deadlineText = due?.[1]?.trim();
-      if (due) description = description.slice(0, due.index).trim();
       await this.deps.createActionFromExplicit.execute({
         conversationId: convId, creatorId: sender, authorName: senderName,
         rawMessageId: wireMessage.id,

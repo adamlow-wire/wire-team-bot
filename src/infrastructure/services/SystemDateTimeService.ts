@@ -5,6 +5,28 @@ export class SystemDateTimeService implements DateTimeService {
   parse(input: string, options: { timezone: string }): ParsedDateTime | null {
     const refDate = new Date();
 
+    if (/^(?:the )?end of (?:this |the )?month$/i.test(input.trim())) {
+      try {
+        const parts = new Intl.DateTimeFormat("en-GB", { timeZone: options.timezone,
+          year: "numeric", month: "numeric" }).formatToParts(refDate);
+        const year = Number(parts.find(p => p.type === "year")!.value);
+        const month = Number(parts.find(p => p.type === "month")!.value);
+        const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        // End of the calendar month in the conversation's zone, not the host zone.
+        const wallTime = Date.UTC(year, month - 1, lastDay, 23, 59, 59);
+        let instant = wallTime;
+        const formatter = new Intl.DateTimeFormat("en-GB", { timeZone: options.timezone,
+          year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric",
+          second: "numeric", hourCycle: "h23" });
+        for (let i = 0; i < 3; i++) {
+          const values = Object.fromEntries(formatter.formatToParts(new Date(instant)).map(p => [p.type, p.value]));
+          const local = Date.UTC(Number(values.year), Number(values.month)-1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
+          instant += wallTime - local;
+        }
+        return { value: new Date(instant), ambiguous: false };
+      } catch { return null; }
+    }
+
     // chrono-node parses natural language like "in 1 hour", "tomorrow at 3pm", "next Friday"
     const results = chrono.parse(input, refDate, { forwardDate: true });
     if (results.length === 0) return null;

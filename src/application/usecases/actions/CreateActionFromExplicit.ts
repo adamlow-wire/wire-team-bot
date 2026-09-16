@@ -93,7 +93,7 @@ export class CreateActionFromExplicit {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `Action **${saved.id}** created for **${assigneeName}**: ${saved.description}${saved.deadline ? ` (due ${saved.deadline.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })})` : ""}`,
+      `Action **${saved.id}** created for **${assigneeName}**: ${saved.description}${saved.deadline ? ` (due ${input.deadlineText}: ${saved.deadline.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })})` : ""}`,
       { replyToMessageId: input.rawMessageId },
     );
 

@@ -534,3 +534,8 @@ it("accepts the Wire Team Bot name for control and explicit capture commands", a
   await router.onTextMessageReceived(makeMessage("@Wire Team Bot pause"));
   expect(deps.channelConfig.setState).toHaveBeenCalledWith("conv-1@wire.com","paused",sender.id,expect.any(Date));
 });
+it("parses the documented for-owner form followed by a deadline", async () => {
+  const deps=makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(makeMessage("action: review the checklist for Bob by Friday"));
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({description:"review the checklist",assigneeReference:"Bob",deadlineText:"Friday"}));
+});
