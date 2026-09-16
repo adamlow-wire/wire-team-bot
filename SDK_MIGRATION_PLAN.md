@@ -1,7 +1,7 @@
 # Migration: wire-team-bot → official `@wireapp/wire-apps-js-sdk`
 
 > Written 2026-09-16 against npm `@wireapp/wire-apps-js-sdk@0.1.0` (upstream `main` @ `0ed4193`).
-> Status: **PR 1 and PR 2 implemented on branch `feat/official-wire-apps-js-sdk` (2026-09-16).** Cutover (§7) pending onboarding.
+> Status: **Staging verified 2026-09-16** (PR #6). App registered on staging, bot connects, sends and receives, survives restart. Known issue carried forward: tapping a composite button does not update the client UI (GitHub issue in repo). Production cutover (§7) still to run.
 
 ## 1. Goal
 

@@ -838,8 +838,10 @@ export class WireEventRouter extends WireEventsHandler {
         buttonId,
       };
       await this.manager.sendMessage(confirmation);
-    } catch {
-      // manager not available in tests — safe to ignore
+      log.debug("Button action confirmation sent", { referenceMessageId });
+    } catch (err) {
+      // Also reached in unit tests where the SDK manager is not wired; harmless there.
+      log.warn("Failed to send button action confirmation", { err: String(err) });
     }
   }
 
