@@ -2,8 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { StatusCommand } from "../../src/application/usecases/general/StatusCommand";
 import type { ChannelConfig } from "../../src/domain/repositories/ChannelConfigRepository";
 
-const makeLogger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn().mockReturnThis() });
-
 function makeDeps(channelCfg: ChannelConfig | null, entityNames: string[] = []) {
   return {
     channelConfig: { get: vi.fn().mockResolvedValue(channelCfg), upsert: vi.fn(), setState: vi.fn(), openSecureRange: vi.fn(), closeSecureRange: vi.fn(), listByState: vi.fn().mockResolvedValue([]) },

@@ -1,4 +1,4 @@
-import type { ExtractedEntity, ExtractedRelationship } from "../../application/ports/ExtractionPort";
+import type { ExtractedEntity, ExtractedRelationship } from "../entities/Extraction";
 
 export interface EntityRecord {
   id: string;
