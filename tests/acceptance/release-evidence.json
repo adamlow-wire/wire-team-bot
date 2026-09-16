@@ -40,7 +40,8 @@
     "embeddings": {
       "enabled": false,
       "dimensions": 2560
-    }
+    },
+    "judgeModel": "claude-haiku-4-5"
   },
   "automatedChecks": {
     "build": "passed",
@@ -50,18 +51,20 @@
       "command": "INTEGRATION_TESTS=1 npm test",
       "passed": 207,
       "integrationTests": 6,
-      "testFiles": 35
+      "testFiles": 35,
+      "validationCommit": "af7f294"
     },
     "realModelE2E": {
       "passed": 53,
       "failed": 2,
       "report": "e2e-report.json",
-      "commit": "2be6486",
-      "diagnosticChangeDuringRun": "bde0d0a: logging-only SDK/startup sanitisation; journey logic unchanged",
+      "commit": "bde0d0a",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
         "TC-ACT-07: correct end-of-month response rejected by model judge"
-      ]
+      ],
+      "execution": "Immutable release image with read-only test harness and external ts-node tooling",
+      "harnessCommit": "af7f294"
     }
   },
   "image": {
@@ -100,7 +103,7 @@
     },
     "humanReview": "pending",
     "measuredCommit": "bde0d0a",
-    "execution": "final release image CLI with read-only synthetic expectations mounted; isolated DB",
+    "execution": "Final release image CLI with synthetic evaluation harness mounted; isolated DB",
     "decisions": {
       "correct": 10,
       "captured": 10,

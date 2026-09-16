@@ -300,9 +300,10 @@ and check boundaries without credentials.
   six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
   image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
 - Full real-model e2e: **53/55**, with original assertions retained in
-  [e2e-report.json](tests/acceptance/e2e-report.json). Journey code is `2be6486`; the subsequent
-  `bde0d0a` SDK/startup logging-only fix was built during that run. Final-image capture/recall
-  and restart checks were run separately against the immutable image.
+  [e2e-report.json](tests/acceptance/e2e-report.json). The full suite was rerun against immutable
+  image `bde0d0a`, retaining its compiled runtime and production dependencies; only the test
+  harness/tooling was mounted read-only. This supersedes the earlier working-build run and
+  reproduces the same two failures. Final-image capture/recall and restart checks also pass.
 - Final-image stored-record evaluation at `bde0d0a`: **20/20 correct unique captures out of
   20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
   precision/recall **100%/100%**, versus baseline 100%/50% (10/10/20). Half the expected events
@@ -373,6 +374,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | SDK diagnostic privacy | SDK free-form messages and nested payloads were found to bypass model-log sanitisation. Severity-only bridge and content-free top-level failure diagnostics now have a marker regression. Fresh container run: 205 tests passed, including six isolated DB tests; build/type-check/lint passed. | Rebuild final image; application event IDs remain available, SDK message detail is intentionally suppressed |
 | 2026-09-16 | Final release image and quality | `bde0d0a` image built; native SDK load and CLI pause/secure restart smoke passed. Final-image fixed sample: 20/20/20, zero duplicates/markers, 10 answer outputs and unknown response inspected, human review pending. Full e2e remains 53/55 with the two cases above retained. | Human review, two adjudications and designated Wire smoke; no production deployment |
 | 2026-09-16 | Capture scoring order regression | Reproduced a duplicate returned before its valid source being omitted from the duplicate counter (precision already penalised it). Source-first matching and order-independent duplicate grouping fixed; two regression tests added. Fresh build/type-check/lint and 207 unit/contract/isolated DB tests pass. Re-scoring both saved inventories preserves baseline 10/10/20 and candidate 20/20/20, zero duplicates. Runtime image unchanged. | Complete unchanged e2e suite against the immutable image; human/Wire gates remain pending |
+| 2026-09-16 | Immutable-image full regression | Unchanged real-model suite run against `wire-team-bot:v3-rc-bde0d0a`: 53/55, same TC-PIPE-06 ownership expectation and TC-ACT-07 judge false negative. Runtime/dependencies were taken from the image; harness mounted read-only. Raw results and exact README command committed. | Human quality review, two adjudications and designated Wire smoke remain pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

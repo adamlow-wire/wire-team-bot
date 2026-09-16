@@ -355,6 +355,22 @@ docker build --label org.opencontainers.image.revision=<tested-commit> \
   -t wire-team-bot:v3-rc-<tested-commit> .
 ```
 
+To run the unchanged e2e suite against that image's compiled runtime, mount only the test harness
+and its development tooling. Keep `/app/dist` and `/app/node_modules` from the image:
+
+```bash
+docker run --rm --network host --user "$(id -u):$(id -g)" \
+  --env-file .env.staging \
+  -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
+  -e JEEVES_EMBEDDINGS=off -e NODE_PATH=/validation/node_modules \
+  -v "$PWD/tests":/app/tests:ro \
+  -v "$PWD/node_modules":/validation/node_modules:ro \
+  -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
+  --entrypoint node wire-team-bot:v3-rc-bde0d0a \
+  /validation/node_modules/ts-node/dist/bin.js --transpile-only \
+  --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
+```
+
 The `.dockerignore` excludes secrets, crypto storage, tests, local dependencies and Git metadata
 from the image context. Preserve the existing crypto key/store when testing restart. Delivery is
 at least once: a crash after a successful reminder send but before the database update can cause
