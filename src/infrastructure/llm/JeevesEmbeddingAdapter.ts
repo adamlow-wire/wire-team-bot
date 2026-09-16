@@ -1,7 +1,8 @@
 /**
  * Embedding adapter for the Phase 2 pipeline.
  * Uses the `embed` model slot from JeevesLLMConfig (JEEVES_MODEL_EMBED / JEEVES_FALLBACK_EMBED).
- * Calls the OpenAI-compatible /embeddings endpoint.
+ * Calls the OpenAI-compatible /embeddings endpoint at config.embed.baseUrl, which may be a
+ * different provider from the chat slots (see createEmbeddingService for the disabled case).
  *
  * Implements the EmbeddingService port.
  */
@@ -27,10 +28,10 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
     private readonly config: JeevesLLMConfig,
     private readonly logger: Logger,
   ) {
-    this.url = `${config.baseUrl.replace(/\/$/, "")}/embeddings`;
+    this.url = `${config.embed.baseUrl.replace(/\/$/, "")}/embeddings`;
     this.headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
+      Authorization: `Bearer ${config.embed.apiKey}`,
     };
     this.model = config.slots.embed.model;
     this.fallbackModel = config.slots.embed.fallback;

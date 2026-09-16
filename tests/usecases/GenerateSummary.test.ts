@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { GenerateSummary } from "../../src/application/usecases/general/GenerateSummary";
-import type { ConversationSummary } from "../../src/domain/entities/ConversationSummary";
 
 const makeLogger = () => ({
   info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn().mockReturnThis(),

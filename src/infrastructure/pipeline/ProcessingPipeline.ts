@@ -12,7 +12,7 @@
  */
 
 import type { ClassifierPort, ChannelContext } from "../../application/ports/ClassifierPort";
-import type { ExtractionPort, ExtractedEntity, KnownAction } from "../../application/ports/ExtractionPort";
+import type { ExtractionPort, KnownAction } from "../../application/ports/ExtractionPort";
 import type { EmbeddingService } from "../../application/ports/EmbeddingPort";
 import type { EntityRepository } from "../../domain/repositories/EntityRepository";
 import type { EmbeddingRepository } from "../../domain/repositories/EmbeddingRepository";
@@ -154,10 +154,6 @@ export class ProcessingPipeline {
       signals: extracted.signals.length,
     });
 
-    const sourceRef = {
-      wire_msg_ids: [messageId],
-      timestamp_range: { start: timestamp.toISOString(), end: timestamp.toISOString() },
-    };
     const now = new Date();
 
     // ── Entities (resolve IDs for relationship wiring) ────────────────────

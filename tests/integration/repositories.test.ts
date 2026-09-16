@@ -3,7 +3,7 @@
  * Require DATABASE_URL and a running Postgres (e.g. docker-compose up -d db).
  * Skip when INTEGRATION_TESTS is not "1".
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { PrismaDecisionRepository } from "../../src/infrastructure/persistence/postgres/PrismaDecisionRepository";
 import { PrismaActionRepository } from "../../src/infrastructure/persistence/postgres/PrismaActionRepository";
 import { PrismaReminderRepository } from "../../src/infrastructure/persistence/postgres/PrismaReminderRepository";

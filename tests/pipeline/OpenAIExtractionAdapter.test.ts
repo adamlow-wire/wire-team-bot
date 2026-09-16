@@ -34,7 +34,7 @@ describe("OpenAIExtractionAdapter", () => {
       signals: [{ signal_type: "update", summary: "Team chose Postgres for persistence layer", tags: ["infrastructure"], confidence: 0.8 }],
     }));
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
 
     expect(result.decisions).toHaveLength(1);
     expect(result.decisions[0].summary).toBe("Use Postgres for persistence");
@@ -60,7 +60,7 @@ describe("OpenAIExtractionAdapter", () => {
       chatCompletion: vi.fn().mockRejectedValue(new Error("timeout")),
     } as unknown as LLMClientFactory;
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.decisions).toHaveLength(0);
     expect(result.actions).toHaveLength(0);
     expect(result.entities).toHaveLength(0);
@@ -70,7 +70,7 @@ describe("OpenAIExtractionAdapter", () => {
   it("returns empty result on malformed JSON", async () => {
     const llm = makeLLM("not valid json");
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.decisions).toHaveLength(0);
   });
 
@@ -80,7 +80,7 @@ describe("OpenAIExtractionAdapter", () => {
       actions: [], entities: [], relationships: [], signals: [],
     }));
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.decisions).toHaveLength(0);
   });
 
@@ -91,7 +91,7 @@ describe("OpenAIExtractionAdapter", () => {
       relationships: [], signals: [],
     }));
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.entities[0].entityType).toBe("concept");
   });
 
@@ -102,7 +102,7 @@ describe("OpenAIExtractionAdapter", () => {
       signals: [],
     }));
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.relationships[0].relationship).toBe("works_on");
   });
 
@@ -111,7 +111,7 @@ describe("OpenAIExtractionAdapter", () => {
       "```json\n" + JSON.stringify({ decisions: [], actions: [], entities: [], relationships: [], signals: [] }) + "\n```"
     );
     const adapter = new OpenAIExtractionAdapter(llm, logger);
-    const result = await adapter.extract(currentMsg, window, ctx, []);
+    const result = await adapter.extract(currentMsg, window, ctx, [], []);
     expect(result.decisions).toHaveLength(0);
   });
 });

@@ -1,4 +1,4 @@
-import type { QualifiedId } from "../../domain/ids/QualifiedId";
+import type { QualifiedId } from "./QualifiedId";
 
 /** Canonical channel_id string: "{conversationId}@{conversationDomain}" */
 export function toChannelId(q: QualifiedId): string {

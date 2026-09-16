@@ -1,0 +1,66 @@
+# Standalone stack for running Jeeves against the Wire STAGING backend from a dev box.
+#
+#   node scripts/register-app.mjs create --host https://staging-nginz-https.zinfra.io --email <admin> --out .env.staging
+#   # add your JEEVES_LLM_* settings to .env.staging, then:
+#   npm run staging:up && npm run staging:logs
+#
+# Builds the image locally (the SDK's native core-crypto needs glibc >= 2.38, which the
+# image provides even when the host does not). Uses its own volumes and container names
+# so it never touches a production stack on the same host. The explicit project
+# name matters: without it, Compose derives the project from the directory and
+# `down` on this file would also remove containers started from docker-compose.yml.
+name: jeeves-staging
+
+services:
+  jeeves:
+    build: .
+    image: jeeves:staging
+    container_name: jeeves-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      DATABASE_URL: postgres://wirebot:wirebot@postgres:5432/wire_team_bot
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # SDK store (SQLite + CoreCrypto keystore) for the STAGING app identity.
+      - jeeves-staging-crypto:/app/storage
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: jeeves-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wirebot
+      POSTGRES_PASSWORD: wirebot
+      POSTGRES_DB: wire_team_bot
+    volumes:
+      - jeeves-staging-db:/var/lib/postgresql/data
+    ports:
+      # Different host port from the production compose file so both can coexist.
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wirebot -d wire_team_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional local embeddings, for chat providers without an /embeddings endpoint (Claude).
+  #   docker compose -f docker-compose.staging.yml --profile embeddings up -d
+  #   docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b     # once
+  # and in .env.staging:  JEEVES_EMBED_BASE_URL=http://ollama:11434/v1
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jeeves-staging-ollama
+    profiles: ["embeddings"]
+    restart: unless-stopped
+    volumes:
+      - jeeves-staging-ollama:/root/.ollama
+
+volumes:
+  jeeves-staging-crypto:
+  jeeves-staging-db:
+  jeeves-staging-ollama:

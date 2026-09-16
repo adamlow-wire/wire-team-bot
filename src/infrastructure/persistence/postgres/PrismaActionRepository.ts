@@ -1,6 +1,5 @@
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository, ActionQuery } from "../../../domain/repositories/ActionRepository";
-import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 import { getPrismaClient } from "./PrismaClient";
 import { nextEntityId } from "./PrismaIdGenerator";
 

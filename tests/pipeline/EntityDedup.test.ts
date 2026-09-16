@@ -2,8 +2,7 @@
  * Unit tests for entity deduplication logic.
  * Tests the normalised-name dedup logic by mocking the Prisma client.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ExtractedEntity } from "../../src/application/ports/ExtractionPort";
+import { describe, it, expect } from "vitest";
 
 // We test the dedup matching logic directly without instantiating the full repo
 // (which requires a live DB connection). The matching logic is purely in-process.

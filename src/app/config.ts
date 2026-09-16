@@ -13,10 +13,29 @@ export interface JeevesModelSlot {
   fallback: string;
 }
 
-export interface JeevesLLMConfig {
-  /** Shared provider endpoint for all model slots. */
+/**
+ * Embedding endpoint settings. Chat and embeddings may come from different providers:
+ * Anthropic's OpenAI-compatible endpoint serves chat completions but has no /embeddings,
+ * so a Claude deployment points JEEVES_EMBED_BASE_URL at Ollama/OpenAI/etc. or runs with
+ * embeddings disabled (semantic retrieval, entity dedup and contradiction detection off).
+ */
+export interface JeevesEmbeddingConfig {
   baseUrl: string;
   apiKey: string;
+  enabled: boolean;
+}
+
+export type EmbeddingsMode = "on" | "off" | "auto";
+
+/** Hostname of Anthropic's API; it exposes chat completions but no /embeddings endpoint. */
+export const ANTHROPIC_API_HOST = "api.anthropic.com";
+
+export interface JeevesLLMConfig {
+  /** Chat-completions provider endpoint shared by all six chat slots. */
+  baseUrl: string;
+  apiKey: string;
+  /** Embedding provider; defaults to the chat provider unless overridden. */
+  embed: JeevesEmbeddingConfig;
   timeoutMs: number;
   /** Complexity score above which the respond slot escalates to complexSynthesis. */
   complexityThreshold: number;
@@ -41,12 +60,14 @@ export interface JeevesLLMConfig {
 
 export interface Config {
   wire: {
-    userEmail: string;
-    userPassword: string;
-    userId: string;
-    userDomain: string;
+    /** App authentication token issued by the Wire backend for this application. */
+    apiToken: string;
     apiHost: string;
-    cryptoPassword: string;
+    /** 32-byte key protecting the SDK's local CoreCrypto store (WIRE_SDK_CRYPTO_KEY, 64 hex chars). */
+    cryptoKey: Uint8Array;
+    /** Qualified ID of the application; verified against the backend at startup. */
+    appId: string;
+    appDomain: string;
   };
   database: {
     url: string;
@@ -54,7 +75,6 @@ export interface Config {
   app: {
     logLevel: string;
     messageBufferSize: number;
-    storageDir: string;
     /** Inactivity period in ms before the bot prompts to exit secret mode. Default 1800000 (30 min). */
     secretModeInactivityMs: number;
   };
@@ -63,19 +83,24 @@ export interface Config {
   };
 }
 
-const REQUIRED_WIRE = [
-  "WIRE_SDK_USER_EMAIL",
-  "WIRE_SDK_USER_PASSWORD",
-  "WIRE_SDK_USER_ID",
-  "WIRE_SDK_USER_DOMAIN",
-  "WIRE_SDK_API_HOST",
-  "WIRE_SDK_CRYPTO_PASSWORD",
-] as const;
-
 function getEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} must be set`);
   return value;
+}
+
+const CRYPTO_KEY_BYTES = 32;
+
+/**
+ * Decode WIRE_SDK_CRYPTO_KEY: exactly 32 bytes, hex-encoded (64 chars).
+ * Generate one with `openssl rand -hex 32`. Losing it means losing the crypto store.
+ */
+function parseCryptoKey(name: string): Uint8Array {
+  const raw = getEnv(name).trim();
+  if (!/^[0-9a-fA-F]{64}$/.test(raw)) {
+    throw new Error(`${name} must be ${CRYPTO_KEY_BYTES} bytes hex-encoded (${CRYPTO_KEY_BYTES * 2} hex characters)`);
+  }
+  return new Uint8Array(Buffer.from(raw, "hex"));
 }
 
 function envStr(name: string, defaultVal: string): string {
@@ -96,9 +121,51 @@ function envInt(name: string, defaultVal: number): number {
   return isNaN(n) ? defaultVal : n;
 }
 
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pure resolver for the embedding endpoint, kept separate from process.env for testing.
+ * `auto` disables embeddings only when the effective embedding host is Anthropic's API,
+ * which has no /embeddings endpoint; any other host is assumed to serve one.
+ */
+export function resolveEmbeddingSettings(input: {
+  llmBaseUrl: string;
+  llmApiKey: string;
+  embedBaseUrl?: string;
+  embedApiKey?: string;
+  mode: EmbeddingsMode;
+}): JeevesEmbeddingConfig {
+  const baseUrl = (input.embedBaseUrl?.trim() || input.llmBaseUrl).replace(/\/+$/, "");
+  const apiKey = input.embedApiKey !== undefined ? input.embedApiKey : input.llmApiKey;
+  const enabled =
+    input.mode === "on" ? true
+    : input.mode === "off" ? false
+    : hostOf(baseUrl) !== ANTHROPIC_API_HOST;
+  return { baseUrl, apiKey, enabled };
+}
+
+function envEmbeddingsMode(name: string): EmbeddingsMode {
+  const raw = (process.env[name] ?? "auto").trim().toLowerCase();
+  if (raw === "on" || raw === "off" || raw === "auto") return raw;
+  throw new Error(`${name} must be one of: on, off, auto`);
+}
+
 function loadJeevesConfig(): JeevesLLMConfig {
-  const baseUrl = envStr("JEEVES_LLM_BASE_URL", "http://localhost:11434/v1");
+  const baseUrl = envStr("JEEVES_LLM_BASE_URL", "http://localhost:11434/v1").replace(/\/+$/, "");
   const apiKey = envStr("JEEVES_LLM_API_KEY", "");
+  const embed = resolveEmbeddingSettings({
+    llmBaseUrl: baseUrl,
+    llmApiKey: apiKey,
+    embedBaseUrl: process.env.JEEVES_EMBED_BASE_URL,
+    embedApiKey: process.env.JEEVES_EMBED_API_KEY,
+    mode: envEmbeddingsMode("JEEVES_EMBEDDINGS"),
+  });
   const slot = (modelEnv: string, fallbackEnv: string, defaultModel: string, defaultFallback: string): JeevesModelSlot => ({
     model: envStr(modelEnv, defaultModel),
     fallback: envStr(fallbackEnv, defaultFallback),
@@ -106,6 +173,7 @@ function loadJeevesConfig(): JeevesLLMConfig {
   return {
     baseUrl,
     apiKey,
+    embed,
     timeoutMs: envInt("JEEVES_LLM_TIMEOUT_MS", 60_000),
     complexityThreshold: envFloat("JEEVES_COMPLEXITY_THRESHOLD", 0.7),
     extractConfidenceMin: envFloat("JEEVES_EXTRACT_CONFIDENCE_MIN", 0.6),
@@ -126,12 +194,11 @@ function loadJeevesConfig(): JeevesLLMConfig {
 
 export function loadConfig(): Config {
   const wire = {
-    userEmail: getEnv(REQUIRED_WIRE[0]),
-    userPassword: getEnv(REQUIRED_WIRE[1]),
-    userId: getEnv(REQUIRED_WIRE[2]),
-    userDomain: getEnv(REQUIRED_WIRE[3]),
-    apiHost: getEnv(REQUIRED_WIRE[4]),
-    cryptoPassword: getEnv(REQUIRED_WIRE[5]),
+    apiToken: getEnv("WIRE_SDK_API_TOKEN"),
+    apiHost: getEnv("WIRE_SDK_API_HOST"),
+    cryptoKey: parseCryptoKey("WIRE_SDK_CRYPTO_KEY"),
+    appId: getEnv("WIRE_SDK_APP_ID"),
+    appDomain: getEnv("WIRE_SDK_APP_DOMAIN"),
   };
 
   const database = {
@@ -143,7 +210,6 @@ export function loadConfig(): Config {
     Math.max(1, parseInt(process.env.MESSAGE_BUFFER_SIZE ?? "50", 10)),
     500,
   );
-  const storageDir = process.env.STORAGE_DIR ?? "storage";
   const secretModeInactivityMs = Math.max(60_000, parseInt(process.env.SECRET_MODE_INACTIVITY_MS ?? "1800000", 10));
 
   const jeeves = loadJeevesConfig();
@@ -151,7 +217,7 @@ export function loadConfig(): Config {
   return {
     wire,
     database,
-    app: { logLevel, messageBufferSize, storageDir, secretModeInactivityMs },
+    app: { logLevel, messageBufferSize, secretModeInactivityMs },
     llm: { jeeves },
   };
 }
