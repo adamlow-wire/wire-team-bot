@@ -269,6 +269,9 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 | `JEEVES_LLM_BASE_URL` | *(from `LLM_CAPABLE_BASE_URL`)* | Shared endpoint for all model slots |
 | `JEEVES_LLM_API_KEY` | *(from `LLM_CAPABLE_API_KEY`)* | Shared API key |
 | `JEEVES_LLM_TIMEOUT_MS` | `60000` | Per-call timeout in milliseconds |
+| `JEEVES_EMBED_BASE_URL` | *(= `JEEVES_LLM_BASE_URL`)* | Separate OpenAI-compatible `/embeddings` provider, for chat providers without one (Anthropic) |
+| `JEEVES_EMBED_API_KEY` | *(= `JEEVES_LLM_API_KEY`)* | API key for the embedding provider |
+| `JEEVES_EMBEDDINGS` | `auto` | `auto` disables embeddings when the embedding host is `api.anthropic.com`; `on` / `off` force it |
 | `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` | Tier 1 classification model |
 | `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` | Tier 2 extraction model |
 | `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` | Embedding model |
@@ -282,6 +285,23 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 | `JEEVES_EXTRACT_CONFIDENCE_MIN` | `0.6` | Minimum extraction confidence to persist a result |
 | `JEEVES_CONTRADICTION_THRESHOLD` | `0.78` | Cosine similarity to trigger contradiction detection |
 | `JEEVES_ENTITY_DEDUP_THRESHOLD` | `0.92` | Cosine similarity for entity deduplication |
+
+#### Using Claude
+
+Anthropic's API serves OpenAI-style chat completions at `https://api.anthropic.com/v1`, so the six chat slots work with a
+Claude API key and Claude model IDs (`claude-opus-5`, `claude-haiku-4-5` for the high-volume `classify` slot). Two
+caveats, both handled:
+
+- **No embeddings.** Anthropic has no `/embeddings` endpoint. With `JEEVES_EMBEDDINGS=auto` (the default) and no
+  `JEEVES_EMBED_BASE_URL`, embeddings switch off at startup with one warning, and Jeeves runs without semantic
+  retrieval, entity dedup and contradiction detection. Structured retrieval, summaries, commands and Q&A still work.
+  To keep the vector features, point `JEEVES_EMBED_BASE_URL` at Ollama or another OpenAI-compatible provider and set
+  `JEEVES_MODEL_EMBED` / `JEEVES_EMBED_DIMS` to match. The staging compose file ships an optional Ollama for this:
+  `docker compose -f docker-compose.staging.yml --profile embeddings up -d`, then
+  `docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b`.
+- **JSON mode is ignored** by Anthropic's compatibility layer. The structured slots ask for JSON in their prompts and
+  strip code fences, so this works in practice; occasional fallback-path warnings are expected. Anthropic documents the
+  layer as intended for evaluation rather than production; the native Anthropic SDK is the long-term path.
 
 ### Legacy v1 LLM tiers (still active)
 
