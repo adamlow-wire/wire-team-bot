@@ -426,7 +426,11 @@ No classifier/extractor/pipeline change was made; the earlier quality sample rem
 Staging now runs `wire-team-bot:v3-rc-a51a7af`. Private readable snapshots and its override are
 in `/tmp/wire-v3-format-backup-xy3x0138/`. Existing database/crypto volumes were preserved;
 startup connected and hydrated one conversation with zero SDK errors. `ACT-0002` remained
-unchanged before the update; operator reassignment retest is pending. Rollback, retaining volumes:
+unchanged before the update. The operator’s next screenshot confirms reassignment to Adam (Human).
+Scoped DB inspection verifies the qualified @adamhuman owner, version 2, open status, unchanged
+Friday deadline and exactly one reassignment audit event attributed to Adam Low. Pasted-command
+reassignment and the post-restart round trip pass; deadline/completion checks remain pending.
+Rollback, retaining volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-caller-backup-tbxaea25/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
 Remaining entry checks, in order:
@@ -477,6 +481,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Wire caller repair confirmed | Operator screenshot on `2ba7a1f`: mentioned `my actions` and first-person responsibility Q&A both return Adam Low’s two open actions and correct ACT-0002 deadline. No prior-speaker confusion; post-restart round trip passes. Evidence is the live screenshot, not a fresh automated run. | Test ACT-0002 reassignment, deadline change and completion; remaining Wire and human acceptance stays pending |
 | 2026-09-16 | Pasted reassignment formatting failure | Operator screenshot shows inline-code action prefix followed by a person mention and a misleading model explanation. Scoped DB inspection confirms ACT-0002 remains open, owned by Adam Low, version 1. Three formatted variants reproduce missed routing; plain text with person mention passes. Router now unwraps a leading single-line inline-code ACT command prefix; seven contract cases cover formatting and non-command boundaries. The new CLI journey also reproduced action-status questions being intercepted as channel status; channel status now requires an explicit command. The judge receives evaluation time for relative-date assertions; assertions are unchanged. | Real-model command journey and full release-image regression, then repeat Wire reassignment |
 | 2026-09-16 | Formatted-action fix validated and staged | `a51a7af`: 233 tests, build/type-check/lint pass; real-model action journey and stored owner/deadline/status/audits pass. Immutable-image full regression 55/57: ambiguous-owner discrepancy and caller judge false negative; caller isolated rerun passes unchanged. Staging connected with preserved volumes and readable backups. | Repeat only ACT-0002 reassignment, inspect stored result, then continue deadline/completion and remaining Wire gates |
+| 2026-09-16 | Wire formatted reassignment passed | Operator screenshot confirms ACT-0002 reassigned to Adam (Human) on `a51a7af`. Scoped DB inspection confirms qualified @adamhuman owner, version 2, open status, unchanged Friday deadline, and one reassignment audit event by Adam Low (two total events including creation). | Test deadline change and completion, then continue remaining Wire gates |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

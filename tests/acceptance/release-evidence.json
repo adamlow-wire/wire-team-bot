@@ -110,7 +110,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: caller identity passed on 2ba7a1f; formatted reassignment repair awaiting Wire retest on a51a7af",
+  "wireSmoke": "in progress: stored assignment, caller-specific list/Q&A and formatted reassignment passed; remaining Wire journeys pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -144,7 +144,7 @@
     "memberCacheHydratedConversations": 1,
     "sdkErrorDiagnostics": 0,
     "containerRestarts": 0,
-    "transportRoundTrip": "pending operator reassignment repeat on this image"
+    "transportRoundTrip": "passed: operator screenshot confirms formatted reassignment and reply after restart on a51a7af"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -190,7 +190,18 @@
       "repairCommit": "a51a7af",
       "automated": "233 tests, build/type-check/lint passed; targeted real-model journey and post-process DB/audit inspection passed",
       "report": "formatted-action-report.json",
-      "wireRetest": "pending operator repeat; a51a7af activated in staging"
+      "wireRetest": "passed on a51a7af: operator screenshot and scoped DB/audit inspection",
+      "storedAfterRepair": {
+        "record": "ACT-0002",
+        "ownerId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab@staging.zinfra.io",
+        "ownerName": "@Adam (Human)",
+        "status": "open",
+        "deadline": "2026-09-18T12:00:00.000Z",
+        "version": 2,
+        "auditEntries": 2,
+        "reassignmentAuditEntries": 1,
+        "reassignmentActor": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io"
+      }
     }
   },
   "previousImageSmoke": {
