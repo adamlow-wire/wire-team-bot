@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-16. Source review: `f034d2f`.
+Updated: 2026-09-16. Release runtime: `bde0d0a` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -55,8 +55,8 @@ production dependency is required by this plan.
 
 ### Message processing and retrieval
 
-- ACTIVE messages pass through classification, extraction and asynchronous embedding.
-  `InMemoryProcessingQueue` allows five concurrent jobs and 500 queued jobs; overflow drops
+- Ambient ACTIVE messages pass through classification, extraction and embedding. Explicit commands and Q&A do not also enter passive extraction; embeddings and contradiction checks are awaited as part of the cancellable job.
+  `InMemoryProcessingQueue` allows five concurrent channels, serialises work within each channel, and holds 500 queued jobs; overflow drops
   the oldest queued job with a warning. Transient processing and buffers are lost on restart.
 - Extraction uses a 30-message sliding window. Q&A uses a separate
   `ConversationMessageBuffer` (default 50, configured maximum 500). Both matter for privacy.
@@ -114,8 +114,7 @@ provider framework for the pilot.
 
 The current embedding column and default are **2560 dimensions**. The latest dimension
 migration removed the HNSW index; current search is exact cosine search. Match the configured
-model, fallback and database dimensions. The old promised startup dimension check is not
-implemented in the current adapter. Vector features need a separate smoke test if enabled;
+model, fallback and database dimensions. Enabled configuration must use 2560 dimensions; primary and fallback responses must contain finite vectors of that size. This checks configuration/output, not a live startup model probe or schema migration. Vector features need a separate smoke test if enabled;
 structured recall and summaries must remain useful with embeddings off.
 
 The official SDK migration keeps CommonJS, the `node:22-trixie-slim` image and a persistent
@@ -133,34 +132,32 @@ The old v2 phases 1a, 1b, 2, 3 and 4 describe delivered components, not a comple
 |---|---|---|
 | Wire connection, send/receive, persisted crypto | Implemented; staging success and restart reported on 2026-09-16 during SDK migration | Repeat on the pilot image; production cutover pending |
 | Explicit decisions, actions and reminders | Implemented; use cases and contract/e2e scenarios present | Verify attribution, changes and reminder delivery on Wire |
-| Passive capture and natural completion | Implemented with prompt-based duplicate mitigations | Human-reviewed precision/recall and duplicate baseline absent |
+| Passive capture and natural completion | Source replay guards, exact active-fact dedup, validated owners and completion updates implemented | Stored-record evaluation available; human quality review pending |
 | Questions and channel summaries | Implemented; retrieval and summary tests present | Validate known-answer questions, empty results and provider degradation |
 | Action lists, staleness nudges, scheduled summaries | Implemented | Judge usefulness/noise; verify restart and overdue behaviour |
-| Pause, resume, secure and access scoping | Partial; controls exist, concrete gaps below | P1 is a pilot blocker |
+| Pause, resume, secure and access scoping | Both buffers clear on pause/secure; queued jobs discarded, in-flight work cancelled/drained; qualified access checks and fail-closed state reads/writes tested | Synthetic DB/log and restart markers pass; designated Wire smoke required |
 | Embeddings optional/separate provider | Implemented; embedding configuration tests present | Smoke test selected configuration and dimensions |
-| Buttons and contradiction follow-through | Partial; confirmation transport exists, router has no useful button dispatch | Remove dead offers or make existing interactions actionable (P2) |
-| Test harness and simulation | Implemented | `golden.json` contains only instructions; quality is unmeasured (P0) |
-| Configurable bot name | Earlier gap doc referenced unmerged PR #8; absent from reviewed config | Not required for pilot; verify separately before claiming delivered |
+| Buttons and contradiction follow-through | Dead decision buttons removed; old clicks and contradiction notices give text commands; Q&A prompt explicitly read-only | Human/Wire review of actual interactions pending |
+| Test harness and simulation | Event-framed CLI, post-drain DB inventory and fact/source scoring implemented; simulation now sends the fixture’s actual members | `golden.json` still has no human review; no human-approved quality claim |
+| Product name | User-facing name is Wire Team Bot; old text prefix and `JEEVES_*` environment keys remain compatibility aliases | Verify registered Wire app display name in smoke test; generic name configuration remains deferred |
 | Documentation consolidation | Complete in this revision | Maintain this plan as work lands |
 
 Historical validation: SDK migration notes reported 141 passing unit tests, clean lint, an
 offline CLI smoke run, and then staging connectivity/restart success. Those notes also contain
-an older “not exercised yet” entry, superseded by their staging update. No fresh runtime test
-or LLM-quality result is claimed by this documentation review.
+an older “not exercised yet” entry, superseded by their staging update. Those historical results are separate from the fresh candidate evidence below.
 
-### Concrete gaps found during consolidation
+### Consolidation findings and implemented remedies
 
-These are source observations, not a full security audit or an end-to-end reproduction.
-
-| Gap | Evidence | Required outcome |
+| Finding | Remedy in the candidate | Validation boundary |
 |---|---|---|
-| Raw conversation fragments can persist | `ProcessingPipeline.process` stores `text.slice(0, 200)` for low-signal messages. `LogDecision` copies `contextMessages[].text` into persisted decision context. | Remove unintended raw-context storage; inspect existing test data and other persistence/log paths. |
-| SECURE does not isolate all context | Router pushes into the Q&A buffer before checking state; SECURE flushes the sliding window only. Pipeline jobs do not re-check channel state before classification. | Isolate both buffers and work crossing a state transition; test resume and restart. |
-| Explicit-ID lookup can bypass retrieval scope | `StructuredRetrievalPath` calls `findById` and labels results with the requesting channel without checking the record's channel. Some mutation checks compare ID without domain. | Enforce full qualified scope for returned records and mutations; add negative tests. |
-| Replies can promise unsupported interaction | `LogDecision` offers buttons; `onButtonClicked` only handles the default/unhandled case. Contradiction notices ask a question without a dedicated resolution flow. | Use supported text instructions or remove the offer; do not require a new undo/button subsystem. |
-| Model failures and metrics are only partly handled | Adapters already parse/filter output and provide fallbacks, but extraction errors log output previews; metrics module is a no-op. | Verify malformed output cannot cause bad writes or content logging; measure only what pilot decisions need. |
-| Reminder delivery can be lost after a send failure | `FireReminder` marks a reminder fired before sending, then catches send errors. Startup only rehydrates pending reminders. | Test failed sends and recovery; make failed delivery recoverable without claiming exactly-once transport. |
-| Simulation output is not a reliable capture inventory | `simulate.ts` scans reply IDs, segments output using fixed delays, and compares golden entries by generated ID. Silent writes and fresh-run IDs can invalidate its scores. | Inspect records in an isolated scenario channel after processing finishes; match expected facts/source events rather than generated IDs. A small manual baseline is sufficient initially. |
+| Raw surrounding context persisted in signals/decisions and diagnostics | Decision context is empty; low-signal/failure signals contain generic activity metadata; model/output previews and HTTP error bodies are not logged. SDK messages/metadata (including nested decrypted events) are reduced to severity-only diagnostics; startup failures do not log exception bodies. Arbitrary extractor metadata is discarded. Channel purpose requires an explicit context command. | Synthetic marker checks; historical rows have not been altered or scrubbed. Start the pilot with approved data, not an assumed-clean legacy database. |
+| Pause/secure leaked through buffers and background work | Both buffers clear; per-channel jobs cancel and drain before confirmation; events serialize; blocked-period messages are never buffered; hydration/resume failures stop processing locally. | In-flight requests already sent to a provider cannot be recalled. A failed durable state write is explicitly reported and must be retried before restart. |
+| Explicit-ID access bypassed qualified scope | Structured and semantic source lookups verify ID **and domain**, as do affected mutations; deleted targets are rejected. | Unit negative tests and isolated Postgres retrieval tests. |
+| Buttons and Q&A promised unsupported writes | Removed decision yes/no prompt; text alternatives for old buttons and contradictions; Q&A is explicitly instructed that it cannot write. | Model instructions cannot guarantee every generated answer; review remains required. |
+| Malformed model results and provider compatibility | Root/type/confidence/length validation, bounded arrays, known-owner/known-action checks, finite embedding dimensions; bounded retry without temperature only on an explicit unsupported/deprecated-parameter rejection. | Model fallback and output-degradation events remain visible in reports. |
+| Reminder could be lost on send failure | Fired state follows successful send; failure retains pending state and schedules a 60-second retry; restart rehydrates pending overdue records. Duplicate local callbacks are suppressed; long timers avoid Node overflow. | At-least-once delivery: a crash between send and durable acknowledgement can duplicate a reminder. Single process only. |
+| Reply-ID simulation scores omitted silent captures | CLI acknowledges drained source events; evaluation queries all channel decisions/actions after exit, matches facts plus source/owner, and counts duplicates as errors. Simulation uses the same inventory and actual fixture senders. | Fixed sample and model judging assist review; neither replaces human capture/Q&A approval. |
+
 
 ## 4. Next version: bounded pilot work
 
@@ -176,9 +173,9 @@ remaining validation dependency explicitly.
 
 | ID | Work and direct value | Acceptance evidence | Progress |
 |---|---|---|---|
-| P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Pending |
-| P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Pending — blocks real data |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Pending |
+| P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
+| P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 53/55, two adjudications and Wire acceptance pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -291,6 +288,73 @@ Provisional thresholds for this small pilot (not production SLAs):
 - At pilot end, the team identifies concrete saved effort and chooses continued use. Otherwise
   fix the most material problem or stop expanding scope.
 
+### Candidate disposition — 2026-09-16
+
+**Implemented and packaged; not yet pilot ready.** Runtime `bde0d0a` is available locally as
+`wire-team-bot:v3-rc-bde0d0a`. No production deployment or real Wire smoke was performed.
+Human review and designated Wire acceptance still prevent closing P0–P2.
+[Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
+and check boundaries without credentials.
+
+- Fresh final build, `npx tsc --noEmit` and lint pass. **205 tests pass** in 35 files, including
+  six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
+  image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
+- Full real-model e2e: **53/55**, with original assertions retained in
+  [e2e-report.json](tests/acceptance/e2e-report.json). Journey code is `2be6486`; the subsequent
+  `bde0d0a` SDK/startup logging-only fix was built during that run. Final-image capture/recall
+  and restart checks were run separately against the immutable image.
+- Final-image stored-record evaluation at `bde0d0a`: **20/20 correct unique captures out of
+  20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
+  precision/recall **100%/100%**, versus baseline 100%/50% (10/10/20). Half the expected events
+  are passive; scoring queries all persisted records after drain and matches facts/source/owner.
+  No marker in inspected DB records or diagnostics. See [candidate report](tests/acceptance/candidate-report.json)
+  and [baseline report](tests/acceptance/baseline-report.json). This is a small synthetic sample,
+  not human-approved extraction quality.
+- Assistant inspection finds all ten known answers match the expected facts and the unknown
+  budget question correctly reports no record. **Human correctness/usefulness review pending.**
+  Median reply-event completion: **6.049 s**; known-question median **7.985 s**; slowest **8.636 s**;
+  unsolicited messages **0**. Two malformed query-analysis responses fell back to the default
+  retrieval plan; answer outputs remain in the report. Timings include queue drain.
+- `TC-PIPE-06` expects an Alice-owned action from “we need to update the API documentation”.
+  The conservative extractor writes none. Resolve this expectation explicitly against the
+  no-guessed-owner rule; do not silently change either the assertion or ownership policy.
+- `TC-ACT-07` is a judge false negative: the actual response says “end of month: 30 Sept 2026,
+  23:59”, yet the judge rejects it against “end of month or March”. Final-image inspection
+  confirms Carol owns the action with deadline `2026-09-30T23:59:59.000Z`; timezone/leap-year/DST
+  unit tests pass. Human adjudication remains recorded as pending, not a green suite.
+- Chat configuration: classify/judge `claude-haiku-4-5`; extract, summarise, query analysis,
+  respond and complex synthesis `claude-opus-5`, with the same per-slot fallback models.
+  Embeddings **off**, configured dimension 2560. DB vector behaviour was exercised with synthetic
+  vectors; enabling real-provider embeddings requires its own smoke check.
+- Final-image CLI checks verify decisions, named actions with deadlines, PAUSED and SECURE
+  across process restarts, resume and list retrieval. Persisted inspection finds one decision,
+  one correctly owned/dated action, a closed secure range and no excluded marker. Earlier
+  candidate smoke also exercised queued cancellation and model-backed recall. These are
+  CLI/DB checks, not Wire transport evidence.
+- Simulation replay completed all 57 source events with actual fixture senders: six decisions,
+  seven actions and one reminder. Its stored-record inventory is local and unreviewed;
+  `golden.json` remains an instruction placeholder. **No measured simulation precision/recall
+  is claimed.**
+
+Remaining entry checks, in order:
+
+1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
+   and unknown-answer output; record reviewed numerators and denominators here (thresholds above).
+   Review simulation misses/false positives using `npm run simulate:review` as supporting evidence.
+2. Adjudicate the two e2e cases above. Preserve the raw results; any changed behaviour needs a
+   regression run. Review latency and unsolicited output with the team.
+3. Supply the qualified designated Wire conversation, operator and second named member. Run the
+   [Wire smoke steps](README.md#designated-wire-smoke-test) on the pinned image, including names,
+   decryption, correction commands, reminder downtime/failed-send recovery and both privacy states.
+4. Record the approved team/provider configuration and completed gates here, then begin the
+   five-working-day P3 pilot. Do not reset a shared database or assume legacy raw rows are clean.
+
+Known limits: transient queued work is lost at restart; reminder delivery is at least once;
+source/exact-fact dedup does not guarantee semantic dedup; already-dispatched provider requests
+cannot be recalled; retrieval is channel-scoped; historical data was not scrubbed. SDK diagnostics
+retain severity but intentionally omit free-form message/payload detail. Human usefulness and
+real Wire transport remain unverified for this candidate.
+
 ### Progress and evidence log
 
 Update this table with dated evidence as work completes. A blocked test stays pending with its
@@ -305,6 +369,9 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | P2 implementation | Reminder sends commit fired state after delivery, retry after 60 seconds and recover overdue pending rows; concurrent callbacks suppressed. Owner resolution, source-event replay guards, bounded model parsing, read-only Q&A instructions, current product name and text controls implemented. Configured Opus rejected temperature (HTTP 400); bounded compatibility retry added. | Full model regression, stored-record rerun and release image underway; Wire smoke and human review pending |
 | 2026-09-16 | Stored-record evaluation | `cb1304e`: 20/20 expected facts captured (decisions 10/10, actions 10/10), 20 total captures, zero duplicates; ten answer outputs plus unknown-answer case retained for human review. This is automated fact/source matching, not a human quality approval. | Rerun after final completion/deadline fixes and obtain human review |
 | 2026-09-16 | Model regression diagnosis | Initial full run 52/55. NDA completion was classified as low-signal; routing updates to extraction makes the isolated lifecycle reproduction pass. Explicit deadline text now reaches persistence. TC-PIPE-06 expects ownership inferred from “we need”; this conflicts with the plan’s conservative ownership rule and remains visible. | Full final regression; resolve ownership expectation before marking acceptance passed |
+| 2026-09-16 | Deadline regression | `2be6486`: end-of-month dates now resolve in the conversation timezone (UTC, leap-year and DST tests); both owner/deadline command orders work. The model judge still rejected the literal correct “end of month: 30 Sept 2026” confirmation against a stale March-oriented assertion. Stored date and deterministic tests pass; the raw judge result is retained. | Human adjudication; do not weaken the assertion or change a correct date to March |
+| 2026-09-16 | SDK diagnostic privacy | SDK free-form messages and nested payloads were found to bypass model-log sanitisation. Severity-only bridge and content-free top-level failure diagnostics now have a marker regression. Fresh container run: 205 tests passed, including six isolated DB tests; build/type-check/lint passed. | Rebuild final image; application event IDs remain available, SDK message detail is intentionally suppressed |
+| 2026-09-16 | Final release image and quality | `bde0d0a` image built; native SDK load and CLI pause/secure restart smoke passed. Final-image fixed sample: 20/20/20, zero duplicates/markers, 10 answer outputs and unknown response inspected, human review pending. Full e2e remains 53/55 with the two cases above retained. | Human review, two adjudications and designated Wire smoke; no production deployment |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

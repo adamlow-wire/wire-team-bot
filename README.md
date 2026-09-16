@@ -40,7 +40,7 @@ docker compose up -d
 
 ### 3. Add the app to a Wire conversation
 
-A team admin adds the Wire Team Bot app to any group conversation. Wire Team Bot will ask for a brief channel purpose description on first join, then begin listening.
+A team admin adds the Wire Team Bot app to the designated test conversation first. The greeting explains how to save a purpose using an explicit `context:` command.
 
 ---
 
@@ -155,8 +155,7 @@ docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b
 
 Set `JEEVES_EMBED_BASE_URL`, model and dimensions accordingly. Current migrations use
 `vector(2560)` and exact cosine search. Changing `JEEVES_EMBED_DIMS` alone does not alter the
-column. Validate actual output dimensions, including any fallback model; there is currently
-no startup dimension check.
+column. Validate actual output dimensions, including any fallback model; enabled configuration must use 2560, and model responses (including fallback) are checked for finite values and matching dimensions. There is no live startup embedding probe.
 
 Use `JEEVES_*` configuration. The former `LLM_PASSIVE_*` / `LLM_CAPABLE_*` variables are no
 longer read by `config.ts`, and those model tiers are not an active foreground router.
@@ -195,8 +194,7 @@ Replace sample references with the IDs returned by your bot.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
-Use text commands for corrections during the pilot; existing button offers are not a complete
-workflow. Privacy/state-isolation fixes remain a pilot gate in the plan.
+Use text commands for corrections. Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
 
 ## Development
 
@@ -211,8 +209,9 @@ npx tsc --noEmit              # type-check
 
 npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite
 npm run test:e2e -- --filter TC-DEC         # run a subset of scenarios
-npm run build && npm run simulate           # multi-day channel replay — extraction quality report
-npm run simulate:review                     # annotate report as golden baseline (precision/recall)
+npm run test:acceptance                     # fixed 20-event stored-record sample + 10 known questions
+npm run build && npm run simulate           # multi-day replay — stored-record inventory
+npm run simulate:review                     # human source/fact review, including missed captures
 ```
 
 Database migrations live in `prisma/migrations/`. The schema is in `prisma/schema.prisma`.
@@ -224,7 +223,7 @@ Database migrations live in `prisma/migrations/`. The schema is in `prisma/schem
   load time, which also breaks `npm test` and the CLI/e2e harness locally. Run them in a container instead:
 
   ```bash
-  docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/app -w /app node:22-trixie-slim npx vitest run
+  docker run --rm --user "$(id -u):$(id -g)" -e npm_config_cache=/tmp/npm-cache -v "$PWD":/app -w /app node:22-trixie-slim npx vitest run
   ```
 
 - **`npm install` on npm 10.9.x** fails with `Cannot read properties of null (reading 'edgesOut')` while resolving
@@ -280,3 +279,126 @@ on ordinary restarts.
 
 Keep the token, crypto key and volume together as the application's identity state. A token
 refresh changes the token only. Removing a volume or regenerating the key is not a refresh.
+
+## Release-candidate acceptance
+
+The current local image is `wire-team-bot:v3-rc-bde0d0a`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-16)
+for passing checks, the two retained e2e failures and human/Wire acceptance still required.
+
+Use synthetic data in a separate database. The development run used Postgres 16 + pgvector,
+`node:22-trixie-slim`, and the existing staging provider settings. Embeddings were explicitly
+off for model journeys. The database/vector adapter was checked separately with 2560-dimensional
+synthetic vectors. No running staging or production service needs to be stopped for these tests.
+
+```bash
+# Create once; this is a new, disposable acceptance database, not the team database.
+docker run -d --name wire-team-bot-v3-test-db \
+  -e POSTGRES_USER=wirebot -e POSTGRES_PASSWORD=synthetic-only \
+  -e POSTGRES_DB=wire_team_bot_test -p 127.0.0.1:55439:5432 pgvector/pgvector:pg16
+
+# Run from the checkout, with approved model settings already in .env.staging.
+# This shell is only the test container; CLI/evaluation never connects to Wire.
+docker run --rm -it --network host --user "$(id -u):$(id -g)" \
+  --env-file .env.staging -e npm_config_cache=/tmp/npm-cache \
+  -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
+  -e JEEVES_EMBEDDINGS=off -v "$PWD":/app -w /app node:22-trixie-slim bash
+
+# Inside that container:
+npx prisma migrate deploy
+npm run build
+npx tsc --noEmit
+npm run lint
+npm test
+INTEGRATION_TESTS=1 npm test
+npm run test:e2e -- --json
+EVALUATION_COMMIT=<tested-commit> npm run test:acceptance
+EVALUATION_COMMIT=<tested-commit> npm run simulate
+npm run simulate:review
+```
+
+`--network host` is for this Linux test environment. Do not point these commands at a shared
+team database. The test harness uses isolated conversation IDs and only removes rows owned by
+its integration fixtures. No reset command is required. The e2e and simulation scripts use the
+already installed `ts-node`; they do not download an unpinned runner.
+
+The original `e35428b` baseline was built in a separate archived checkout with only
+[baseline-cli.patch](tests/acceptance/baseline-cli.patch) applied. That patch adds stable input IDs,
+framed replies and per-event drain to its CLI; it does not change routing, model prompts or writes.
+To reproduce, archive `e35428b` into a temporary directory, apply the patch with `patch -p1`, use the
+same locked dependencies and build it. Run the current evaluator with `EVALUATION_ROOT` pointing
+to that checkout, `EVALUATION_COMMIT=e35428b` and a separate `EVALUATION_REPORT` output path.
+Use the same isolated DB and model slots listed in the baseline report.
+
+The fixed sample is [capture-fixture.json](tests/acceptance/capture-fixture.json). Compare
+[baseline-report.json](tests/acceptance/baseline-report.json) and
+[candidate-report.json](tests/acceptance/candidate-report.json), including every record and
+question answer. Records match by expected fact, source event and owner; generated record IDs
+are not scoring keys. Precision counts duplicate/wrong captures in its denominator, and recall
+counts all expected events. The report includes marker occurrences in stored records and
+stderr, elapsed event times, failures and unsolicited-message counts. Times include processing
+and queue drain; they are not a first-token benchmark. Legacy prefixes in fixtures deliberately
+exercise command compatibility.
+
+Simulation inventory is written to `tests/simulation/simulation-report.json`; it is synthetic,
+local and gitignored. Its `expected: 0` means **unreviewed**, not perfect recall. Review the actual
+source events and stored content with `simulate:review`, record misses as well as false positives,
+and put the reviewer/date and decision in PLAN.md. `golden.json` must not be presented as approved
+while it only contains instructions. Human review of the fixed sample and ten known answers is
+also required before the pilot.
+
+Build a pinned candidate from the tested checkout, then exercise its CLI against the isolated
+DB using `--entrypoint node <image> dist/app/cli.js`. The normal entrypoint starts the Wire bot;
+only use it when the operator is ready for the designated Wire test.
+
+```bash
+docker build --label org.opencontainers.image.revision=<tested-commit> \
+  -t wire-team-bot:v3-rc-<tested-commit> .
+```
+
+The `.dockerignore` excludes secrets, crypto storage, tests, local dependencies and Git metadata
+from the image context. Preserve the existing crypto key/store when testing restart. Delivery is
+at least once: a crash after a successful reminder send but before the database update can cause
+a repeat. The in-memory capture queue is intentionally transient and loses unfinished work on
+restart. Arbitrary edited messages do not update records; use the documented correction commands.
+
+## Designated Wire smoke test
+
+Pending operator inputs: the qualified test conversation (`ID@domain`), the operator and a second
+named member, approved provider settings, and the human reviewer. Do not use a real team channel
+until the synthetic privacy/access checks have passed. Use actual Wire mentions below; plain text
+that looks like a mention is not sufficient for resume from PAUSED/SECURE.
+
+1. Start the pinned candidate with the designated staging identity and persistent crypto store.
+   Record image digest, commit, provider model names, embedding mode and the test conversation in
+   PLAN.md; never copy tokens or keys. Verify the registered app display name is **Wire Team Bot**.
+2. In the designated channel, send `decision: use Postgres for the pilot ledger because transactions
+   are required`. Save its `DEC-` reference. Mention the bot and ask what was decided and why.
+   Record a replacement with `decision: use Postgres 16 supersedes DEC-…` using that active
+   decision as the target. Revoke the replacement using its new ID, and check both records and
+   audit entries.
+3. Send `action: <member> to review the pilot checklist by Friday`. Verify the stored owner ID,
+   display name and deadline, list it, reassign it, change its deadline and mark it done. Repeat
+   an unknown and an ambiguous name: no guessed owner should be written. Restart and verify names
+   still resolve on the first subsequent message.
+4. Create a short reminder, cancel another, and snooze a third. Restart before one is due; stop the
+   candidate until another is overdue and start it again. Confirm delivery and durable status.
+   Failed-send recovery is covered by injected-failure DB tests; if an operator reproduces a real
+   transport interruption, verify pending state and a later retry, allowing duplicate delivery.
+5. Send an ambient commitment and verify the silent stored action once processing finishes. Send
+   its completion as the owner and verify status becomes done. Check that explicit commands were
+   not also captured by the passive pipeline. Inspect catch-up output and open/overdue lists.
+6. Start a slow synthetic extraction, then mention `pause` or `secure mode`. Wait for confirmation;
+   send a unique excluded marker, restart, send a second excluded marker, then mention `resume`.
+   Ask a new question and inspect both model diagnostics and channel records: neither excluded
+   marker may appear. Repeat for both states. A failed state-persistence warning is a failed check,
+   not permission to restart under an assumed durable pause.
+7. In a second designated test channel, try the first channel’s record IDs for recall and changes;
+   they must not expose or alter those records. Domain-collision denial is covered by automated
+   negative tests; exercise federation manually if that is part of this pilot deployment.
+8. Confirm reconnect/decryption after restart, text corrections, no required inert buttons, and
+   no fabricated successful write from a Q&A follow-up. Record actual outputs and pass/fail in
+   PLAN.md. Then obtain human approval of at least 20 capture events and 8/10 useful answers.
+
+Begin the five-working-day P3 pilot only after the unresolved acceptance items in PLAN.md are
+closed. Use a short feedback log for saved effort, errors, latency and noise, then choose keep,
+fix or stop. Production deployment remains a separate operator action.

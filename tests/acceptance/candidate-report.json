@@ -1,0 +1,962 @@
+{
+  "runAt": "2026-09-16T14:37:11.918Z",
+  "commit": "bde0d0a",
+  "channel": "evaluation-0244f06b-a974-4703-948d-03ab781c7cff",
+  "privacyMarkers": {
+    "storedOccurrences": 0,
+    "diagnosticOccurrences": 0
+  },
+  "configuration": {
+    "slots": {
+      "classify": {
+        "model": "claude-haiku-4-5",
+        "fallback": "claude-haiku-4-5"
+      },
+      "extract": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "embed": {
+        "model": "qwen3-embedding:4b",
+        "fallback": "qwen3-embedding:4b"
+      },
+      "summarise": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "queryAnalyse": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "respond": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "complexSynthesis": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      }
+    },
+    "embeddings": {
+      "enabled": false,
+      "dimensions": 2560
+    }
+  },
+  "reviewStatus": "Developer-defined synthetic expectations; independent human review pending",
+  "reminders": [],
+  "overall": {
+    "correct": 20,
+    "captured": 20,
+    "expected": 20,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "missed": [],
+    "records": [
+      {
+        "type": "decision",
+        "source": "d9",
+        "content": "The support rota will rotate on a weekly basis.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d9",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d1",
+        "content": "use Postgres for the ledger because transactions are required",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d1",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d2",
+        "content": "use REST for the billing API",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d2",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d3",
+        "content": "deploy the dashboard in the London region",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d3",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d4",
+        "content": "retain backups for thirty days",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d4",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d5",
+        "content": "release the mobile app behind a feature flag",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d5",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d6",
+        "content": "Redis will be used for the session cache.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d6",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d7",
+        "content": "All invoice exports will be produced as CSV files",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d7",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d8",
+        "content": "Grafana will be used for service dashboards",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d8",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d10",
+        "content": "Security changes must be approved by two reviewers.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d10",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a1",
+        "content": "write the ledger migration",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a1",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a2",
+        "content": "review the billing API contract",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a2",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a3",
+        "content": "prepare the dashboard rollout",
+        "owner": "dave",
+        "ownerName": "Dave",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a3",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a4",
+        "content": "test the backup restoration",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a4",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a5",
+        "content": "document the mobile release process",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a5",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a6",
+        "content": "Configure monitoring for the session cache",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a6",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a7",
+        "content": "Write the invoice export guide",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a7",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a8",
+        "content": "Build the service health dashboard",
+        "owner": "dave",
+        "ownerName": "Dave",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a8",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a9",
+        "content": "Publish the support rota",
+        "owner": "alice",
+        "ownerName": "Alice",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a9",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a10",
+        "content": "Update the security review checklist",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a10",
+        "duplicate": false
+      }
+    ]
+  },
+  "decisions": {
+    "correct": 10,
+    "captured": 10,
+    "expected": 10,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "missed": [],
+    "records": [
+      {
+        "type": "decision",
+        "source": "d9",
+        "content": "The support rota will rotate on a weekly basis.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d9",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d1",
+        "content": "use Postgres for the ledger because transactions are required",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d1",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d2",
+        "content": "use REST for the billing API",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d2",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d3",
+        "content": "deploy the dashboard in the London region",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d3",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d4",
+        "content": "retain backups for thirty days",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d4",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d5",
+        "content": "release the mobile app behind a feature flag",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d5",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d6",
+        "content": "Redis will be used for the session cache.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d6",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d7",
+        "content": "All invoice exports will be produced as CSV files",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d7",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d8",
+        "content": "Grafana will be used for service dashboards",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d8",
+        "duplicate": false
+      },
+      {
+        "type": "decision",
+        "source": "d10",
+        "content": "Security changes must be approved by two reviewers.",
+        "context": [],
+        "author": "Alice",
+        "rationale": null,
+        "status": "active",
+        "matchedEvent": "d10",
+        "duplicate": false
+      }
+    ]
+  },
+  "actions": {
+    "correct": 10,
+    "captured": 10,
+    "expected": 10,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "missed": [],
+    "records": [
+      {
+        "type": "action",
+        "source": "a1",
+        "content": "write the ledger migration",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a1",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a2",
+        "content": "review the billing API contract",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a2",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a3",
+        "content": "prepare the dashboard rollout",
+        "owner": "dave",
+        "ownerName": "Dave",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a3",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a4",
+        "content": "test the backup restoration",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a4",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a5",
+        "content": "document the mobile release process",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a5",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a6",
+        "content": "Configure monitoring for the session cache",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a6",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a7",
+        "content": "Write the invoice export guide",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a7",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a8",
+        "content": "Build the service health dashboard",
+        "owner": "dave",
+        "ownerName": "Dave",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a8",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a9",
+        "content": "Publish the support rota",
+        "owner": "alice",
+        "ownerName": "Alice",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a9",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "a10",
+        "content": "Update the security review checklist",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "a10",
+        "duplicate": false
+      }
+    ]
+  },
+  "exchanges": [
+    {
+      "eventId": "d1",
+      "text": "decision: use Postgres for the ledger because transactions are required",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "Postgres",
+          "ledger"
+        ]
+      },
+      "replies": [
+        "Decision **DEC-0138** logged: use Postgres for the ledger because transactions are required"
+      ],
+      "elapsedMs": 29
+    },
+    {
+      "eventId": "a1",
+      "text": "action: write the ledger migration for Bob",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "ledger",
+          "migration"
+        ],
+        "owner": "bob"
+      },
+      "replies": [
+        "Action **ACT-0131** created for **Bob**: write the ledger migration"
+      ],
+      "elapsedMs": 23
+    },
+    {
+      "eventId": "d2",
+      "text": "decision: use REST for the billing API",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "REST",
+          "billing"
+        ]
+      },
+      "replies": [
+        "Decision **DEC-0139** logged: use REST for the billing API"
+      ],
+      "elapsedMs": 18
+    },
+    {
+      "eventId": "a2",
+      "text": "Carol: action: review the billing API contract",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "billing",
+          "contract"
+        ],
+        "owner": "carol"
+      },
+      "replies": [
+        "Action **ACT-0132** created for **Carol**: review the billing API contract"
+      ],
+      "elapsedMs": 16
+    },
+    {
+      "eventId": "d3",
+      "text": "decision: deploy the dashboard in the London region",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "dashboard",
+          "London"
+        ]
+      },
+      "replies": [
+        "Decision **DEC-0140** logged: deploy the dashboard in the London region"
+      ],
+      "elapsedMs": 17
+    },
+    {
+      "eventId": "a3",
+      "text": "action: prepare the dashboard rollout for Dave",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "dashboard",
+          "rollout"
+        ],
+        "owner": "dave"
+      },
+      "replies": [
+        "Action **ACT-0133** created for **Dave**: prepare the dashboard rollout"
+      ],
+      "elapsedMs": 17
+    },
+    {
+      "eventId": "d4",
+      "text": "decision: retain backups for thirty days",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "backup"
+        ],
+        "anyTerms": [
+          "thirty",
+          "30"
+        ]
+      },
+      "replies": [
+        "Decision **DEC-0141** logged: retain backups for thirty days"
+      ],
+      "elapsedMs": 19
+    },
+    {
+      "eventId": "a4",
+      "text": "Bob: action: test the backup restoration",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "backup",
+          "restor"
+        ],
+        "owner": "bob"
+      },
+      "replies": [
+        "Action **ACT-0134** created for **Bob**: test the backup restoration"
+      ],
+      "elapsedMs": 18
+    },
+    {
+      "eventId": "d5",
+      "text": "decision: release the mobile app behind a feature flag",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "mobile",
+          "feature flag"
+        ]
+      },
+      "replies": [
+        "Decision **DEC-0142** logged: release the mobile app behind a feature flag"
+      ],
+      "elapsedMs": 18
+    },
+    {
+      "eventId": "a5",
+      "text": "action: document the mobile release process for Carol",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "mobile",
+          "release"
+        ],
+        "owner": "carol"
+      },
+      "replies": [
+        "Action **ACT-0135** created for **Carol**: document the mobile release process"
+      ],
+      "elapsedMs": 20
+    },
+    {
+      "eventId": "d6",
+      "text": "We have agreed to use Redis for the session cache.",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "Redis",
+          "session"
+        ]
+      },
+      "replies": [],
+      "elapsedMs": 6024
+    },
+    {
+      "eventId": "a6",
+      "text": "Bob: I will configure the session cache monitoring.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "session",
+          "monitor"
+        ],
+        "owner": "bob"
+      },
+      "replies": [],
+      "elapsedMs": 6419
+    },
+    {
+      "eventId": "d7",
+      "text": "We decided that all invoice exports will be CSV files.",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "invoice",
+          "CSV"
+        ]
+      },
+      "replies": [],
+      "elapsedMs": 6433
+    },
+    {
+      "eventId": "a7",
+      "text": "Carol: I will write the invoice export guide.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "invoice",
+          "guide"
+        ],
+        "owner": "carol"
+      },
+      "replies": [],
+      "elapsedMs": 8433
+    },
+    {
+      "eventId": "d8",
+      "text": "The team has decided to use Grafana for service dashboards.",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "Grafana",
+          "dashboard"
+        ]
+      },
+      "replies": [],
+      "elapsedMs": 5818
+    },
+    {
+      "eventId": "a8",
+      "text": "Dave: I will build the service health dashboard.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "service",
+          "dashboard"
+        ],
+        "owner": "dave"
+      },
+      "replies": [],
+      "elapsedMs": 7520
+    },
+    {
+      "eventId": "d9",
+      "text": "We agreed that the support rota will rotate weekly.",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "support",
+          "weekly"
+        ]
+      },
+      "replies": [],
+      "elapsedMs": 5618
+    },
+    {
+      "eventId": "a9",
+      "text": "Alice: I will publish the support rota.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "support",
+          "rota"
+        ],
+        "owner": "alice"
+      },
+      "replies": [],
+      "elapsedMs": 5333
+    },
+    {
+      "eventId": "d10",
+      "text": "We have decided to require two reviewers for security changes.",
+      "expected": {
+        "type": "decision",
+        "terms": [
+          "review",
+          "security"
+        ],
+        "anyTerms": [
+          "two",
+          "2"
+        ]
+      },
+      "replies": [],
+      "elapsedMs": 6221
+    },
+    {
+      "eventId": "a10",
+      "text": "Bob: I will update the security review checklist.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "security",
+          "checklist"
+        ],
+        "owner": "bob"
+      },
+      "replies": [],
+      "elapsedMs": 7218
+    },
+    {
+      "eventId": "noise",
+      "text": "Good morning everyone. PRIVATE_CONTEXT_MARKER",
+      "replies": [],
+      "elapsedMs": 1004
+    },
+    {
+      "eventId": "q1",
+      "text": "@Jeeves Which database did we choose for the ledger and why?",
+      "answer": "Postgres; transactions are required",
+      "replies": [
+        "Postgres, because transactions are required.\n\n• **[DEC-0138] Use Postgres for the ledger**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  **Rationale:** Transactions are required\n\nThe related action is **[ACT-0131] Write the ledger migration** — owned by @Bob, currently open."
+      ],
+      "elapsedMs": 8636
+    },
+    {
+      "eventId": "q2",
+      "text": "@Jeeves Who owns the ledger migration?",
+      "answer": "Bob",
+      "replies": [
+        "@Bob owns it.\n\n• **[ACT-0131] Write the ledger migration**\n  **Owner:** @Bob | **Status:** open\n\nTo reassign, use `ACT-0131 reassign to <name>`; to close it, `ACT-0131 done`."
+      ],
+      "elapsedMs": 8217
+    },
+    {
+      "eventId": "q3",
+      "text": "@Jeeves What interface did we choose for the billing API?",
+      "answer": "REST",
+      "replies": [
+        "REST.\n\n• **[DEC-0139] Use REST for the billing API**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nThe related action is **[ACT-0132] Review the billing API contract** — owned by @Carol, currently open."
+      ],
+      "elapsedMs": 7859
+    },
+    {
+      "eventId": "q4",
+      "text": "@Jeeves Where are we deploying the dashboard?",
+      "answer": "London region",
+      "replies": [
+        "London region.\n\n• **[DEC-0140] Deploy the dashboard in the London region**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nThe related action is **[ACT-0133] Prepare the dashboard rollout** — owned by @Dave, currently open."
+      ],
+      "elapsedMs": 6568
+    },
+    {
+      "eventId": "q5",
+      "text": "@Jeeves How long do we keep backups?",
+      "answer": "Thirty days",
+      "replies": [
+        "Thirty days.\n\n• **[DEC-0141] Retain backups for thirty days**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nThe related action is **[ACT-0134] Test the backup restoration** — owned by @Bob, currently open."
+      ],
+      "elapsedMs": 6049
+    },
+    {
+      "eventId": "q6",
+      "text": "@Jeeves How are we releasing the mobile app?",
+      "answer": "Behind a feature flag",
+      "replies": [
+        "Behind a feature flag.\n\n• **[DEC-0142] Release the mobile app behind a feature flag**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nThe related action is **[ACT-0135] Document the mobile release process** — owned by @Carol, currently open."
+      ],
+      "elapsedMs": 8336
+    },
+    {
+      "eventId": "q7",
+      "text": "@Jeeves What did we choose for the session cache?",
+      "answer": "Redis",
+      "replies": [
+        "Redis.\n\n• **[DEC-0143] Redis will be used for the session cache**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: infrastructure, caching*\n\nThe related action is **[ACT-0136] Configure monitoring for the session cache** — owned by @Bob, currently open."
+      ],
+      "elapsedMs": 8003
+    },
+    {
+      "eventId": "q8",
+      "text": "@Jeeves What format are invoice exports?",
+      "answer": "CSV",
+      "replies": [
+        "CSV.\n\n• **[DEC-0144] All invoice exports will be produced as CSV files**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: invoicing, data-export, format*\n\nThe related action is **[ACT-0137] Write the invoice export guide** — owned by @Carol, currently open."
+      ],
+      "elapsedMs": 8228
+    },
+    {
+      "eventId": "q9",
+      "text": "@Jeeves Who will publish the support rota?",
+      "answer": "Alice",
+      "replies": [
+        "@Alice will publish it.\n\n• **[ACT-0139] Publish the support rota**\n  **Owner:** @Alice | **Status:** open\n  *Tags: support, rota*"
+      ],
+      "elapsedMs": 7785
+    },
+    {
+      "eventId": "q10",
+      "text": "@Jeeves How many reviewers do security changes require?",
+      "answer": "Two",
+      "replies": [
+        "Two.\n\n• **[DEC-0148] Security changes must be approved by two reviewers**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: security, code-review, policy*\n\nThe related action is **[ACT-0141] Update the security review checklist** — owned by @Bob, currently open."
+      ],
+      "elapsedMs": 7967
+    },
+    {
+      "eventId": "unknown",
+      "text": "@Jeeves What is the approved budget for the Mars office?",
+      "answer": "No record of that budget; must not invent an answer or a write",
+      "replies": [
+        "I'm afraid I have no record of a Mars office budget — nothing on that has been logged in this channel.\n\nIf a figure has been agreed, you can record it with:\n\n`decision: approved budget for the Mars office is <amount>`"
+      ],
+      "elapsedMs": 8542
+    }
+  ],
+  "failures": [
+    {
+      "level": "warn",
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+    },
+    {
+      "level": "warn",
+      "msg": "QueryAnalysisAdapter: malformed JSON, using default plan"
+    },
+    {
+      "level": "warn",
+      "msg": "QueryAnalysisAdapter: malformed JSON, using default plan"
+    }
+  ],
+  "replyTimesMs": [
+    29,
+    23,
+    18,
+    16,
+    17,
+    17,
+    19,
+    18,
+    18,
+    20,
+    8636,
+    8217,
+    7859,
+    6568,
+    6049,
+    8336,
+    8003,
+    8228,
+    7785,
+    7967,
+    8542
+  ],
+  "unsolicitedMessages": 0
+}
