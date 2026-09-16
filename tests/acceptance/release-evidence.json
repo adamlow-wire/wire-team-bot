@@ -122,7 +122,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
   },
-  "wireSmoke": "in progress: initial actual-mention status round trip passed; record/model/reminder/privacy/reconnect journeys pending",
+  "wireSmoke": "in progress: status and decision capture/recall passed; explicit-handle assignment fix under validation",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -167,6 +167,11 @@
       "containerRestarts": 0,
       "sdkErrorCountAfterRoundTrip": 1
     },
-    "decisionCaptureAndRecall": "pending"
+    "decisionCaptureAndRecall": {
+      "result": "passed",
+      "runtimeCommit": "bde0d0a",
+      "record": "DEC-0002",
+      "evidence": "Operator screenshot: correct Postgres decision, rationale and Adam (Human) attribution; scoped DB inspection confirms empty context and one audit entry"
+    }
   }
 }

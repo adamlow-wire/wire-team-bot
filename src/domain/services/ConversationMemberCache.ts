@@ -7,6 +7,8 @@ export interface CachedMember {
   role: ConversationRole;
   /** Display name as reported by the Wire SDK, if available. */
   name?: string;
+  /** Wire handle, distinct from the display name and scoped to this membership. */
+  handle?: string;
   /** When the name was last successfully fetched from the user API. Used for TTL-based refresh. */
   nameResolvedAt?: Date;
 }
@@ -24,6 +26,6 @@ export interface ConversationMemberCache {
   getMembers(conversationId: QualifiedId): CachedMember[];
   removeMembers(conversationId: QualifiedId, userIds: QualifiedId[]): void;
   clearConversation(conversationId: QualifiedId): void;
-  /** Update the display name for a specific member (resolved lazily via user API). */
-  updateMemberName(conversationId: QualifiedId, userId: QualifiedId, name: string): void;
+  /** Update the display name and current handle from the user API. */
+  updateMemberName(conversationId: QualifiedId, userId: QualifiedId, name: string, handle?: string): void;
 }

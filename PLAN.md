@@ -355,7 +355,9 @@ and reported the Wire client listening, with one content-free SDK error still un
 The operator's screenshot confirms a mentioned `status` request received a channel-status reply
 showing ACTIVE: initial receive/decrypt/reply and mention routing pass. The container remains on
 the pinned image with zero restarts; SDK error count has not increased from startup. This does
-not yet verify record writes, model answers, reminders or a subsequent reconnect. The registered
+not yet verify reminders or a subsequent reconnect. The next operator screenshot confirms
+`DEC-0002` creation and correct model-backed recall of Postgres and its transactions rationale.
+Scoped database inspection confirms Adam (Human) attribution, empty context and one audit entry. The registered
 app display name is still **AI Team Bot (adamlow, staging)**; changing it to **Wire Team Bot**
 remains an operational naming check.
 
@@ -406,6 +408,8 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Immutable-image full regression | Unchanged real-model suite run against `wire-team-bot:v3-rc-bde0d0a`: 53/55, same TC-PIPE-06 ownership expectation and TC-ACT-07 judge false negative. Runtime/dependencies were taken from the image; harness mounted read-only. Raw results and exact README command committed. | Human quality review, two adjudications and designated Wire smoke remain pending |
 | 2026-09-16 | Staging candidate activation | User requested continuation after naming the test conversation/accounts. Database and stopped crypto store backed up; existing volumes retained. Pinned image started at 16:11 UTC; one conversation hydrated and client startup completed. One SDK error remains unexplained; operator status round trip requested. | Verify actual Wire receive/decrypt/reply before marking transport passed |
 | 2026-09-16 | Initial Wire round trip | Operator screenshot confirms actual bot mention + `status` produced an ACTIVE channel-status reply on the pinned candidate. Container has zero restarts; no additional SDK errors beyond startup. Screenshot shows registered name AI Team Bot (adamlow, staging). No surrounding channel text copied into evidence. | Test decision capture/recall next; rename registered app and finish remaining Wire journeys |
+| 2026-09-16 | Wire decision capture/recall | Operator screenshot confirms DEC-0002 and correct Postgres/transactions answer with author attribution. Scoped DB inspection confirms active record, empty context and one audit entry. | Continue assignment and reminder smoke checks |
+| 2026-09-16 | Real-member assignment parser gap | Before testing the supplied handle, four mocked contract cases reproduced dropped @handle/parenthesised-name assignees and missing handle hydration. Explicit target parsing now preserves these references and member profiles retain handles across restart/join/refresh; qualified resolution rejects unknown or ambiguous targets. | Validate, rebuild image and resume Wire assignment check |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

@@ -9,6 +9,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { WireEventRouter } from "../../src/infrastructure/wire/WireEventRouter";
 import type { WireEventRouterDeps } from "../../src/infrastructure/wire/WireEventRouter";
 import type { QualifiedId } from "../../src/domain/ids/QualifiedId";
+import { InMemoryMemberCache } from "../../src/infrastructure/services/InMemoryMemberCache";
+import { MemberCacheUserResolutionService } from "../../src/infrastructure/services/MemberCacheUserResolutionService";
 
 const convId: QualifiedId = { id: "conv-1", domain: "wire.com" };
 const sender: QualifiedId = { id: "user-1", domain: "wire.com" };
@@ -16,6 +18,28 @@ const sender: QualifiedId = { id: "user-1", domain: "wire.com" };
 function makeMessage(text: string, id = "msg-1") {
   return { id, text, conversationId: convId, sender };
 }
+
+it.each([
+  ["action: review the smoke checklist for @second_test by Friday", "@second_test"],
+  ["action: @second_test to review the smoke checklist by Friday", "@second_test"],
+  ["action: review the smoke checklist for Adam (Test) by Friday", "Adam (Test)"],
+])("preserves an explicit assignee in %s", async (text, assigneeReference) => {
+  const deps = makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(makeMessage(text));
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
+    assigneeReference, description: "review the smoke checklist", deadlineText: "Friday",
+  }));
+});
+
+it("hydrates Wire handles before resolving an owner after restart", async () => {
+  const memberCache = new InMemoryMemberCache();
+  const member = { id: "second-user", domain: "wire.com" };
+  const deps = makeDeps({ memberCache });
+  deps.wireOutbound.getUserProfile = vi.fn().mockResolvedValue({ id: member, name: "Adam (Test)", handle: "second_test" });
+  await new WireEventRouter(deps).hydrateFromSdkStore([convId] as never, async () => [{ userId: member, role: "wire_member" }] as never);
+  expect(await new MemberCacheUserResolutionService(memberCache).resolveByHandleOrName("@second_test", { conversationId: convId }))
+    .toEqual({ userId: member, ambiguous: false });
+});
 
 function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouterDeps {
   return {

@@ -9,9 +9,8 @@ import type { ConversationMemberCache } from "../../domain/services/Conversation
  * Resolves a user reference (e.g. "@alice", "Alice", or a raw user ID) against
  * the in-memory conversation member cache.
  *
- * Matching strategy (in order):
- *  1. Strip leading "@" and compare lowercased against the userId.id field.
- *  2. Compare lowercased against the cached display name.
+ * Strip leading "@" and match ID, current Wire handle or display name within
+ * this conversation only. Any collision is ambiguous, rather than guessed.
  *
  * Returns ambiguous=true when more than one member matches.
  * Falls back to null userId when no match is found.
@@ -32,6 +31,7 @@ export class MemberCacheUserResolutionService implements UserResolutionService {
     const matches = members.filter(
       (m) =>
         m.userId.id.toLowerCase() === normalised ||
+        (m.handle != null && m.handle.toLowerCase() === normalised) ||
         (m.name != null && m.name.toLowerCase() === normalised),
     );
 

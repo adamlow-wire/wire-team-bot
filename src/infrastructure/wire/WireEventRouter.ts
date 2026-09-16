@@ -148,13 +148,14 @@ export class WireEventRouter extends WireEventsHandler {
         const profile = await this.deps.wireOutbound.getUserProfile(sender);
         if (profile?.name) {
           if (senderMember) {
-            this.deps.memberCache.updateMemberName(convId, sender, profile.name);
+            this.deps.memberCache.updateMemberName(convId, sender, profile.name, profile.handle);
           } else {
             // Sender not in cache — may happen if the bot missed a join event.
             this.deps.memberCache.addMembers(convId, [{
               userId: sender,
               role: "member",
               name: profile.name,
+              handle: profile.handle,
               nameResolvedAt: new Date(),
             }]);
           }
@@ -165,7 +166,7 @@ export class WireEventRouter extends WireEventsHandler {
     } else if (nameAge > NAME_TTL_MS) {
       // Stale but present: background refresh only.
       void this.deps.wireOutbound.getUserProfile(sender).then((profile) => {
-        if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name);
+        if (profile?.name) this.deps.memberCache.updateMemberName(convId, sender, profile.name, profile.handle);
       });
     }
 
@@ -465,9 +466,9 @@ export class WireEventRouter extends WireEventsHandler {
       const raw = due ? rawWithDeadline.slice(0, due.index).trim() : rawWithDeadline;
       const senderName = this.deps.memberCache.getMembers(convId).find((m) => sameQualifiedId(m.userId, sender))?.name ?? "";
       // "Name to <description>" pattern
-      const nameToMatch = raw.match(/^([A-Za-z][A-Za-z0-9 ]{0,30}?)\s+to\s+(.+)$/i);
+      const nameToMatch = raw.match(/^(.+?)\s+to\s+(.+)$/i);
       // "<description> for <Name>" pattern
-      const forNameMatch = raw.match(/^(.+?)\s+for\s+([A-Za-z][A-Za-z0-9 ]{0,30})$/i);
+      const forNameMatch = raw.match(/^(.+?)\s+for\s+(.+)$/i);
       let description = raw;
       let assigneeReference: string | undefined;
       if (nameToMatch) {
@@ -864,7 +865,7 @@ export class WireEventRouter extends WireEventsHandler {
           members.map(async (m) => {
             const profile = await this.deps.wireOutbound.getUserProfile(m.userId);
             if (profile?.name) {
-              this.deps.memberCache.updateMemberName(convId, m.userId, profile.name);
+              this.deps.memberCache.updateMemberName(convId, m.userId, profile.name, profile.handle);
             }
           }),
         );
@@ -893,7 +894,7 @@ export class WireEventRouter extends WireEventsHandler {
         .map(async (m) => {
           const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
           if (profile?.name) {
-            this.deps.memberCache.updateMemberName(convId, m.userId as QualifiedId, profile.name);
+            this.deps.memberCache.updateMemberName(convId, m.userId as QualifiedId, profile.name, profile.handle);
           }
         }),
     );
@@ -961,7 +962,7 @@ export class WireEventRouter extends WireEventsHandler {
         .map(async (m) => {
           const profile = await this.deps.wireOutbound.getUserProfile(m.userId as QualifiedId);
           if (profile?.name) {
-            this.deps.memberCache.updateMemberName(conversationId as QualifiedId, m.userId as QualifiedId, profile.name);
+            this.deps.memberCache.updateMemberName(conversationId as QualifiedId, m.userId as QualifiedId, profile.name, profile.handle);
           }
         }),
     );
