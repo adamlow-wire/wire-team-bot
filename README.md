@@ -194,7 +194,10 @@ Replace sample references with the IDs returned by your bot.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
-Use text commands for corrections. Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
+Use text commands for corrections. Action commands also accept a leading inline-code span
+around the record ID, command prefix or whole command when pasted from an example. Person
+mentions can be used as assignee names; use an unambiguous full name or handle.
+Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
 
 ## Development
 
@@ -282,7 +285,7 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The current local image is `wire-team-bot:v3-rc-2ba7a1f`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-16)
+The current local image is `wire-team-bot:v3-rc-a51a7af`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-16)
 for passing checks, the two retained e2e failures and human/Wire acceptance still required.
 
 Use synthetic data in a separate database. The development run used Postgres 16 + pgvector,
@@ -366,7 +369,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-2ba7a1f \
+  --entrypoint node wire-team-bot:v3-rc-a51a7af \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```

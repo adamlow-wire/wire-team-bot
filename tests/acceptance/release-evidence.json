@@ -1,6 +1,6 @@
 {
   "date": "2026-09-16",
-  "runtimeCommit": "2ba7a1f",
+  "runtimeCommit": "a51a7af",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,32 +49,34 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 222,
+      "passed": 233,
       "integrationTests": 6,
-      "testFiles": 38,
-      "validationCommit": "2ba7a1f"
+      "testFiles": 39,
+      "validationCommit": "a51a7af"
     },
     "realModelE2E": {
-      "passed": 54,
+      "passed": 55,
       "failed": 2,
       "report": "e2e-report.json",
-      "commit": "2ba7a1f",
+      "commit": "a51a7af",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
-        "TC-ACT-07: correct end-of-month response rejected by model judge"
+        "TC-ID-06: correct current-caller answer rejected by model judge"
       ],
       "execution": "Immutable release image with read-only test harness and external ts-node tooling",
-      "harnessCommit": "2ba7a1f"
+      "harnessCommit": "a51a7af",
+      "judgeContext": "Evaluation UTC timestamp added; existing assertions unchanged; TC-ACT-07 now passes",
+      "targetedRecheck": "TC-ID-06 passes unchanged in isolated rerun; full-run 55/57 result retained"
     }
   },
   "image": {
-    "tag": "wire-team-bot:v3-rc-2ba7a1f",
-    "id": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
-    "commit": "2ba7a1f",
+    "tag": "wire-team-bot:v3-rc-a51a7af",
+    "id": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
+    "commit": "a51a7af",
     "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
     "cliSmoke": [
-      "full real-model suite with original assertions retained and added current-caller regression",
-      "20-event stored-record evaluation and 11 known/unknown questions"
+      "full 57-scenario real-model regression",
+      "formatted reassignment, deadline, completion and record-status recall"
     ],
     "stagingStartup": "passed; member cache hydrated; no SDK errors observed during startup"
   },
@@ -108,7 +110,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: stored assignment, caller-specific list/Q&A and post-restart round trip passed; remaining Wire journeys pending",
+  "wireSmoke": "in progress: caller identity passed on 2ba7a1f; formatted reassignment repair awaiting Wire retest on a51a7af",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -131,18 +133,18 @@
     "displayNameAcceptance": "pending change to Wire Team Bot"
   },
   "stagingActivation": {
-    "startedAt": "2026-09-16T17:04:19.746615702Z",
-    "image": "wire-team-bot:v3-rc-2ba7a1f",
-    "imageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
-    "previousImageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+    "startedAt": "2026-09-16T18:27:31.237187043Z",
+    "image": "wire-team-bot:v3-rc-a51a7af",
+    "imageId": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
+    "previousImageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
     "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-caller-backup-tbxaea25",
+    "backupDirectory": "/tmp/wire-v3-format-backup-xy3x0138",
     "backupReadChecks": "passed",
     "pendingRemindersBeforeSwitch": 0,
-    "memberCacheHydration": "passed",
+    "memberCacheHydratedConversations": 1,
     "sdkErrorDiagnostics": 0,
     "containerRestarts": 0,
-    "transportRoundTrip": "passed: operator screenshot on 2ba7a1f confirms mentioned action list and model-backed responsibility answer after restart"
+    "transportRoundTrip": "pending operator reassignment repeat on this image"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -175,6 +177,20 @@
       "wire": "passed",
       "evidence": "Operator screenshot: Adam Low sends actual bot mentions for my actions and what am I responsible for here; both return ACT-0001 and ACT-0002, correctly identify Adam Low as requester/owner and retain the ACT-0002 September 18 deadline. No incorrect prior-speaker disclaimer.",
       "boundary": "Screenshot verifies visible replies and post-restart transport; no new database inspection or automated rerun in this documentation update."
+    },
+    "formattedReassignment": {
+      "observedRuntime": "2ba7a1f",
+      "wire": "failed: inline-code prefix missed the deterministic parser; model reply misdiagnosed the person mention",
+      "storedBeforeRepair": {
+        "record": "ACT-0002",
+        "owner": "@adamlow_wire",
+        "status": "open",
+        "version": 1
+      },
+      "repairCommit": "a51a7af",
+      "automated": "233 tests, build/type-check/lint passed; targeted real-model journey and post-process DB/audit inspection passed",
+      "report": "formatted-action-report.json",
+      "wireRetest": "pending operator repeat; a51a7af activated in staging"
     }
   },
   "previousImageSmoke": {
@@ -234,6 +250,25 @@
       "memberCacheHydratedConversations": 1,
       "sdkErrorDiagnostics": 0,
       "transportRoundTrip": "passed on 82fe04b: operator screenshot of handle assignment and subsequent reply; caller-specific response failed"
+    },
+    {
+      "startedAt": "2026-09-16T17:04:19.746615702Z",
+      "image": "wire-team-bot:v3-rc-2ba7a1f",
+      "imageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
+      "previousImageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-caller-backup-tbxaea25",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "memberCacheHydration": "passed",
+      "sdkErrorDiagnostics": 0,
+      "containerRestarts": 0,
+      "transportRoundTrip": "passed: operator screenshot on 2ba7a1f confirms mentioned action list and model-backed responsibility answer after restart"
     }
-  ]
+  ],
+  "formattedActionSmoke": {
+    "report": "formatted-action-report.json",
+    "commit": "a51a7af",
+    "result": "passed: post-process DB inspection confirms Bob owner, tomorrow deadline, done status, version 4 and four audit entries"
+  }
 }

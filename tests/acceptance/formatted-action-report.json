@@ -1,0 +1,120 @@
+{
+  "date": "2026-09-16",
+  "runtimeCommit": "a51a7af",
+  "execution": "Working-build CLI with real model and isolated Postgres; stored records inspected after process completion",
+  "scenario": {
+    "runId": "mu4fa534",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ACT-09",
+        "description": "Pasted inline-code action commands reassign, change deadline and complete",
+        "passed": true,
+        "elapsedMs": 14510,
+        "outputs": [
+          "Action **ACT-0220** created for **Alice**: review the formatting smoke checklist",
+          "**ACT-0220** reassigned from **Alice** to **@Bob**.",
+          "**ACT-0220** deadline set to **17 Sept 2026, 18:16**.",
+          "**ACT-0220** marked as `done`.",
+          "\u2022 **[ACT-0220] review the formatting smoke checklist**\n  **Owner:** @Bob | **Status:** done | **Due:** 2026-09-17\n\nThat one is yours and already marked complete."
+        ],
+        "failures": []
+      }
+    ]
+  },
+  "stored": {
+    "actions": [
+      {
+        "id": "ACT-0220",
+        "owner": "bob",
+        "status": "done",
+        "deadline": "2026-09-17T18:16:55.005",
+        "version": 4
+      }
+    ],
+    "audits": [
+      {
+        "action": "entity_created",
+        "entityId": "ACT-0220",
+        "details": {
+          "assigneeId": {
+            "id": "alice",
+            "domain": "cli.local"
+          },
+          "description": "review the formatting smoke checklist"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "entityId": "ACT-0220",
+        "details": {
+          "reassignedTo": "@Bob"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "entityId": "ACT-0220",
+        "details": {
+          "deadline": "2026-09-17T18:16:55.005Z"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "entityId": "ACT-0220",
+        "details": {
+          "newStatus": "done"
+        }
+      }
+    ]
+  },
+  "checks": {
+    "actionCount": 1,
+    "owner": "bob",
+    "status": "done",
+    "deadlineDate": "2026-09-17",
+    "version": 4,
+    "auditEvents": [
+      "entity_created",
+      "entity_updated",
+      "entity_updated",
+      "entity_updated"
+    ]
+  },
+  "wireAcceptance": "pending on the new image",
+  "initialReproduction": {
+    "runId": "mu4f8a4k",
+    "passed": 0,
+    "failed": 1,
+    "scenarios": [
+      {
+        "id": "TC-ACT-09",
+        "description": "Pasted inline-code action commands reassign, change deadline and complete",
+        "passed": false,
+        "elapsedMs": 6675,
+        "outputs": [
+          "Action **ACT-0218** created for **Alice**: review the formatting smoke checklist",
+          "**ACT-0218** reassigned from **Alice** to **@Bob**.",
+          "**ACT-0218** deadline set to **17 Sept 2026, 18:15**.",
+          "**ACT-0218** marked as `done`.",
+          "**Channel status**\n\nState: active \u2014 I am at your service\nActive for: 0 hours\nEntities tracked: 0"
+        ],
+        "failures": [
+          {
+            "step": "`ACT-0218 due tomorrow`",
+            "assertion": "The deadline for ACT-0218 was updated to tomorrow.",
+            "judgeReason": "Response shows specific date (17 Sept 2026), not \"tomorrow\" relative to current date.",
+            "botOutput": "**ACT-0218** deadline set to **17 Sept 2026, 18:15**."
+          },
+          {
+            "step": "Bob: @Wire Team Bot What is the status and owner of ACT-0218",
+            "assertion": "Action ACT-0218 belongs to Bob and is done or completed.",
+            "judgeReason": "Bot response shows channel status, not action details or ownership information.",
+            "botOutput": "**Channel status**\n\nState: active \u2014 I am at your service\nActive for: 0 hours\nEntities tracked: 0"
+          }
+        ]
+      }
+    ]
+  },
+  "initialReproductionNote": "After inline-code repair, the new scenario exposed broad status-command interception and a judge missing current-date context. All scenario assertions retained in the passing rerun."
+}
