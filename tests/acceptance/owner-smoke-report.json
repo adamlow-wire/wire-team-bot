@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-16",
+  "runtimeCommit": "82fe04b",
+  "environment": "Node 22 container, existing configured real models, isolated acceptance Postgres; embeddings off",
+  "channel": "owner-handle-82fe04b-20260916@cli.local",
+  "inputs": [
+    {
+      "eventId": "owner-test-0",
+      "text": "action: review the handle smoke checklist for @Bob by Friday"
+    },
+    {
+      "eventId": "owner-test-1",
+      "text": "@Wire Team Bot what actions does Bob own?"
+    },
+    {
+      "eventId": "owner-test-2",
+      "text": "action: send the handle smoke report for @missing_smoke_user"
+    },
+    {
+      "eventId": "owner-test-3",
+      "text": "@Wire Team Bot my actions"
+    }
+  ],
+  "exchanges": [
+    {
+      "eventId": "owner-test-0",
+      "replies": [
+        "Action **ACT-0162** created for **@Bob**: review the handle smoke checklist (due Friday: 18 Sept 2026, 12:00)"
+      ],
+      "elapsedMs": 42
+    },
+    {
+      "eventId": "owner-test-1",
+      "replies": [
+        "@Bob currently owns one action:\n\n\u2022 **[ACT-0162] review the handle smoke checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 2026-09-18\n\nThat was logged earlier in this conversation. To mark it complete, use `ACT-0162 done`."
+      ],
+      "elapsedMs": 7648
+    },
+    {
+      "eventId": "owner-test-2",
+      "replies": [
+        "I could not find that member. Please use a current member's name or ID."
+      ],
+      "elapsedMs": 13
+    },
+    {
+      "eventId": "owner-test-3",
+      "replies": [
+        "No open actions for you in this conversation."
+      ],
+      "elapsedMs": 2
+    }
+  ],
+  "storedInspection": {
+    "actionCount": 1,
+    "description": "review the handle smoke checklist",
+    "assigneeId": "bob",
+    "creatorId": "alice",
+    "deadline": "2026-09-18T12:00:00.000Z",
+    "unknownTargetCreatedAction": false
+  },
+  "wireHandleHydration": "Mocked contract verified profile handle is available after SDK-store hydration; live Wire handle assignment pending"
+}

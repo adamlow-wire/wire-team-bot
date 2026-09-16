@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-16. Release runtime: `bde0d0a` (baseline `e35428b`).
+Updated: 2026-09-16. Release runtime: `82fe04b` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -290,19 +290,19 @@ Provisional thresholds for this small pilot (not production SLAs):
 
 ### Candidate disposition — 2026-09-16
 
-**Implemented and packaged; not yet pilot ready.** Runtime `bde0d0a` is available locally as
-`wire-team-bot:v3-rc-bde0d0a`. This image is now active on the designated staging backend;
+**Implemented and packaged; not yet pilot ready.** Runtime `82fe04b` is available locally as
+`wire-team-bot:v3-rc-82fe04b`. This image is now active on the designated staging backend;
 user-driven Wire smoke checks are underway. No production deployment was performed.
 Human review and designated Wire acceptance still prevent closing P0–P2.
 [Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
 and check boundaries without credentials.
 
-- Fresh final build, `npx tsc --noEmit` and lint pass. **207 tests pass** in 35 files, including
+- Fresh final build, `npx tsc --noEmit` and lint pass. **213 tests pass** in 36 files, including
   six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
   image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
 - Full real-model e2e: **53/55**, with original assertions retained in
   [e2e-report.json](tests/acceptance/e2e-report.json). The full suite was rerun against immutable
-  image `bde0d0a`, retaining its compiled runtime and production dependencies; only the test
+  image `82fe04b`, retaining its compiled runtime and production dependencies; only the test
   harness/tooling was mounted read-only. This supersedes the earlier working-build run and
   reproduces the same two failures. Final-image capture/recall and restart checks also pass.
 - Final-image stored-record evaluation at `bde0d0a`: **20/20 correct unique captures out of
@@ -328,7 +328,7 @@ and check boundaries without credentials.
   respond and complex synthesis `claude-opus-5`, with the same per-slot fallback models.
   Embeddings **off**, configured dimension 2560. DB vector behaviour was exercised with synthetic
   vectors; enabling real-provider embeddings requires its own smoke check.
-- Final-image CLI checks verify decisions, named actions with deadlines, PAUSED and SECURE
+- Earlier `bde0d0a` image CLI checks verify decisions, named actions with deadlines, PAUSED and SECURE
   across process restarts, resume and list retrieval. Persisted inspection finds one decision,
   one correctly owned/dated action, a closed secure range and no excluded marker. Earlier
   candidate smoke also exercised queued cancellation and model-backed recall. These are
@@ -347,7 +347,7 @@ to the operator and can be used for assignment/attribution checks. This identifi
 location and accounts; it is not a completed candidate smoke test. Human reviewer remains
 to be identified.
 
-Staging activation (2026-09-16 16:11 UTC): the running `jeeves-staging` container now uses
+Initial staging activation (2026-09-16 16:11 UTC): the `jeeves-staging` container used
 `wire-team-bot:v3-rc-bde0d0a` with the tested digest and existing identity/volumes. Only the
 designated conversation was present and no reminders were pending before the switch. Models
 match the accepted synthetic configuration; embeddings are off. Startup hydrated one conversation
@@ -367,6 +367,22 @@ directory as `candidate.override.yml`. The old `jeeves:staging` image was retain
 is needed, use `docker compose -f docker-compose.staging.yml up -d --no-deps --no-build jeeves`;
 retain the current database and crypto volume. Do not reset or restore identity storage for an
 ordinary image rollback.
+
+Assignment fix and staging update (2026-09-16 16:42 UTC): `82fe04b` preserves explicit
+`@handles` and punctuated display names, and caches Wire profile handles during restart/join/
+refresh. Four contract cases reproduced the prior failure; six new tests now pass. Fresh build,
+type-check, lint and 213 tests pass. Full unchanged real-model suite on the immutable new image
+remains 53/55 with the same two documented discrepancies. The isolated
+[owner smoke report](tests/acceptance/owner-smoke-report.json) verifies the stored Bob owner and
+Friday deadline, model recall, and no write for an unknown handle. Pipeline/model prompts did not
+change; the 20-event quality sample above remains explicitly measured at `bde0d0a`.
+
+Staging now runs `wire-team-bot:v3-rc-82fe04b`, with the same database and crypto volume. Fresh
+snapshots and its override are in `/tmp/wire-v3-owner-backup-QFDF2p/`; backup readability passed.
+Startup hydrated one conversation and logged no SDK errors. The operator's live handle-assignment
+and post-restart round trip remain pending. To roll back this update to the previous candidate:
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-staging-backup-kcqACp/candidate.override.yml up -d --no-deps --no-build jeeves`.
+Keep current volumes; no database or crypto reset is required.
 
 Remaining entry checks, in order:
 
@@ -410,6 +426,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Initial Wire round trip | Operator screenshot confirms actual bot mention + `status` produced an ACTIVE channel-status reply on the pinned candidate. Container has zero restarts; no additional SDK errors beyond startup. Screenshot shows registered name AI Team Bot (adamlow, staging). No surrounding channel text copied into evidence. | Test decision capture/recall next; rename registered app and finish remaining Wire journeys |
 | 2026-09-16 | Wire decision capture/recall | Operator screenshot confirms DEC-0002 and correct Postgres/transactions answer with author attribution. Scoped DB inspection confirms active record, empty context and one audit entry. | Continue assignment and reminder smoke checks |
 | 2026-09-16 | Real-member assignment parser gap | Before testing the supplied handle, four mocked contract cases reproduced dropped @handle/parenthesised-name assignees and missing handle hydration. Explicit target parsing now preserves these references and member profiles retain handles across restart/join/refresh; qualified resolution rejects unknown or ambiguous targets. | Validate, rebuild image and resume Wire assignment check |
+| 2026-09-16 | Assignment fix validated and staged | `82fe04b`: 213 tests, build/type-check/lint pass; real-model owner smoke verifies persisted Bob attribution and unknown-owner refusal. Immutable-image full regression 53/55, same two retained failures. Staging updated with fresh backups and existing volumes; startup has zero SDK errors. | Operator handle assignment and post-restart Wire check |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

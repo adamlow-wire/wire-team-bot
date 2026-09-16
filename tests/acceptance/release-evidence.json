@@ -1,6 +1,6 @@
 {
   "date": "2026-09-16",
-  "runtimeCommit": "bde0d0a",
+  "runtimeCommit": "82fe04b",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,25 +49,116 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 207,
+      "passed": 213,
       "integrationTests": 6,
-      "testFiles": 35,
-      "validationCommit": "af7f294"
+      "testFiles": 36,
+      "validationCommit": "82fe04b"
     },
     "realModelE2E": {
       "passed": 53,
       "failed": 2,
       "report": "e2e-report.json",
-      "commit": "bde0d0a",
+      "commit": "82fe04b",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
         "TC-ACT-07: correct end-of-month response rejected by model judge"
       ],
       "execution": "Immutable release image with read-only test harness and external ts-node tooling",
-      "harnessCommit": "af7f294"
+      "harnessCommit": "82fe04b"
     }
   },
   "image": {
+    "tag": "wire-team-bot:v3-rc-82fe04b",
+    "id": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+    "commit": "82fe04b",
+    "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
+    "cliSmoke": [
+      "full unchanged real-model e2e suite"
+    ],
+    "stagingStartup": "passed; member cache hydrated; no SDK errors observed during startup"
+  },
+  "quality": {
+    "report": "candidate-report.json",
+    "correct": 20,
+    "captured": 20,
+    "expected": 20,
+    "duplicates": 0,
+    "privacyMarkers": {
+      "storedOccurrences": 0,
+      "diagnosticOccurrences": 0
+    },
+    "humanReview": "pending",
+    "measuredCommit": "bde0d0a",
+    "execution": "bde0d0a release image CLI with synthetic evaluation harness mounted; isolated DB",
+    "decisions": {
+      "correct": 10,
+      "captured": 10,
+      "expected": 10
+    },
+    "actions": {
+      "correct": 10,
+      "captured": 10,
+      "expected": 10
+    },
+    "medianReplyEventMs": 6049,
+    "slowestReplyEventMs": 8636,
+    "medianKnownQuestionMs": 7985.0,
+    "unsolicitedMessages": 0,
+    "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
+    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
+    "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
+  },
+  "wireSmoke": "in progress: bde0d0a status and decision checks passed; 82fe04b active for explicit-handle assignment and restart checks",
+  "productionDeployment": "not performed",
+  "simulation": {
+    "commit": "3e1544f",
+    "sourceEvents": 57,
+    "decisions": 6,
+    "actions": 7,
+    "reminders": 1,
+    "humanReview": "pending; golden.json contains instructions only",
+    "precision": null,
+    "recall": null
+  },
+  "wireTestLocation": {
+    "name": "Wire Team Bot Testing",
+    "qualifiedId": "3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io",
+    "operator": "@adamhuman",
+    "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
+    "secondParticipant": "@adamlow_wire",
+    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check",
+    "displayedBotName": "AI Team Bot (adamlow, staging)",
+    "displayNameAcceptance": "pending change to Wire Team Bot"
+  },
+  "stagingActivation": {
+    "startedAt": "2026-09-16T16:42:04.492764984Z",
+    "image": "wire-team-bot:v3-rc-82fe04b",
+    "imageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+    "previousImageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
+    "existingDatabaseAndCryptoPreserved": true,
+    "backupDirectory": "/tmp/wire-v3-owner-backup-QFDF2p",
+    "backupReadChecks": "passed",
+    "pendingRemindersBeforeSwitch": 0,
+    "memberCacheHydratedConversations": 1,
+    "sdkErrorDiagnostics": 0,
+    "transportRoundTrip": "pending operator action test after this restart"
+  },
+  "wireChecks": {
+    "mentionStatusRoundTrip": {
+      "result": "passed",
+      "evidence": "Operator screenshot in conversation; no surrounding channel text persisted",
+      "observedState": "active",
+      "containerRestarts": 0,
+      "sdkErrorCountAfterRoundTrip": 1
+    },
+    "decisionCaptureAndRecall": {
+      "result": "passed",
+      "runtimeCommit": "bde0d0a",
+      "record": "DEC-0002",
+      "evidence": "Operator screenshot: correct Postgres decision, rationale and Adam (Human) attribution; scoped DB inspection confirms empty context and one audit entry"
+    }
+  },
+  "previousImageSmoke": {
     "tag": "wire-team-bot:v3-rc-bde0d0a",
     "id": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
     "sdkNativeLoad": "passed",
@@ -91,60 +182,12 @@
       "closedSecureRanges": 1
     }
   },
-  "quality": {
-    "report": "candidate-report.json",
-    "correct": 20,
-    "captured": 20,
-    "expected": 20,
-    "duplicates": 0,
-    "privacyMarkers": {
-      "storedOccurrences": 0,
-      "diagnosticOccurrences": 0
-    },
-    "humanReview": "pending",
-    "measuredCommit": "bde0d0a",
-    "execution": "Final release image CLI with synthetic evaluation harness mounted; isolated DB",
-    "decisions": {
-      "correct": 10,
-      "captured": 10,
-      "expected": 10
-    },
-    "actions": {
-      "correct": 10,
-      "captured": 10,
-      "expected": 10
-    },
-    "medianReplyEventMs": 6049,
-    "slowestReplyEventMs": 8636,
-    "medianKnownQuestionMs": 7985.0,
-    "unsolicitedMessages": 0,
-    "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
-    "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
-    "scoringRecheck": "Order-independent duplicate/source matching regression fixed after image build; re-scoring baseline and candidate inventories leaves published counts unchanged. Runtime image unchanged."
+  "explicitOwnerSmoke": {
+    "report": "owner-smoke-report.json",
+    "commit": "82fe04b",
+    "result": "passed: correct stored owner/deadline, real-model owner recall, unknown target creates no action"
   },
-  "wireSmoke": "in progress: status and decision capture/recall passed; explicit-handle assignment fix under validation",
-  "productionDeployment": "not performed",
-  "simulation": {
-    "commit": "3e1544f",
-    "sourceEvents": 57,
-    "decisions": 6,
-    "actions": 7,
-    "reminders": 1,
-    "humanReview": "pending; golden.json contains instructions only",
-    "precision": null,
-    "recall": null
-  },
-  "wireTestLocation": {
-    "name": "Wire Team Bot Testing",
-    "qualifiedId": "3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io",
-    "operator": "@adamhuman",
-    "resolution": "User-provided name, uniquely matched by read-only lookup in staging SDK conversation metadata",
-    "secondParticipant": "@adamlow_wire",
-    "membershipEvidence": "User reports both handles are in the designated conversation; handle-to-qualified-user mapping awaits the Wire smoke check",
-    "displayedBotName": "AI Team Bot (adamlow, staging)",
-    "displayNameAcceptance": "pending change to Wire Team Bot"
-  },
-  "stagingActivation": {
+  "previousStagingActivation": {
     "startedAt": "2026-09-16T16:11:50.582516172Z",
     "image": "wire-team-bot:v3-rc-bde0d0a",
     "imageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
@@ -158,20 +201,5 @@
     "applicationStartup": "Wire client connected, listening for events",
     "sdkErrorDiagnostics": 1,
     "transportRoundTrip": "passed: user screenshot of actual mention status request and ACTIVE reply"
-  },
-  "wireChecks": {
-    "mentionStatusRoundTrip": {
-      "result": "passed",
-      "evidence": "Operator screenshot in conversation; no surrounding channel text persisted",
-      "observedState": "active",
-      "containerRestarts": 0,
-      "sdkErrorCountAfterRoundTrip": 1
-    },
-    "decisionCaptureAndRecall": {
-      "result": "passed",
-      "runtimeCommit": "bde0d0a",
-      "record": "DEC-0002",
-      "evidence": "Operator screenshot: correct Postgres decision, rationale and Adam (Human) attribution; scoped DB inspection confirms empty context and one audit entry"
-    }
   }
 }

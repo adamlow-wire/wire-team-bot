@@ -1,5 +1,5 @@
 {
-  "runId": "mu47jyed",
+  "runId": "mu4bkpbh",
   "passed": 53,
   "failed": 2,
   "scenarios": [
@@ -7,97 +7,97 @@
       "id": "TC-DEC-01",
       "description": "Log a decision \u2014 gets a DEC reference back",
       "passed": true,
-      "elapsedMs": 1536,
+      "elapsedMs": 1643,
       "failures": []
     },
     {
       "id": "TC-DEC-02",
       "description": "Log then retrieve by topic",
       "passed": true,
-      "elapsedMs": 9813,
+      "elapsedMs": 9831,
       "failures": []
     },
     {
       "id": "TC-DEC-03",
       "description": "List decisions \u2014 includes the previously logged decision",
       "passed": true,
-      "elapsedMs": 2495,
+      "elapsedMs": 1924,
       "failures": []
     },
     {
       "id": "TC-DEC-04",
       "description": "Supersede a decision \u2014 old marked, new logged",
       "passed": true,
-      "elapsedMs": 2538,
+      "elapsedMs": 2016,
       "failures": []
     },
     {
       "id": "TC-DEC-05",
       "description": "Revoke a decision \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 2217,
+      "elapsedMs": 1920,
       "failures": []
     },
     {
       "id": "TC-DEC-06",
       "description": "Decision with named participants \u2014 response references who decided",
       "passed": true,
-      "elapsedMs": 1373,
+      "elapsedMs": 1340,
       "failures": []
     },
     {
       "id": "TC-DEC-07",
       "description": "Retrieved decision \u2014 who decided is included in the response",
       "passed": true,
-      "elapsedMs": 10915,
+      "elapsedMs": 11866,
       "failures": []
     },
     {
       "id": "TC-PIPE-01",
       "description": "Pipeline extracts decision from natural conversation",
       "passed": true,
-      "elapsedMs": 23597,
+      "elapsedMs": 21791,
       "failures": []
     },
     {
       "id": "TC-PIPE-02",
       "description": "Pipeline extracts action from natural statement",
       "passed": true,
-      "elapsedMs": 17472,
+      "elapsedMs": 18292,
       "failures": []
     },
     {
       "id": "TC-PIPE-03",
       "description": "Verbal commitment \u2014 action attributed to the person who committed",
       "passed": true,
-      "elapsedMs": 22769,
+      "elapsedMs": 22841,
       "failures": []
     },
     {
       "id": "TC-PIPE-04",
       "description": "Decision synthesised from a multi-turn debate",
       "passed": true,
-      "elapsedMs": 19310,
+      "elapsedMs": 19316,
       "failures": []
     },
     {
       "id": "TC-PIPE-05",
       "description": "Pronoun resolution \u2014 'she'll handle it' attributed via sliding window",
       "passed": true,
-      "elapsedMs": 25636,
+      "elapsedMs": 23857,
       "failures": []
     },
     {
       "id": "TC-PIPE-06",
       "description": "Action dedup \u2014 same commitment stated twice produces one action",
       "passed": false,
-      "elapsedMs": 24518,
+      "elapsedMs": 24570,
       "failures": [
         {
           "step": "@jeeves what are Alice's open actions?",
           "assertion": "Jeeves lists Alice's open actions and mentions the API documentation update \u2014 it does not list the same task twice or mention two separate API documentation actions",
-          "judgeReason": "Bot response shows no actions exist; assertion requires listing Alice's open actions including API documentation.",
-          "botOutput": "I'm afraid there are no actions recorded in this channel yet, so nothing is open for @Alice.\n\nTo log one: `action: <description> for Alice`"
+          "judgeReason": "Response shows no open actions exist; assertion requires mentioning API documentation update.",
+          "botOutput": "No actions have been recorded in this channel yet, so @Alice has none open.\n\nTo log one, use: `action: <description> for Alice`"
         }
       ]
     },
@@ -105,62 +105,62 @@
       "id": "TC-PIPE-07",
       "description": "NDA lifecycle \u2014 verbal commitment \u2192 confirmation \u2192 completion announcement does not duplicate",
       "passed": true,
-      "elapsedMs": 23688,
+      "elapsedMs": 29815,
       "failures": []
     },
     {
       "id": "TC-ACT-01",
       "description": "Log an action \u2014 gets an ACT reference back",
       "passed": true,
-      "elapsedMs": 1692,
+      "elapsedMs": 1275,
       "failures": []
     },
     {
       "id": "TC-ACT-02",
       "description": "Assign action to a named member",
       "passed": true,
-      "elapsedMs": 1592,
+      "elapsedMs": 1218,
       "failures": []
     },
     {
       "id": "TC-ACT-03",
       "description": "List my actions \u2014 includes the previously logged action",
       "passed": true,
-      "elapsedMs": 2287,
+      "elapsedMs": 1734,
       "failures": []
     },
     {
       "id": "TC-ACT-04",
       "description": "List team actions \u2014 includes the previously logged action",
       "passed": true,
-      "elapsedMs": 2241,
+      "elapsedMs": 1727,
       "failures": []
     },
     {
       "id": "TC-ACT-05",
       "description": "Mark action done \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 2042,
+      "elapsedMs": 2112,
       "failures": []
     },
     {
       "id": "TC-ACT-06",
       "description": "Reassign action to another member",
       "passed": true,
-      "elapsedMs": 1941,
+      "elapsedMs": 1735,
       "failures": []
     },
     {
       "id": "TC-ACT-07",
       "description": "Action with owner and due date \u2014 both present in response",
       "passed": false,
-      "elapsedMs": 1697,
+      "elapsedMs": 2474,
       "failures": [
         {
           "step": "action: Carol to write the API documentation by end of month",
           "assertion": "Jeeves confirms the action was recorded with an ACT- reference, identifies Carol as the assignee, and mentions end of month or March as the deadline",
-          "judgeReason": "Response mentions \"end of month: 30 Sept 2026\" but assertion requires \"end of month or March\" as deadline.",
-          "botOutput": "Action **ACT-0153** created for **Carol**: write the API documentation (due end of month: 30 Sept 2026, 23:59)"
+          "judgeReason": "Deadline is September 30, not end of month or March as required.",
+          "botOutput": "Action **ACT-0174** created for **Carol**: write the API documentation (due end of month: 30 Sept 2026, 23:59)"
         }
       ]
     },
@@ -168,245 +168,245 @@
       "id": "TC-ACT-08",
       "description": "Action with specific date \u2014 deadline is correct in response",
       "passed": true,
-      "elapsedMs": 1750,
+      "elapsedMs": 1503,
       "failures": []
     },
     {
       "id": "TC-ID-01",
       "description": "My actions returns caller's actions only \u2014 not other members'",
       "passed": true,
-      "elapsedMs": 2767,
+      "elapsedMs": 2353,
       "failures": []
     },
     {
       "id": "TC-ID-02",
       "description": "Actions for a named member returns that member's actions only",
       "passed": true,
-      "elapsedMs": 8525,
+      "elapsedMs": 10941,
       "failures": []
     },
     {
       "id": "TC-ID-03",
       "description": "Decision is attributed to the member who logged it",
       "passed": true,
-      "elapsedMs": 11264,
+      "elapsedMs": 10962,
       "failures": []
     },
     {
       "id": "TC-ID-04",
       "description": "My reminders returns only the caller's reminders \u2014 not others'",
       "passed": true,
-      "elapsedMs": 3233,
+      "elapsedMs": 3574,
       "failures": []
     },
     {
       "id": "TC-ID-05",
       "description": "Team actions lists all members' actions \u2014 not just the caller's",
       "passed": true,
-      "elapsedMs": 2682,
+      "elapsedMs": 2539,
       "failures": []
     },
     {
       "id": "TC-REM-01",
       "description": "Create a reminder \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 1409,
+      "elapsedMs": 1461,
       "failures": []
     },
     {
       "id": "TC-REM-02",
       "description": "List reminders \u2014 includes the previously created reminder",
       "passed": true,
-      "elapsedMs": 2352,
+      "elapsedMs": 2049,
       "failures": []
     },
     {
       "id": "TC-REM-03",
       "description": "Cancel a reminder \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 2134,
+      "elapsedMs": 1949,
       "failures": []
     },
     {
       "id": "TC-REM-04",
       "description": "Reminder with specific date \u2014 date is accurate in confirmation",
       "passed": true,
-      "elapsedMs": 1355,
+      "elapsedMs": 1461,
       "failures": []
     },
     {
       "id": "TC-REM-05",
       "description": "Reminder with day and time \u2014 both preserved in confirmation",
       "passed": true,
-      "elapsedMs": 2529,
+      "elapsedMs": 1253,
       "failures": []
     },
     {
       "id": "TC-QA-01",
       "description": "Answer a question from recent conversation context",
       "passed": true,
-      "elapsedMs": 20665,
+      "elapsedMs": 19121,
       "failures": []
     },
     {
       "id": "TC-QA-02",
       "description": "Answer from a logged decision",
       "passed": true,
-      "elapsedMs": 9280,
+      "elapsedMs": 9331,
       "failures": []
     },
     {
       "id": "TC-QA-03",
       "description": "General knowledge question \u2014 answered, not 'no record'",
       "passed": true,
-      "elapsedMs": 14521,
+      "elapsedMs": 14880,
       "failures": []
     },
     {
       "id": "TC-QA-04",
       "description": "Meta question \u2014 describes capabilities",
       "passed": true,
-      "elapsedMs": 12582,
+      "elapsedMs": 11179,
       "failures": []
     },
     {
       "id": "TC-QA-05",
       "description": "Follow-up 'yes' is coherent \u2014 not a no-record fallback",
       "passed": true,
-      "elapsedMs": 20069,
+      "elapsedMs": 21331,
       "failures": []
     },
     {
       "id": "TC-STATE-01",
       "description": "Pause \u2014 bot acknowledges and steps out",
       "passed": true,
-      "elapsedMs": 1242,
+      "elapsedMs": 1263,
       "failures": []
     },
     {
       "id": "TC-STATE-02",
       "description": "Pause then resume \u2014 bot confirms it is active again",
       "passed": true,
-      "elapsedMs": 1928,
+      "elapsedMs": 1829,
       "failures": []
     },
     {
       "id": "TC-STATE-03",
       "description": "Secure mode \u2014 bot confirms context cleared",
       "passed": true,
-      "elapsedMs": 1133,
+      "elapsedMs": 1854,
       "failures": []
     },
     {
       "id": "TC-PERSONA-01",
       "description": "No exclamation marks in any response",
       "passed": true,
-      "elapsedMs": 10311,
+      "elapsedMs": 13001,
       "failures": []
     },
     {
       "id": "TC-PERSONA-02",
       "description": "No hollow opener \u2014 no 'Certainly', 'Of course', 'Great question'",
       "passed": true,
-      "elapsedMs": 14008,
+      "elapsedMs": 12969,
       "failures": []
     },
     {
       "id": "TC-PERSONA-03",
       "description": "Error case uses 'I'm afraid' phrasing, not 'Sorry'",
       "passed": true,
-      "elapsedMs": 14254,
+      "elapsedMs": 10102,
       "failures": []
     },
     {
       "id": "TC-NEG-DEC-01",
       "description": "Hypothetical discussion is not recorded as a decision",
       "passed": true,
-      "elapsedMs": 11513,
+      "elapsedMs": 13821,
       "failures": []
     },
     {
       "id": "TC-NEG-DEC-02",
       "description": "Open question is not logged as a decision",
       "passed": true,
-      "elapsedMs": 11484,
+      "elapsedMs": 11251,
       "failures": []
     },
     {
       "id": "TC-NEG-DEC-03",
       "description": "Status update is not logged as a decision",
       "passed": true,
-      "elapsedMs": 7191,
+      "elapsedMs": 6059,
       "failures": []
     },
     {
       "id": "TC-NEG-DEC-04",
       "description": "Announcement of a fact is not logged as a decision",
       "passed": true,
-      "elapsedMs": 4600,
+      "elapsedMs": 3300,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-01",
       "description": "Completed past activity does not become an open action",
       "passed": true,
-      "elapsedMs": 16090,
+      "elapsedMs": 13964,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-02",
       "description": "Vague ownerless suggestion is not logged as an action",
       "passed": true,
-      "elapsedMs": 3126,
+      "elapsedMs": 2795,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-03",
       "description": "Social greeting chat does not produce actions",
       "passed": true,
-      "elapsedMs": 4979,
+      "elapsedMs": 4246,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-04",
       "description": "General status update about ongoing work is not an action",
       "passed": true,
-      "elapsedMs": 8431,
+      "elapsedMs": 7768,
       "failures": []
     },
     {
       "id": "TC-NEG-CHAT-01",
       "description": "General chat thread produces no false decisions or actions",
       "passed": true,
-      "elapsedMs": 7486,
+      "elapsedMs": 5470,
       "failures": []
     },
     {
       "id": "TC-NEG-CHAT-02",
       "description": "Meeting small-talk produces no false actions",
       "passed": true,
-      "elapsedMs": 6861,
+      "elapsedMs": 5850,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-05",
       "description": "First-person completion announcement is not logged as an open action",
       "passed": true,
-      "elapsedMs": 15505,
+      "elapsedMs": 16149,
       "failures": []
     },
     {
       "id": "TC-NEG-ACT-06",
       "description": "Team past-tense completion is not logged as an open action",
       "passed": true,
-      "elapsedMs": 7241,
+      "elapsedMs": 9838,
       "failures": []
     }
   ],
-  "runtimeCommit": "bde0d0a",
+  "runtimeCommit": "82fe04b",
   "runDate": "2026-09-16",
-  "image": "wire-team-bot:v3-rc-bde0d0a",
-  "imageId": "sha256:73abf6e492307a8bb4af0382779586fb67f2d86b5598b3eb69bb687f9f242265",
-  "harnessCommit": "af7f294",
-  "execution": "Immutable image /app/dist and /app/node_modules; read-only test harness and external ts-node tooling; isolated DB"
+  "image": "wire-team-bot:v3-rc-82fe04b",
+  "imageId": "sha256:9f7986c4930905b21feb0185dae4df4012d6dcde773949fe8a21a1a8f905b51a",
+  "harnessCommit": "82fe04b",
+  "execution": "Immutable image runtime and production dependencies; read-only test harness/tooling; isolated DB"
 }
