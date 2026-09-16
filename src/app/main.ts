@@ -21,18 +21,21 @@ async function main(): Promise<void> {
 
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  process.on("unhandledRejection", (reason, promise) => {
-    getLogger().error("Unhandled rejection", { reason, promise: String(promise) });
+  process.on("unhandledRejection", () => {
+    getLogger().error("Unhandled rejection");
   });
 
   try {
     sdk = await container.getWireClient();
     logger.info("Wire client connected, listening for events");
     await sdk.startListening();
-  } catch (error) {
-    getLogger().error("Failed to start", { err: String(error) });
+  } catch {
+    getLogger().error("Failed to start; verify configuration and service availability");
     process.exit(1);
   }
 }
 
-void main();
+void main().catch(() => {
+  getLogger().error("Startup failed; verify configuration and service availability");
+  process.exit(1);
+});

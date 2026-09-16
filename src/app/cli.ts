@@ -323,7 +323,7 @@ function generalAnswerAdapter(llmFactory: LLMClientFactory, logger: ReturnType<t
   return new OpenAIGeneralAnswerAdapter(llmFactory, logger);
 }
 
-main().catch(err => {
-  process.stderr.write(`CLI error: ${err}\n`);
+main().catch(() => {
+  process.stderr.write("CLI failed; verify configuration and service availability\n");
   process.exit(1);
 });
