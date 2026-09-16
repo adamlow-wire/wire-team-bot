@@ -1,401 +1,310 @@
-## Wire Team Bot – Architecture & Delivery Plan
-
-Version: 0.2  
-Date: 2026-03-14  
-Scope: TypeScript/Node.js bot built on `wire-apps-js-sdk` implementing the features and phases defined in `wire-bot-requirements.md`.
-
----
-
-## 0. Assumptions & Constraints
-
-- **Runtime**: Node.js LTS (≥ 20), TypeScript.
-- **Wire SDK**: `wire-apps-js-sdk` (JavaScript/TypeScript SDK) as the integration surface; the JVM-specific names in `wire-bot-requirements.md` are treated as *conceptual* and mapped to equivalent JS SDK capabilities.
-- **Persistence**: PostgreSQL as primary store (full-text search via `tsvector/tsquery`), with room for `pgvector` later.
-- **Process model**: Single long-running bot process per deployment, horizontally scalable (stateless except for caches that can be rebuilt from DB + Wire).
-- **Infrastructure (high level)**:
-  - App packaged as a Docker image and run via Docker Compose alongside a Postgres container (and, optionally, a Redis container).
-  - All necessary services (bot + Postgres [+ optional Redis]) are defined in a self-contained `docker-compose.yml` in this repository.
-  - Optional: Redis for rolling message buffers and background jobs (can start in-memory for early phases).
-- **Non-functional**: Targets in section 10 of `wire-bot-requirements.md` apply; architecture must support:
-  - < 2–5s response latency per trigger.
-  - 10k msgs/day/conversation.
-  - Clear audit trail of all bot actions.
-- **AI / NLP**: We use AI (LLM) for natural language processing: implicit intent detection (Phase 3), optional NL parsing of command payloads and dates, and semantic search (Phase 3–4). Explicit trigger *recognition* (keywords) stays rule-based. See §5.5.
-
----
-
-## 1. Architectural Style & Dependency Rules
-
-We use a **hexagonal / ports-and-adapters** architecture:
-
-- **Domain layer**: Pure business logic, entity models, domain services, and repository interfaces. No SDK, DB, or framework imports.
-- **Application layer**: Use cases and orchestrations. Coordinates domain objects, repositories, and external services via ports. Aware of domain and ports, but not concrete adapters.
-- **Interface adapters layer**:
-  - **Wire adapter**: Translates Wire SDK events to application commands and maps application responses to `wire-apps-js-sdk` calls.
-  - **Persistence adapters**: Implement repository interfaces using PostgreSQL.
-  - **LLM/analysis adapters**: Implement ports for implicit detection, semantic ranking, etc. (Phase 3+).
-- **Bootstrap / composition root**: Wires everything together and starts the Wire SDK event loop.
-
-### 1.1 Dependency direction
-
-- `domain` depends on **nothing** from other layers.
-- `application` depends only on `domain` and **ports** (TypeScript interfaces) defined in `domain` or `application`.
-- `infrastructure` (adapters) depends on `application` and `domain` but **not** vice versa.
-- `entrypoint` / `app` depends on all layers to compose the graph but contains no business logic.
-
-Enforced via:
-
-- Directory layout (see section 2).
-- Lint rule(s) (e.g. ESLint import restrictions) to prevent inverted dependencies.
-
----
-
-## 2. Repository Structure
-
-Top-level:
-
-- `src/`
-- `tests/`
-- `prisma/` or `db/` (schema + migrations; exact tool decided before Phase 1 coding)
-- `config/` (non-secret config templates, e.g. YAML/JSON for defaults)
-- `docker/` (Dockerfiles, compose overrides if needed)
-
-### 2.1 `src` layout
-
-- `src/app/` – **Application bootstrap & process**
-  - `main.ts` – process entrypoint, loads config, initialises logging, connects to Postgres, sets up adapters, and starts the Wire client.
-  - `container.ts` – simple composition root / DI wiring.
-  - `config.ts` – strongly-typed runtime configuration (env, files) with validation.
-  - `logging.ts` – logging setup (e.g. pino/winston) with structured fields (conversation/user IDs, entity IDs).
-  - `metrics.ts` – hooks for basic metrics (latency, counts) if/when needed.
-
-- `src/domain/` – **Pure domain model**
-  - `ids/` – value objects for `QualifiedId`, conversation/user IDs, entity IDs, etc.
-  - `entities/`
-    - `Task.ts`
-    - `Reminder.ts`
-    - `Decision.ts`
-    - `Action.ts`
-    - `KnowledgeEntry.ts`
-  - `services/`
-    - `DateTimeService.ts` (ports for date parsing/timezone handling).
-    - `UserResolutionService.ts` (contract for resolving users from mentions/text).
-    - `ImplicitDetectionService.ts` (contract for implicit trigger detection – phase 3).
-    - `SearchService.ts` (contract for unified search & ranking).
-  - `repositories/` (ports only – interfaces, no implementation)
-    - `TaskRepository.ts`
-    - `ReminderRepository.ts`
-    - `DecisionRepository.ts`
-    - `ActionRepository.ts`
-    - `KnowledgeRepository.ts`
-    - `ConversationConfigRepository.ts`
-    - `AuditLogRepository.ts`
-  - `events/` – domain events (e.g. `TaskCreated`, `DecisionLogged`) for internal signalling.
-  - `errors/` – domain-level error types.
-
-- `src/application/` – **Use cases & orchestration**
-  - `types/` – DTOs for requests/responses across layers (Wire-agnostic).
-  - `usecases/` – one file (or cohesive group) per use case:
-    - Tasks: `CreateTaskFromExplicit.ts`, `UpdateTaskStatus.ts`, `ListMyTasks.ts`, etc.
-    - Reminders: `CreateReminder.ts`, `FireReminder.ts`, etc.
-    - Decisions: `LogDecision.ts`, `SearchDecisions.ts`, etc.
-    - Actions: `CreateAction.ts`, `UpdateActionStatus.ts`, etc.
-    - Knowledge: `StoreKnowledge.ts`, `RetrieveKnowledge.ts`, etc.
-    - Cross-feature: `UnifiedSearch.ts`, `UnifiedPersonalView.ts`, `ConversationSummary.ts`.
-  - `services/` – application services that coordinate multiple repositories or domains (e.g. unified views, digests).
-  - `ports/`
-    - `ClockPort.ts` – for time (helps testing scheduling logic).
-    - `WireOutboundPort.ts` – abstract operations like “sendTextReply”, “sendCompositePrompt”, “reactToMessage”, not raw SDK calls.
-    - `SchedulerPort.ts` – schedule future work (reminders, digests) – can be backed by cron/queue.
-
-- `src/infrastructure/` – **Adapters**
-  - `wire/`
-    - `WireClient.ts` – wrapper around `wire-apps-js-sdk` client creation and connection.
-    - `WireEventRouter.ts` – maps SDK events to application-level commands.
-    - `WireOutboundAdapter.ts` – implements `WireOutboundPort` using `wire-apps-js-sdk`.
-    - `Mapping/` – mapping helpers between SDK DTOs and application DTOs.
-  - `persistence/`
-    - `postgres/`
-      - `PrismaTaskRepository.ts` / `KyselyTaskRepository.ts` (once tool is chosen).
-      - Other repository implementations.
-      - `mappers/` – map DB rows to domain entities and back.
-  - `llm/` (Phase 3+)
-    - `OpenAIImplicitDetectionAdapter.ts` or equivalent – implements `ImplicitDetectionService` port.
-  - `time/`
-    - `SystemClockAdapter.ts` – real clock implementation of `ClockPort`.
-  - `scheduler/`
-    - Adapter(s) for running scheduled jobs (cron, bullmq, simple in-process scheduler).
-  - `config/`
-    - Adapter that loads validated config into `config.ts`.
-
----
-
-## 3. Wire SDK Integration Design
-
-### 3.1 Event flow (high level)
-
-1. `WireClient` (infrastructure) subscribes to JS SDK events (message received, app added to conversation, button clicked, etc.).
-2. `WireEventRouter` converts raw SDK events into **application commands**:
-   - e.g. `TextMessageCommand`, `ButtonClickCommand`, `ConversationLifecycleCommand`.
-3. A thin application-level dispatcher routes each command to the correct use case:
-   - For `onTextMessageReceived`, parse explicit command keywords first (cheap, deterministic), then (Phase 3+) call `ImplicitDetectionService` for implicit candidates.
-4. Use case interacts with domain entities/repositories and returns a **response model** describing:
-   - Entities created/updated.
-   - Outgoing messages to send (text, composite, reactions, files).
-   - Audit log entries to record.
-5. `WireOutboundAdapter` converts the response model to JS SDK calls.
-
-### 3.2 Outgoing operations
-
-Define a `WireOutboundPort` with operations such as:
-
-- `sendPlainText(conversationId, text, options)` – optional reply-to.
-- `sendCompositePrompt(conversationId, text, buttons, options)`.
-- `sendReaction(conversationId, messageId, emoji)`.
-- `sendFile(conversationId, fileStream, name, mimeType, retention)`.
-
-Application/use cases **never** call the JS SDK directly; they only populate response DTOs or call `WireOutboundPort`.
-
----
-
-## 4. Data & Storage Architecture (TypeScript View)
-
-We keep the conceptual models from `wire-bot-requirements.md` and express them as:
-
-- **Domain entities** (rich models with behaviour where appropriate, not just data bags).
-- **Persistence models** tailored to Postgres schema.
-
-Key decisions:
-
-- **ID strategy**: Global sequences with prefixes (`TASK-0001`, `DEC-0001`, …) generated via a dedicated DB sequence per entity type (or a single sequence with type prefix). Port: `IdGeneratorPort` in domain, DB-backed implementation in infrastructure.
-- **Full-text search**: Encapsulate FTS operations behind `SearchService` port so that:
-  - Phase 1: implement via `tsvector/tsquery`.
-  - Phase 4: extend with `pgvector` without leaking infra concerns into domain/application.
-- **Soft deletes & versioning**:
-  - Repositories expose methods like `archive`, `getVersionHistory`, etc., but domain treats `deleted=true` and `version` as part of entity state.
-
-Schema/migration tooling (to be finalised before coding):
-
-- **Option A**: Prisma ORM (`schema.prisma`, generated types, migrations).
-- **Option B**: Kysely + migration tool (e.g. dbmate).
-
-Either way, database-specific code remains in `src/infrastructure/persistence/postgres`.
-
----
-
-## 5. Cross-Cutting Concerns
-
-### 5.1 Configuration
-
-- Centralised `Config` object built in `src/app/config.ts`, sourced from:
-  - Environment variables for secrets and environment-specific values.
-  - Optional static YAML/JSON for defaults (mirroring section 9 config schema).
-- Conversation-level configuration persisted via `ConversationConfigRepository`.
-
-### 5.2 Logging & Audit
-
-- Structured logging at the infrastructure/app layers, correlated by:
-  - Conversation ID (QualifiedId), User ID, Entity IDs (TASK-*, DEC-*).
-- Dedicated `AuditLogRepository` and domain events for:
-  - Entity CRUD, configuration changes, exports, and implicit detection prompts/responses.
-
-### 5.3 Scheduling & Background Work
-
-- `SchedulerPort` to encapsulate:
-  - Reminders firing.
-  - Overdue nudges.
-  - Weekly digests.
-  - Knowledge staleness checks.
-- Initial implementation can be an in-process scheduler (cron-like in Node).
-- Design leaves room to move to an external queue/worker model if needed.
-
-### 5.4 Message Buffers & Implicit Detection
-
-- Rolling message buffer per conversation:
-  - Exposed as a domain/application-level service (e.g. `ConversationContextService`), backed by:
-    - In-memory map (Phase 1–2) with configurable size (`message_buffer_size`) and safe caps.
-    - Optional Redis adapter later for multi-instance deployments.
-- Implicit detection in Phase 3 via `ImplicitDetectionService` port:
-  - Implementation can call an LLM, but the port contract should stay simple (input: recent messages + config; output: list of candidate actions/decisions/knowledge with confidence).
-
-### 5.5 AI and natural language processing
-
-We use **AI (LLM) for natural language processing** as follows; this aligns with `wire-bot-requirements.md` (§1.7, §12 open question 1, §13 Phase 3).
-
-- **Explicit triggers (Phase 1–2):** Remain **rule-based** (keyword prefixes, regex). Fast and deterministic. No LLM required for recognising "task:", "decision:", "action:", "reminder:", etc.
-- **Implicit detection (Phase 3):** **LLM-backed.** Natural language pattern matching to detect task/decision/action/knowledge intent *without* keywords. Always confirmed via composite message before storing. Implemented behind `ImplicitDetectionService` port; adapter calls chosen LLM provider (see open decision: LLM provider).
-- **Natural language parsing of payloads (optional enhancement):** Requirements (§1.9, §3) expect parsing of natural language *within* commands (e.g. "task: @Emil write the threat model, high priority, due March 20"; "remind me tomorrow at 3pm to call John"). Options:
-  - **Phase 1–2:** Use a **date/time NL library** (e.g. chrono-node) behind `DateTimeService` for "tomorrow", "Friday", "in 2 hours"; keep assignee/description as simple text or @mention-only.
-  - **Phase 3 or later:** Optionally use **LLM** to parse rich NL payloads (assignee, description, deadline, priority) from a single sentence for both explicit and implicit flows.
-- **Search and knowledge (Phase 3–4):** Free-form retrieval and semantic search benefit from an LLM and/or embeddings (`pgvector`). Keyword search (`tsvector`) remains the baseline; graceful degradation when LLM unavailable (requirements §10).
-
-**Summary:** AI/NLP is explicitly in scope. LLM is used for implicit detection and can be used for NL parsing and semantic search; explicit trigger *recognition* stays rule-based.
-
----
-
-## 6. Testing Strategy
-
-- **Unit tests** (domain & application):
-  - No JS SDK, DB, or network.
-  - Use in-memory stub repositories and ports.
-  - Focus on parsing, permission rules, state transitions, and date/time handling.
-- **Integration tests**:
-  - Repositories against Postgres (via docker-compose or testcontainers).
-  - Wire adapter tests using a fake JS SDK client or test harness that simulates events.
-- **Contract tests**:
-  - Verify `WireEventRouter` correctly maps events from `wire-apps-js-sdk` to application commands and expected responses.
-  - Verify `WireOutboundAdapter` produces correct SDK calls for a set of canonical use case responses.
-- **End-to-end smoke tests**:
-  - Minimal: start the bot against a test Wire workspace and drive a handful of flows (task creation, decision logging, etc.) with scripted messages.
-
-Preferred test tooling (to be confirmed):
-
-- Vitest or Jest for unit/integration tests.
-- Supertest or similar only if we expose HTTP endpoints later (not required initially).
-
----
-
-## 7. Phase-by-Phase Implementation Plan (Architecture View)
-
-This section maps the requirements’ phases (section 13) to concrete work in the proposed architecture.
-
-### Phase 0.5 – Wire SDK Connectivity & Logging
-
-- Minimal skeleton to validate connectivity and event flow before any persistence/domain work:
-  - Implement `src/app/main.ts` to:
-    - Load minimal config (Wire app credentials, log level) from environment.
-    - Initialise logging and the `WireClient` wrapper.
-    - Connect to Wire and start listening for events.
-  - Implement `src/infrastructure/wire/WireClient.ts` as a thin wrapper over `wire-apps-js-sdk` with:
-    - Login/authentication.
-    - Subscription to basic events (`onTextMessageReceived`, `onAppAddedToConversation`, `onButtonClicked`).
-  - Implement a temporary `WireEventLogger` that:
-    - Logs every received event (type, conversation ID, sender, short text) to the console/structured logger.
-    - Does **not** perform any business logic or DB writes.
-- Provide a basic `docker-compose.yml` with:
-  - A single `bot` service (no Postgres yet) that can be started and viewed via logs.
-- Success criteria:
-  - Bot logs successful startup and authentication.
-  - Incoming messages to the app in Wire appear in the container logs with sufficient detail to debug parsing later.
-
-### Phase 1 – Foundation + Tasks/Reminders
-
-- Stand up core skeleton:
-  - `src/app/main.ts`, `container.ts`, `config.ts`, logging, graceful shutdown.
-  - `src/infrastructure/wire/WireClient.ts` + `WireEventRouter.ts` with only explicit triggers.
-  - Domain entities and repositories for **shared fields**, `Task`, `Reminder`, **ConversationConfig**, and **AuditLog**.
-  - Persistence adapter for Postgres and migrations for the above.
-  - Rolling message buffer service (in-memory implementation).
-- Implement use cases:
-  - Explicit **Tasks** and **Reminders** flows as per section 3.
-  - Member cache initialisation and update (using Wire JS SDK equivalents).
-  - Date/time parsing service and configuration handling (timezone).
-- Testing:
-  - Unit tests for task/reminder creation, updates, permissions.
-  - Integration tests for repositories and basic Wire event handling.
-
-### Phase 2 – Decision Logging + Action Tracking
-
-- Domain:
-  - Entities: `Decision`, `Action`.
-  - Repositories: `DecisionRepository`, `ActionRepository`.
-  - Shared linking model via `linked_ids`.
-- Application:
-  - Use cases for decision logging, context capture, action capture, status updates, reassignment, etc.
-  - Entity linking and cross-entity views where needed.
-- Infrastructure:
-  - Extend Postgres schema and repositories.
-  - Extend `WireEventRouter` to route new explicit commands.
-  - Implement composite messages via `WireOutboundPort` + adapter.
-- Scheduling:
-  - Implement `SchedulerPort` (even if only with in-process cron) for reminders, nudges, and weekly digests.
-
-### Phase 3 – Implicit Detection + Knowledge Capture
-
-- Domain/application:
-  - Entity: `KnowledgeEntry`.
-  - Use cases for explicit/implicit knowledge capture, retrieval, staleness/contradiction detection.
-  - `ImplicitDetectionService` and `SearchService` ports with conservative, testable contracts.
-- Infrastructure:
-  - LLM-backed `ImplicitDetectionService` implementation (provider/model TBD).
-  - Extension of search adapter to support richer ranking logic.
-- Behaviour:
-  - Integrate implicit detection into `WireEventRouter` flows, respecting per-conversation config and rate limits.
-
-### Phase 4 – Intelligence & Polish
-
-- Cross-entity search and unified views implemented as application-level orchestrations on top of existing repositories and `SearchService`.
-- Conversation summaries and automated digests using `SchedulerPort`.
-- Semantic search using `pgvector` behind `SearchService` port.
-- Duplicate detection (actions vs tasks) and sensitivity tuning based on historical dismissals.
-- User departure handling and reassignment flows building on existing domain events and repositories.
-
----
-
-## 8. Architectural Decisions (resolved and open)
-
-**Resolved:**
-
-1. **DB access tool**: **Prisma** (schema in `prisma/schema.prisma`, migrations, generated client). All repository implementations live in `src/infrastructure/persistence/postgres/`.
-2. **Test runner**: **Vitest** for unit and integration tests. Tests live under `tests/`; config in `vitest.config.ts`.
-3. **Scheduler implementation**: **In-process** (`InProcessScheduler` implementing `SchedulerPort`) for Phase 1–2. Wired in composition root; can be replaced by a queue/worker later.
-
-**Open:**
-
-4. **Cache backing**: In-memory for message buffer and caches in early phases. Redis optional for multi-instance later.
-5. **LLM provider**: Configurable via env: `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_ENABLED`. Stub adapter in place; replace with real implementation in Phase 3.
-
----
-
-## 9. Delivery State (for agents coding against this plan)
-
-*Updated: 2026-03-14. Use this section to know what is implemented and what to do next.*
-
-### Phase 0.5 – Done
-
-- `main.ts` loads config (via `config.ts`), initialises logging, creates Wire client, starts listening. Graceful shutdown on SIGINT/SIGTERM.
-- `WireClient.ts`: login, subscribe to events (`onTextMessageReceived`, `onAppAddedToConversation`, lifecycle). Event routing delegated to `WireEventRouter`.
-- `WireEventRouter.ts`: maps SDK events to use-case invocations; maintains message buffer; explicit triggers only.
-- `WireOutboundAdapter.ts`: implements `WireOutboundPort` (sendPlainText); used by use cases.
-- `docker-compose.yml`: bot + Postgres.
-
-### Phase 1 – Done
-
-- **Done:** `config.ts`, `logging.ts`, `container.ts` (composition root), graceful shutdown. Domain: Task, Reminder, ConversationConfig, AuditLog (ports). Prisma: Task, Reminder, ConversationConfig, AuditLog tables and repository implementations. Use cases: `CreateTaskFromExplicit`, `UpdateTaskStatus`, `ListMyTasks`, `CreateReminder`, `FireReminder`. Rolling message buffer (`ConversationMessageBuffer`). Date/time: `DateTimeService` port + `SystemDateTimeService`; timezone from `ConversationConfigRepository` when parsing deadlines (tasks and reminders). Scheduler: `SchedulerPort` + `InProcessScheduler` wired; reminder jobs scheduled on create and fired via `FireReminder`. Member cache: `ConversationMemberCache` port + `InMemoryMemberCache`; updated from Wire lifecycle events (`onAppAddedToConversation`, `onUserJoinedConversation`, `onUserLeftConversation`, `onConversationDeleted`). Unit tests: `CreateTaskFromExplicit`, `LogDecision`, `CreateReminder`, `UpdateTaskStatus` under `tests/usecases/`. Integration test scaffold under `tests/integration/` (runs when `INTEGRATION_TESTS=1`).
-
-### Phase 2 – Done
-
-- **Done:** Decision and Action entities and Prisma repos; `LogDecision`, `CreateActionFromExplicit`, `UpdateActionStatus`; routing in `WireEventRouter`; `WireOutboundPort` (sendPlainText, sendCompositePrompt, sendReaction). `WireOutboundAdapter` implements composite as plain text + button labels (SDK TS has no Composite yet); sendReaction no-op until SDK supports it.
-- **Done:** Decision use cases: `SearchDecisions`, `ListDecisions`, `SupersedeDecision`, `RevokeDecision`. Action use cases: `ListMyActions`, `ListTeamActions`, `ReassignAction`. All wired in `WireEventRouter` (e.g. "decisions about X", "list decisions", "decision: … supersedes DEC-0042", "revoke DEC-0042"; "my actions", "team actions", "ACT-001 reassign to @User").
-- **Done:** Post-decision "Any actions from this?" via `sendCompositePrompt` after `LogDecision` (Yes/No buttons; button handling pending SDK support).
-- **Done:** Overdue nudges: `ActionQuery.deadlineBefore`; `OverdueNudgeService` (query overdue actions, one message per conversation); scheduled daily via `SchedulerPort` (reschedule after each run).
-- **Done:** Weekly digest: `WeeklyDigestService` (distinct conversations from tasks/actions/decisions, summary per conversation); scheduled weekly via `SchedulerPort` (reschedule after each run).
-- **Done:** Unit tests for `SearchDecisions`, `ListDecisions`, `SupersedeDecision`, `RevokeDecision`, `ListMyActions`, `ListTeamActions`, `ReassignAction`; `LogDecision` test updated for sendCompositePrompt. Existing use case tests updated with full `WireOutboundPort` stub.
-
-### Phase 3 – Done
-
-- **Done:** Domain: `KnowledgeEntry` entity, `KnowledgeRepository` port, `SearchService` port (`searchKnowledge`). Conversation config extended with `implicitDetectionEnabled` and `sensitivity` (from `raw` in DB).
-- **Done:** Prisma schema and migration for `KnowledgeEntry`; `PrismaKnowledgeRepository`; `PrismaSearchAdapter` (keyword search over knowledge with simple ranking).
-- **Done:** Use cases: `StoreKnowledge` (explicit), `RetrieveKnowledge` (search + increment retrieval count), `CheckKnowledgeStaleness` (scheduled, one message per conversation for entries past TTL).
-- **Done:** `OpenAIImplicitDetectionAdapter`: OpenAI-compatible chat API, prompt returns JSON candidates (task/decision/action/knowledge); used when `LLM_ENABLED`/apiKey set; otherwise `StubImplicitDetectionAdapter`.
-- **Done:** `WireEventRouter`: explicit knowledge triggers ("knowledge: …", "remember that …", "note: …" → StoreKnowledge; "what's …", "how do we …" etc. → RetrieveKnowledge). When no explicit match: per-conversation implicit detection (if enabled), rate limit 60s per conv; on knowledge candidate (confidence ≥ 0.7) sends composite "Shall I remember that?" [Confirm] [Dismiss] (button handling pending SDK).
-- **Done:** Knowledge staleness job scheduled daily; container wires knowledge repo, search service, store/retrieve/check use cases, and implicit detection (real or stub).
-- **Done:** Unit tests for `StoreKnowledge`, `RetrieveKnowledge`.
-
-### Phase 4 – Not started
-
-- Cross-entity search, pgvector, digests, duplicate detection, user-departure handling.
-
-### Repository layout (current)
-
-- `src/app/`: `main.ts`, `config.ts`, `logging.ts`, `container.ts`. No `metrics.ts` yet.
-- `src/domain/`: ids, entities (Task, Reminder, Decision, Action, KnowledgeEntry), services (DateTime, UserResolution, ConversationMemberCache, ImplicitDetectionService, SearchService), repositories (ports). No `events/`, `errors/` yet.
-- `src/application/`: usecases (tasks, reminders, decisions, actions, knowledge), services (ConversationMessageBuffer), ports (WireOutbound, Scheduler, Clock optional).
-- `src/infrastructure/wire/`: `WireClient.ts`, `WireEventRouter.ts`, `WireOutboundAdapter.ts`. No `Mapping/` yet.
-- `src/infrastructure/persistence/postgres/`: Prisma client + Prisma*Repository for Task, Reminder, Decision, Action, KnowledgeEntry, ConversationConfig, AuditLog.
-- `src/infrastructure/search/`: `PrismaSearchAdapter.ts` (implements SearchService).
-- `src/infrastructure/scheduler/`: `InProcessScheduler.ts`.
-- `src/infrastructure/services/`: `SystemDateTimeService`, `TrivialUserResolutionService`, `InMemoryMemberCache`.
-- `src/infrastructure/llm/`: `LLMConfigAdapter.ts`, `StubImplicitDetectionAdapter.ts`, `OpenAIImplicitDetectionAdapter.ts`.
-- `tests/`: Vitest; unit tests under `tests/usecases/`; integration scaffold under `tests/integration/` (run with `INTEGRATION_TESTS=1`).
-
+# Jeeves — App and Delivery Plan
+
+Updated: 2026-09-16. Source review: `f034d2f`.
+
+This is the single source of truth for the app, feature scope, architecture and delivery
+progress. The next version is a **real-world pilot of the existing bot**, with targeted
+reliability fixes. It is not a rewrite or a commitment to every former V3 proposal.
+
+[README.md](README.md) covers setup and operation. [AGENTS.md](AGENTS.md) covers contributor
+rules. Update progress here; do not create another versioned plan or gap backlog.
+
+## 1. What we are building
+
+Jeeves is a Wire participant that helps a team remember decisions, keep track of commitments,
+and catch up on work without maintaining a separate record by hand.
+
+| Team need | Useful outcome | Pilot boundary |
+|---|---|---|
+| Capture | Record a decision, action, owner or reminder from the conversation. | Explicit commands plus the existing passive extractor; tolerate conservative capture. |
+| Recall | Answer what was decided, why, by whom and when, using the team's record. | Current channel only; say when the available record cannot answer. |
+| Progress | See open/overdue work, mark it done, change an owner or deadline, receive reminders. | Existing action lists, updates, nudges and summaries; no new project-management system. |
+| Control | Know when Jeeves is listening and stop processing sensitive discussion. | ACTIVE / PAUSED / SECURE, with verified context isolation. |
+
+The pilot should answer: **does this save the team work, with sufficiently few mistakes and
+interruptions that they choose to keep using it?** A large feature count is not a success measure.
+
+Product rules:
+
+- Keep the common tasks easy to express. Add natural-language variants when observed usage
+  fails; a new intent framework is not a prerequisite for testing.
+- Confirm actual writes, owners and deadlines. Do not imply an action happened when it did not.
+  Ask a short clarifying question when a consequential choice is ambiguous.
+- Keep `DEC-`, `ACT-` and `REM-` references for reliable corrections during the pilot. Removing
+  them requires a proven replacement, not a blanket presentation change.
+- In groups, teach users to mention Jeeves for questions and use the documented commands for
+  changes. Existing unmentioned follow-ups are a heuristic, not a general conversation contract.
+- Keep passive capture quiet. Fix misleading prompts and dead controls before adding new ones.
+- Retain the existing Jeeves voice: concise, no exclamation marks, “I'm afraid” rather than
+  “Sorry”, “Shall I” for a supported offer. Accuracy matters more than persona polish.
+
+## 2. Architecture and data contract
+
+Keep the existing hexagonal architecture and repository layout.
+
+| Layer | Location | Allowed dependencies |
+|---|---|---|
+| Domain | `src/domain/` | Domain only; entities and repository/service contracts |
+| Application | `src/application/` | Domain and ports; use cases, no SDK/DB/LLM clients |
+| Infrastructure | `src/infrastructure/` | Domain, application and external libraries |
+| App | `src/app/` | All layers for configuration and composition; no business logic |
+
+Runtime: TypeScript/Node, official `@wireapp/wire-apps-js-sdk`, Prisma, PostgreSQL + pgvector,
+one bot process. Keep the in-memory processing queue and scheduler. No new service or
+production dependency is required by this plan.
+
+### Message processing and retrieval
+
+- ACTIVE messages pass through classification, extraction and asynchronous embedding.
+  `InMemoryProcessingQueue` allows five concurrent jobs and 500 queued jobs; overflow drops
+  the oldest queued job with a warning. Transient processing and buffers are lost on restart.
+- Extraction uses a 30-message sliding window. Q&A uses a separate
+  `ConversationMessageBuffer` (default 50, configured maximum 500). Both matter for privacy.
+- Structured decisions/actions, entities/relationships, signals and summaries form the durable
+  record. Tasks were consolidated into actions; `KnowledgeEntry` was retired.
+- Questions go through query analysis, then structured, semantic, graph and summary retrieval.
+  Paths run with `Promise.allSettled`; results merge using reciprocal rank fusion, a 1.5×
+  multi-path boost, recency and confidence, within an approximate 7,000-token budget.
+  Graph traversal is bounded to depth three. Temporal/institutional queries add summaries.
+- Commands are currently pattern-based in `WireEventRouter`. The old foreground
+  `OpenAIConversationIntelligenceAdapter` is absent. Configuration now reads `JEEVES_*`;
+  the old `LLM_PASSIVE_*` / `LLM_CAPABLE_*` variables are not read by `config.ts` and do not
+  power a second router. The compatibility `ConversationConfigRepository`
+  still reads from `channel_config`.
+- Reminders persist in Postgres and are rehydrated after Wire initialisation. Daily summaries
+  run at 08:00 UTC, weekly summaries Monday 08:00 UTC, staleness checks every six hours.
+  These are current schedules, not the old proposed per-channel-timezone schedules.
+
+Code references: [composition](src/app/container.ts),
+[pipeline](src/infrastructure/pipeline/ProcessingPipeline.ts),
+[retrieval](src/infrastructure/retrieval/MultiPathRetrievalEngine.ts),
+[schema](prisma/schema.prisma), [migrations](prisma/migrations).
+Schema and configuration details belong in those files rather than a second SQL specification.
+
+### Privacy and access requirements
+
+These are requirements; the implementation gaps in §3 must be resolved before using sensitive
+team conversations.
+
+- **Extract-and-forget:** do not persist surrounding raw conversation text in records, signals,
+  audit payloads or diagnostic logs. Store the requested decision/action/reminder content,
+  structured extractions and source IDs/timestamps. Structured knowledge is still sensitive;
+  this is not a claim that retained information cannot reveal a conversation.
+- Jeeves sees decrypted messages as a Wire participant. Model requests go to the configured
+  providers. On-premises processing requires both chat and embedding endpoints to be local;
+  Wire encryption does not keep content away from a configured external model provider.
+- **ACTIVE:** normal processing. **PAUSED:** stop ambient processing; accept supported control
+  commands. **SECURE:** also clear transient context. Messages received while paused/secure
+  must not leak into later prompts. State transitions must account for both buffers and queued
+  or in-flight work, and state persistence failures must not silently re-enable processing.
+- Scope every retrieval and mutation to the qualified conversation ID, including direct ID
+  lookups. `channel_id` is `{conversationId}@{domain}`; Wire domain supplies organisation ID.
+  No cross-channel recall in the pilot. The router detects personal mode and passes `userId`,
+  but current retrieval paths do not implement the old promised org-wide personal view.
+- Treat LLM output as untrusted. Validate types, bounds, identities and allowed transitions
+  before persistence. Audit domain changes through `AuditLogRepository`.
+
+### Models and deployment decisions
+
+Seven slots remain: `classify`, `extract`, `embed`, `summarise`, `queryAnalyse`, `respond`,
+`complexSynthesis`. Six chat slots share an OpenAI-compatible endpoint; embeddings can use
+a separate endpoint or be disabled. Use [config.ts](src/app/config.ts) for actual defaults and
+[README configuration](README.md#environment-variables) for operations. Do not choose a new
+provider framework for the pilot.
+
+The current embedding column and default are **2560 dimensions**. The latest dimension
+migration removed the HNSW index; current search is exact cosine search. Match the configured
+model, fallback and database dimensions. The old promised startup dimension check is not
+implemented in the current adapter. Vector features need a separate smoke test if enabled;
+structured recall and summaries must remain useful with embeddings off.
+
+The official SDK migration keeps CommonJS, the `node:22-trixie-slim` image and a persistent
+`/app/storage` keystore. Its staging report is historical evidence, not production sign-off.
+Preserve the existing crypto key and store across ordinary restarts. See the
+[cutover runbook](README.md#official-sdk-cutover) for migration from the old fork.
+
+## 3. Current delivery state
+
+**Implemented** means code is present, not that it is proven in a real team. **Reported** means
+an earlier document records a run. **Pending** means this plan has no acceptance evidence.
+The old v2 phases 1a, 1b, 2, 3 and 4 describe delivered components, not a completed pilot.
+
+| Capability | State and evidence | Remaining acceptance |
+|---|---|---|
+| Wire connection, send/receive, persisted crypto | Implemented; staging success and restart reported on 2026-09-16 during SDK migration | Repeat on the pilot image; production cutover pending |
+| Explicit decisions, actions and reminders | Implemented; use cases and contract/e2e scenarios present | Verify attribution, changes and reminder delivery on Wire |
+| Passive capture and natural completion | Implemented with prompt-based duplicate mitigations | Human-reviewed precision/recall and duplicate baseline absent |
+| Questions and channel summaries | Implemented; retrieval and summary tests present | Validate known-answer questions, empty results and provider degradation |
+| Action lists, staleness nudges, scheduled summaries | Implemented | Judge usefulness/noise; verify restart and overdue behaviour |
+| Pause, resume, secure and access scoping | Partial; controls exist, concrete gaps below | P1 is a pilot blocker |
+| Embeddings optional/separate provider | Implemented; embedding configuration tests present | Smoke test selected configuration and dimensions |
+| Buttons and contradiction follow-through | Partial; confirmation transport exists, router has no useful button dispatch | Remove dead offers or make existing interactions actionable (P2) |
+| Test harness and simulation | Implemented | `golden.json` contains only instructions; quality is unmeasured (P0) |
+| Configurable bot name | Earlier gap doc referenced unmerged PR #8; absent from reviewed config | Not required for pilot; verify separately before claiming delivered |
+| Documentation consolidation | Complete in this revision | Maintain this plan as work lands |
+
+Historical validation: SDK migration notes reported 141 passing unit tests, clean lint, an
+offline CLI smoke run, and then staging connectivity/restart success. Those notes also contain
+an older “not exercised yet” entry, superseded by their staging update. No fresh runtime test
+or LLM-quality result is claimed by this documentation review.
+
+### Concrete gaps found during consolidation
+
+These are source observations, not a full security audit or an end-to-end reproduction.
+
+| Gap | Evidence | Required outcome |
+|---|---|---|
+| Raw conversation fragments can persist | `ProcessingPipeline.process` stores `text.slice(0, 200)` for low-signal messages. `LogDecision` copies `contextMessages[].text` into persisted decision context. | Remove unintended raw-context storage; inspect existing test data and other persistence/log paths. |
+| SECURE does not isolate all context | Router pushes into the Q&A buffer before checking state; SECURE flushes the sliding window only. Pipeline jobs do not re-check channel state before classification. | Isolate both buffers and work crossing a state transition; test resume and restart. |
+| Explicit-ID lookup can bypass retrieval scope | `StructuredRetrievalPath` calls `findById` and labels results with the requesting channel without checking the record's channel. Some mutation checks compare ID without domain. | Enforce full qualified scope for returned records and mutations; add negative tests. |
+| Replies can promise unsupported interaction | `LogDecision` offers buttons; `onButtonClicked` only handles the default/unhandled case. Contradiction notices ask a question without a dedicated resolution flow. | Use supported text instructions or remove the offer; do not require a new undo/button subsystem. |
+| Model failures and metrics are only partly handled | Adapters already parse/filter output and provide fallbacks, but extraction errors log output previews; metrics module is a no-op. | Verify malformed output cannot cause bad writes or content logging; measure only what pilot decisions need. |
+| Reminder delivery can be lost after a send failure | `FireReminder` marks a reminder fired before sending, then catches send errors. Startup only rehydrates pending reminders. | Test failed sends and recovery; make failed delivery recoverable without claiming exactly-once transport. |
+| Simulation output is not a reliable capture inventory | `simulate.ts` scans reply IDs, segments output using fixed delays, and compares golden entries by generated ID. Silent writes and fresh-run IDs can invalidate its scores. | Inspect records in an isolated scenario channel after processing finishes; match expected facts/source events rather than generated IDs. A small manual baseline is sufficient initially. |
+
+## 4. Next version: bounded pilot work
+
+A change enters this release only if it fixes a reproduced user problem, closes a privacy or
+correctness gap, or supplies evidence needed to decide whether the bot is useful. Each change
+needs a scenario, the smallest viable fix and an observable acceptance result. “The old branch
+implemented it” is not evidence of value. Do not cherry-pick a subsystem without that test.
+
+Start with a short baseline, then fix P1 before broader reliability tuning. P0 and P1 use
+synthetic data; real team content waits for P1 to pass. Missing model access or human review
+must not delay reproducible privacy/access fixes. Finish independent work and record the
+remaining validation dependency explicitly.
+
+| ID | Work and direct value | Acceptance evidence | Progress |
+|---|---|---|---|
+| P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Pending |
+| P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Pending — blocks real data |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Pending |
+| P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
+
+Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
+a general intent executor, a new schema library, vector dedup across every write, or scheduler
+replacement. If the existing baseline is adequate, proceed to the pilot without feature work.
+
+### Development goal and finish line
+
+**Build Jeeves v3 as a tested release candidate for the small team pilot: close P1, complete
+P0 and P2 acceptance, preserve the current architecture, and deliver reproducible evidence
+that capture, recall, actions, reminders and privacy controls work on the chosen deployment.**
+
+The development deliverable is:
+
+1. Small, reviewable fixes with regression tests for the gaps above. No unrelated feature or
+   dependency additions; a failed scenario determines the next fix.
+2. A fixed synthetic evaluation sample, expected facts/questions, actual stored results and
+   before/after counts. Use the existing fixtures where possible. Review expectations before
+   tuning prompts; do not improve scores by weakening assertions or ignoring missed captures.
+3. Passing build/type-check, lint, unit/contract and isolated DB integration checks; relevant
+   e2e failures reproduced and fixed, then the full e2e suite rerun on the selected models.
+   Record model names, embedding mode/dimensions, commit and commands without credentials.
+4. A reproducible container build from the tested commit, updated operating instructions,
+   current Wire send/receive/restart/reminder smoke evidence, and a concise handover in this
+   plan with known limitations and the next pilot step. Building an image is part of the goal;
+   production cutover is a separate operator action using the README runbook.
+
+“Code complete” means the implementation and available automated checks are finished.
+“Pilot ready” additionally requires P0/P1/P2 evidence, including the selected provider run,
+human review of quality, and the real Wire smoke test. A missing endpoint, account or reviewer
+is a named pending acceptance check, never a passing result. Finish all independent work
+before handing back a blocked check.
+
+P3 is the subsequent five-working-day trial and human usefulness decision. It is not something
+an unattended coding run can declare successful. The pilot operator supplies the team/channels,
+approved provider configuration and human review; the developer prepares and fixes the candidate.
+These are operational inputs, not reasons to invent additional product features.
+
+Stop adding scope when P0–P2 pass. Record at most three evidence-backed follow-ups from P3.
+
+### Disposition of the former V3 gaps
+
+Old IDs are retained only to make the consolidation traceable. This table replaces that backlog;
+“defer” is not a commitment for the following release.
+
+| Former gap | Decision for this release | Revisit trigger |
+|---|---|---|
+| A1, D1 — natural-language commands/corrections | Test common variants; fix observed misses through existing use cases. Defer wholesale intent routing. | Repeated failed tasks caused by syntax, with examples |
+| A2 — hide IDs | Keep references alongside readable summaries. | Users cannot complete corrections; a safer alternative has been demonstrated |
+| A3 — ambiguity | Never guess a consequential owner/target; test duplicate names and unknown people in P2. | Add only the clarification needed by those cases |
+| A4, A5 — voice/follow-ups | Measure misleading answers and misdirected replies; retain explicit group addressing as the taught path. | Repeated usability failures, not speculative conversational state |
+| B1 — duplicate capture | Test explicit/mentioned commands, repeats and sliding-window overlap; add the smallest write/routing guard if failing. | Reproduced duplicates; no automatic adoption of Redis/hash/vector layers |
+| B2 — malformed output | Exercise current validation/fallback; close unsafe writes or silent loss affecting the baseline. | Evidence that local validation fixes are inadequate before adding a framework |
+| B3, B4 — attribution and implicit commitments | Verify names/restart and baseline extraction/completion. | Specific wrong owner, missed or invented completion |
+| B5 — seed loader | Defer; use existing channel purpose and a few explicit starting decisions. | Pilot onboarding is materially blocked by missing context |
+| B6 — attachments | Defer. | Important knowledge is repeatedly inaccessible because it exists only in files |
+| C1 — retrieval replacement | Keep current paths; investigate failed known-answer questions. | Measured misses remain after small fixes; no LlamaIndex/reranker by default |
+| C2 — explain empty results | Use honest wording for no result or a known failure; never invent a reason. | Add metadata only when required to distinguish an observed failure |
+| C3 — embedding availability | Existing optional/separate endpoint is sufficient. | Chosen pilot requires vector features and their absence causes measured misses |
+| D2, D3 — contradiction/acknowledgement/undo buttons | Repair or remove misleading existing prompts; use text corrections. Defer new workflow. | Users need frequent corrections that existing commands cannot support |
+| D4 — durable jobs | Test existing Postgres reminder rehydration before redesigning. | Demonstrated missed/duplicate delivery not solved by a local fix |
+| D5 — progress view | Try current open/overdue lists and summaries first. | Team cannot see what moved or is stuck; agree an example before building |
+| D6 — quality/cost visibility | P0: annotate the baseline, count failures and time replies. Record provider usage if available. | Add per-slot counters only if needed; no dashboard/telemetry platform |
+| E1, E2 — name/voice customisation | Not a pilot gate. | A real team is blocked by current naming/voice |
+| E3 — footprint | Keep Prisma, pgvector, one process and no Redis. | Measured capacity or durability requirement |
+
+Also deferred: mem0/second memory store, pgvecto.rs, ORM migration, general cross-channel
+recall, org-wide personal recall, ESM conversion, horizontal scaling and unrelated cleanup.
+No old-branch implementation is presumed approved for reuse.
+
+## 5. Testing and release decision
+
+Default pilot: one consenting team, one or two channels, five working days. Record the
+operator, participating team, image/commit and chat/embedding configuration before starting.
+Use synthetic data for acceptance first; do not copy real transcripts into the repository.
+
+Required journeys:
+
+1. Log and retrieve a decision, including why/when; revoke or supersede it using a supported command.
+2. Capture an action for another named member; list, reassign, change its deadline and complete it.
+3. Create/cancel/snooze a reminder; restart before it is due, test one becoming due during downtime,
+   and simulate a failed send followed by recovery. Do not silently mark undelivered work successful.
+4. Passively capture clear decisions/commitments without duplicating explicit commands or window context.
+5. Answer ten questions whose answers are known from the record; an unknown question must not invent facts or writes.
+6. Catch up on a channel and inspect open/overdue work; judge whether summaries/nudges help.
+7. Pause/secure/resume across both buffers, queued work and restart; check no excluded text reaches prompts or storage.
+8. Deny cross-channel and cross-domain access, including guessed record IDs and corrections.
+9. Exercise malformed/truncated model output, timeouts and embeddings off; no invalid writes or crash.
+10. Reconnect/restart on Wire; check decryption, member names and every interaction the pilot depends on.
+
+Use `npm test`, `npx tsc --noEmit` and `npm run lint` for code checks. Run DB integration tests
+with `INTEGRATION_TESTS=1` on an isolated Postgres instance. Build before the real-DB/LLM CLI,
+e2e suite or simulation. These validate bot behaviour; a Wire-client smoke test is still needed
+for SDK transport and client UI. Commands and harness details are in [README](README.md#development)
+and [AGENTS](AGENTS.md#validation).
+
+Provisional thresholds for this small pilot (not production SLAs):
+
+- Privacy/access tests all pass; any leak or wrong-target mutation blocks entry/continuation.
+- Required deterministic commands and restart/reminder checks all pass.
+- Review at least 20 expected capture events: precision ≥80%, recall ≥70%; count duplicates
+  as errors and keep the actual numerator/denominator. Match against stored records after the
+  scenario drains, not only bot acknowledgements. Precision is correct unique captures / all
+  captures; recall is expected events correctly captured / all expected events. Report actions
+  and decisions separately as well as overall. Ambiguous cases are reported separately.
+- At least 8/10 known-answer questions are judged correct and useful by a person; no invented
+  writes or owners. LLM judging assists review and does not replace it.
+- Measure typical and slowest reply times, model failures and unsolicited messages. Ask the team
+  whether latency/noise is acceptable before inventing a performance or notification subsystem.
+- At pilot end, the team identifies concrete saved effort and chooses continued use. Otherwise
+  fix the most material problem or stop expanding scope.
+
+### Progress and evidence log
+
+Update this table with dated evidence as work completes. A blocked test stays pending with its
+reason; an implementation or historical passing count alone does not close a release gate.
+
+| Date | Item | Result / evidence | Next action |
+|---|---|---|---|
+| 2026-09-16 | Consolidation | Root plans reviewed against `f034d2f`; conflicting claims replaced, V3 scope triaged | Run P0 and fix P1 |
+| 2026-09-16 | Development-goal review | Separated release-candidate acceptance from P3; identified simulation scoring limits and reminder send-failure gap by source review | Complete P0–P2; do not claim runtime verification from this review |
+| — | P0 baseline | Pending; golden file is an instruction placeholder | Record sample, configuration, counts and reviewed failures |
+| — | P1 privacy/access | Pending; source gaps listed in §3 | Implement targeted fixes and negative tests |
+| — | P2 core journeys | Pending; SDK staging success is historical only | Record current CLI/e2e and Wire results |
+| — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
+
+The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
+Their historical text remains in Git. SDK operational cutover steps are retained in README;
+there is no second active roadmap.

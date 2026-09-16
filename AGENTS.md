@@ -1,276 +1,98 @@
-# AGENTS.md – AI agent guidance for Wire Team Bot
+# AGENTS.md — Contributor guidance
 
-This file gives AI agents working on this repository a concise contract: where the plan lives, how the app is structured, and how to keep the codebase maintainable, secure, and testable. **PLAN_v2.md** is the single source of truth for architecture, phases, and delivery state. This document summarises rules and desires for agent behaviour.
+Read [PLAN.md](PLAN.md) first. It is the single source of truth for the app, architecture,
+release scope and progress. [README.md](README.md) owns setup and operations. Do not create
+parallel versioned plans, feature checklists or gap backlogs. Update PLAN.md as evidence changes.
 
----
+## Scope and architecture
 
-## 1. Authoritative plan
+- Prefer small changes that fix a demonstrated user problem or close a release gate in PLAN.md.
+  Do not import old-branch subsystems merely because they exist.
+- Preserve the existing hexagonal layout: domain depends only on domain; application depends
+  on domain and ports; infrastructure implements adapters; app is the composition root.
+- Put entities/repository contracts in `src/domain/`, ports in `src/application/ports/`, use cases
+  in `src/application/usecases/`, adapters in `src/infrastructure/`, wiring in `src/app/container.ts`.
+- Application code must not call Wire, Prisma or LLM clients directly.
+- Match existing TypeScript/style conventions. Keep one concern per module and explicit types.
+- No new dependencies unless the user or PLAN.md explicitly requests them. A deferred item in
+  the plan is not authorisation to implement it.
+- If implementation would contradict the plan, resolve the discrepancy before coding. A user
+  request to revise/consolidate the plan authorises those documentation changes.
 
-- **Read PLAN_v2.md first.** It defines:
-  - Hexagonal architecture and dependency rules
-  - Repository layout (`src/app`, `src/domain`, `src/application`, `src/infrastructure`, `tests/`)
-  - Entities, ports, use cases, and phase-by-phase delivery
-  - All resolved design decisions (ORM, queue, embedding dims, access scoping, etc.)
-  - Current delivery state: **Phases 1a, 1b, 2, 3, and 4 are complete.** The bot is ready for end-to-end testing.
-- Do not redefine architecture, module boundaries, or repo structure. If the plan is unclear or conflicts with a requested change, ask for PLAN_v2.md to be updated before implementing.
+## Data and safety
 
----
+- Secrets come from environment variables through `src/app/config.ts`; never commit credentials.
+- Extract-and-forget is a requirement, not an assumed property of every current code path.
+  Do not persist raw surrounding conversation text, including in signals, logs or audit data.
+  See PLAN.md for the known gaps; do not repeat the old blanket privacy guarantees.
+- Validate model output, bounds, identities and transitions before writes. Audit domain
+  create/update/delete operations through `AuditLogRepository`.
+- Enforce qualified conversation scope (ID and domain), including direct record-ID retrieval
+  and mutations. Cross-channel/personal org-wide retrieval is outside the pilot.
+- PAUSED/SECURE processing must account for both context buffers and queued/in-flight jobs.
+- Match embedding model output, fallback output and the database column before enabling vector
+  features. Configuration alone does not migrate the schema or validate dimensions.
+- Never reset a shared or real-team database to make tests pass. Use isolated test data.
 
-## 2. Application architecture
+## Validation
 
-### 2.1 Layer rules
+For documentation-only changes, check links, references, commands against `package.json`, and
+consistency with the inspected code. Runtime tests are not required unless runtime files change.
+Do not report historical results as a fresh run.
 
-| Layer | Location | Allowed dependencies |
-|---|---|---|
-| `domain` | `src/domain/` | Nothing outside domain (no SDK, DB, LLM) |
-| `application` | `src/application/` | `domain` + ports (interfaces only) |
-| `infrastructure` | `src/infrastructure/` | `application`, `domain`, external libs |
-| `app` | `src/app/` | All layers — composition root only, no business logic |
+For code changes:
 
-Application code must never call `@wireapp/wire-apps-js-sdk`, Prisma, or any LLM SDK directly. All external calls go through ports.
+- New use cases and non-trivial logic need corresponding tests. Unit tests use mocked ports,
+  no DB/network/SDK. Follow `tests/usecases/`, `tests/pipeline/` and `tests/retrieval/` conventions.
+- Contract tests exercise Wire event routing and outbound mapping in `tests/contract/`.
+- Run `npm test`, `npx tsc --noEmit`, `npm run lint`. DB integration tests require
+  `INTEGRATION_TESTS=1` and isolated Postgres + pgvector.
+- Before claiming behaviour works, build and validate relevant journeys with the CLI/e2e
+  harness (real DB and LLM). Wire transport/client UI also needs a real Wire smoke test.
+  If infrastructure is unavailable, record the blocked check and do not mark the gate passed.
 
-### 2.2 Four-tier processing pipeline
-
-Every message received in an ACTIVE channel flows through an async pipeline:
-
-```
-Tier 1 (Classify) ─► OpenAIClassifierAdapter
-                        └─ is_high_signal?
-Tier 2 (Extract)  ─► OpenAIExtractionAdapter   (sliding window context)
-                        ├─ DecisionRepository.create()
-                        ├─ ActionRepository.create()
-                        ├─ EntityRepository.upsertWithDedup()
-                        ├─ ConversationSignalRepository.create()
-                        └─ contradiction detection (similarity → classify)
-Tier 3 (Embed)    ─► JeevesEmbeddingAdapter     (async, fire-and-forget)
-                        └─ EmbeddingRepository.create()   (text discarded)
-Tier 4 (Summarise)─► InProcessScheduler
-                        ├─ daily_summary_all  at 08:00 UTC
-                        └─ weekly_summary_all at Monday 08:00 UTC
-```
-
-Tiers 1–3 run through `InMemoryProcessingQueue` (max 5 concurrent, max depth 500). **Text content is never persisted** — only structured extractions and embedding vectors.
-
-### 2.3 Multi-path retrieval engine
-
-When the bot answers a question (`@Jeeves <question>`), it runs:
-
-```
-OpenAIQueryAnalysisAdapter  →  QueryPlan (intent, entities, timeRange, paths, complexity)
-        │
-        ▼
-MultiPathRetrievalEngine (Promise.allSettled)
-  ├─ StructuredRetrievalPath   SQL: decisions/actions by filter
-  ├─ SemanticRetrievalPath     pgvector HNSW on embeddings table
-  ├─ GraphRetrievalPath        BFS on entity_relationships (depth ≤ 3)
-  └─ SummaryRetrievalPath      cached channel summaries
-        │
-        ▼
-  Weighted RRF merge: score = Σ(1/(60+rank)) × multi-path-boost × recency × confidence
-  Multi-path boost: 1.5× when result found by ≥2 paths
-  Token budget: 7,000 tokens cap
-        │
-        ▼
-OpenAIGeneralAnswerAdapter  →  Jeeves-voice response (respond / complexSynthesis slot)
-```
-
-Intent `temporal_context` and `institutional` auto-inject the `SummaryRetrievalPath` even when not explicitly in the plan.
-
-### 2.4 Seven LLM model slots
-
-All slots share one `JEEVES_LLM_BASE_URL` / `JEEVES_LLM_API_KEY`. Configured via `JEEVES_MODEL_*` / `JEEVES_FALLBACK_*` env vars. See PLAN_v2.md §5.9 and `src/app/config.ts`.
-
-| Slot | Env var | Default model |
-|---|---|---|
-| `classify` | `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` |
-| `extract` | `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` |
-| `embed` | `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` |
-| `summarise` | `JEEVES_MODEL_SUMMARISE` | `qwen3-next:80b` |
-| `queryAnalyse` | `JEEVES_MODEL_QUERY_ANALYSE` | `qwen3-next:80b` |
-| `respond` | `JEEVES_MODEL_RESPOND` | `qwen3-next:80b` |
-| `complexSynthesis` | `JEEVES_MODEL_COMPLEX` | `gpt-oss:120b` |
-
-**`LLM_PASSIVE_*` / `LLM_CAPABLE_*`** are **not** deprecated. They power `OpenAIConversationIntelligenceAdapter`, which is the v1 foreground intent router still active for explicit commands (`create_decision`, `create_action`, `create_reminder`, etc.). They will be retired when v1 routing is fully replaced by the v2 pipeline.
-
-### 2.5 Channel state machine
-
-Channels have three states: `ACTIVE` | `PAUSED` | `SECURE`. State is persisted in `channel_config`. SECURE flushes the sliding window buffer and records a `secure_range` timestamp to prevent context contamination.
-
-### 2.6 Access scoping
-
-Retrieval is always scoped to the requesting channel. `MultiPathRetrievalEngine` returns `[]` if `scope.channelId` is absent. In personal mode (1:1 DM — one non-bot member), `RetrievalScope.userId` is set, enabling org-wide queries filtered to the user's own entities.
-
-### 2.7 Where new code belongs
-
-- New entity or repository contract → `src/domain/`
-- New use case → `src/application/usecases/`
-- New port → `src/application/ports/` (interface only)
-- New infrastructure adapter → `src/infrastructure/`
-- Wiring → `src/app/container.ts`
-
----
-
-## 3. Maintainability
-
-- Prefer **small, reviewable changes** that are easy to test and reason about.
-- **One concern per module:** Keep use cases focused.
-- **Explicit over implicit:** Prefer clear parameters and return types.
-- **Consistency:** Match existing naming, file layout, and style (TypeScript/ESLint).
-- Do not introduce new dependencies unless PLAN_v2.md or the user explicitly requests them.
-- **Extract-and-forget:** Never persist raw message text. Only structured extractions (`decisions`, `actions`, `entities`, `signals`) and embedding vectors are stored.
-
----
-
-## 4. Security
-
-- **Secrets:** All secrets come from environment variables via `src/app/config.ts`. Never hardcoded.
-- **Audit trail:** Actions that create/update/delete domain entities must be recorded via `AuditLogRepository`.
-- **Input validation:** Treat LLM outputs as untrusted. Validate structure and bounds before persistence.
-- **Access scoping:** Retrieval must never cross channel boundaries. Cross-channel retrieval is post-MVP.
-- **Embedding dims:** Confirm `JEEVES_EMBED_DIMS` matches your embedding model's output before migrating. Mismatch is caught at startup (logged, embedding disabled, bot continues).
-
----
-
-## 5. Testability
-
-- **Unit tests (`tests/usecases/`, `tests/retrieval/`, `tests/pipeline/`):** No SDK, DB, or network. Fully mocked ports.
-- **Contract tests (`tests/contract/WireEventRouter.contract.test.ts`):** Verify routing from Wire SDK events to use-case calls.
-- **Integration tests (`tests/integration/`):** Real Postgres with pgvector. Gated by env (`INTEGRATION_TESTS=1`).
-- **Run:** `npm test` (Vitest). **Type-check:** `npx tsc --noEmit`.
-- All new use cases and non-trivial logic must have corresponding tests. Match existing test structure.
-
-### 5.1 CLI harness — end-to-end validation without Wire client
-
-`src/app/cli.ts` drives the full bot stack (real DB, real LLM calls, real pipeline) from stdin/stdout. Use it to validate behaviour end-to-end before claiming a feature works.
-
-**Always build first:** `npm run build && npm run cli`
-
-**Seeded members:** Alice (default), Bob, Carol, Dave — prefix a line with `Name: ` to send as that user.
-
-**Interactive:**
-```
-npm run build && npm run cli
-> decision: we will use Postgres
-[Jeeves] Decision logged — DEC-0001 ...
-> @jeeves what decisions have we made?
-[Jeeves] One decision on record ...
-```
-
-**Scripted (preferred for agents — stdout is clean, logs go to stderr):**
-```bash
-printf "decision: we will use Postgres\nBob: action: Alice to write the migration\n@jeeves what actions are open?\n" \
-  | npm run cli
-```
-
-**Agent validation checklist — run these before marking a task done:**
-
-| Scenario | Input | Expected output contains |
-|---|---|---|
-| Log a decision | `decision: <summary>` | `DEC-` reference |
-| Log an action | `action: <description>` | `ACT-` reference |
-| Assign action | `action: <desc> for Bob` | Bob's name in confirmation |
-| Search decisions | `decisions about <topic>` | matching decision or "no record" |
-| Remind | `remind me tomorrow to <desc>` | confirmation with time |
-| Answer from context | say facts, then `@jeeves <question about those facts>` | answer drawn from recent conversation |
-| Follow-up | `@jeeves <question>`, then `@jeeves yes` / `go ahead` | coherent follow-up, not "no record" |
-| Unknown command | `@jeeves <open question>` | non-empty answer, no crash |
-
-**E2E test suite — LLM-as-judge (preferred for agent validation):**
-
-Scenarios are in `tests/e2e/scenarios.ts`. Each step has a natural-language `input` and a plain-English `assert` string evaluated by an LLM judge (`tests/e2e/judge.ts`). No regexes. The judge uses `JEEVES_JUDGE_MODEL` (falls back to `JEEVES_MODEL_CLASSIFY`).
+### CLI and e2e
 
 ```bash
-npm run build && npm run test:e2e                    # run all ~48 scenarios
-npm run test:e2e -- --filter TC-DEC                 # run matching scenarios only
-npm run test:e2e -- --filter TC-DEC-03              # single scenario by exact ID
-npm run test:e2e -- --bail                          # stop after first failure
-npm run test:e2e -- --verbose                       # show bot output for passing tests too
-npm run test:e2e -- --json                          # machine-readable JSON results
+npm run build
+npm run cli
+npm run test:e2e -- --bail
+npm run test:e2e -- --filter TC-DEC-03
+npm run test:e2e -- --verbose
+npm run test:e2e -- --json
 ```
 
-**DB isolation:** every scenario runs against its own scoped conversation (`E2E_CHANNEL_ID=e2e-<id>-<runId>`), so scenarios never see each other's data and re-running the suite always starts clean.
+CLI members are Alice (default), Bob, Carol and Dave. Prefix a line with `Bob: ` to change
+sender. Stdout contains bot replies; logs go to stderr. `LOG_LEVEL=debug` enables diagnostics;
+use synthetic conversations and avoid committing output containing private information.
 
-**Multi-step scenarios** use `captureAs: "DEC"|"ACT"|"REM"` to capture a reference ID from the bot's response, then `{{DEC}}`/`{{ACT}}`/`{{REM}}` in subsequent `input` or `assert` fields to inject that ID. The assertion text also has IDs substituted in before reaching the judge.
+Scenarios in `tests/e2e/scenarios.ts` use plain-English assertions evaluated by `judge.ts`.
+`JEEVES_JUDGE_MODEL` falls back to `JEEVES_MODEL_CLASSIFY`. Scenarios use isolated conversation
+IDs (`e2e-<id>-<runId>`). `captureAs: "DEC" | "ACT" | "REM"` captures IDs for subsequent
+`{{DEC}}`, `{{ACT}}`, `{{REM}}` substitutions. Use the existing shared-process support for
+context-dependent follow-ups.
 
-**Multi-sender steps** use the `Name: message` CLI format — e.g. `"Bob: action: Bob to deploy the hotfix"` — to test identity and attribution.
+On failure, inspect the input, substituted assertion, judge reason and full bot output.
+Reproduce the single scenario, fix the cause, rebuild, rerun that scenario, then run the full
+e2e regression. Empty output suggests routing/errors or low-signal classification; wrong
+person suggests sender/assignee plumbing. Inspect raw results before accepting a judge verdict.
+Do not weaken assertions just to pass a regression.
 
----
+The pilot journeys and acceptance thresholds live in PLAN.md §5; keep their progress there.
 
-**Agent self-fix loop:**
-
-1. **Run the suite and identify failures:**
-   ```bash
-   npm run build && npm run test:e2e -- --bail
-   ```
-   On failure, the runner always prints:
-   - The failing step's input
-   - The assertion (with captured IDs already substituted)
-   - The judge's plain-English reason for failure
-   - The bot's full stdout (or `(empty)` with a debug tip if there was no output)
-
-2. **Iterate on a single failing scenario:**
-   ```bash
-   npm run test:e2e -- --filter TC-DEC-03
-   ```
-   This is fast (~10–15 s per scenario) and avoids waiting for the full suite.
-
-3. **Diagnose by failure pattern:**
-
-   | Bot output | Likely cause | Where to look |
-   |---|---|---|
-   | `(empty)` | Router didn't dispatch or use case threw | `WireEventRouter.ts` dispatch block, use case `execute()` |
-   | Wrong ID format | Use case response message doesn't include ID | Use case `wireOutbound.sendPlainText()` call |
-   | Wrong assignee/owner | Identity not threaded through | Check `assigneeId` / `targetId` plumbing in router → use case |
-   | Correct content, wrong person | `listMyActions` / `listMyReminders` not filtering by caller | `WireEventRouter.ts` — confirm `sender` is passed as `assigneeId` / `targetId` |
-   | Bot output looks right but judge fails | Assertion wording too strict, or judge got confused | Try `--verbose` to see the raw exchange; tighten or loosen the assertion in `scenarios.ts` |
-   | Consistent empty output on pipeline tests (TC-PIPE-*) | Classifier scored message as low-signal | Check `OpenAIClassifierAdapter`; try `LOG_LEVEL=debug` to see tier 1/2 trace |
-
-4. **After fixing, verify the specific scenario passes, then run the full suite:**
-   ```bash
-   npm run test:e2e -- --filter TC-DEC-03   # verify fix
-   npm run test:e2e                          # full regression
-   ```
-
-**Tips:**
-- `LOG_LEVEL=debug npm run cli` shows full pipeline and retrieval trace on stderr
-- Empty bot output on a pipeline test (TC-PIPE-*) almost always means the classifier scored the message as low-signal — check the classify tier
-- If you suspect the judge is wrong (not the bot), run `--verbose` to see the raw bot output and judge reasoning side by side, then adjust the assertion in `scenarios.ts`
-- `npx prisma migrate reset --force && npm run build` gives a completely clean DB if needed
-
-### 5.2 Simulation — multi-day channel replay
-
-The simulation tool replays a realistic 3-day engineering-team conversation through the full CLI stack and reports which decisions, actions, and reminders were extracted. Unlike the e2e test suite (which tests individual scenarios in isolation), the simulation tests the pipeline under realistic sustained load with mixed signal quality.
+### Simulation
 
 ```bash
-npm run build && npm run simulate           # replay conversation, print extraction report
-npm run simulate:review                     # annotate the latest report as a golden baseline
+npm run build
+npm run simulate
+npm run simulate:review
 ```
 
-**Report output:** `tests/simulation/simulation-report.json` — lists every exchange, bot response, and extracted IDs. If `tests/simulation/golden.json` exists, precision/recall is computed against it.
+The multi-day replay writes `tests/simulation/simulation-report.json`. Human review produces
+`tests/simulation/golden.json`, including false positives and missed captures. Check its actual
+contents before claiming measured extraction quality; record review status in PLAN.md.
+Run the simulation after classifier, extractor or pipeline changes. It complements e2e routing
+and answer tests; it does not replace them.
 
-**Golden baseline:** run `npm run simulate:review` to walk through each exchange and mark which extractions are correct. The resulting `golden.json` is the ground-truth reference for future runs.
-
-**When to use:**
-- After changes to `OpenAIClassifierAdapter`, `OpenAIExtractionAdapter`, or the processing pipeline — verifies that passive extraction quality has not regressed.
-- When tuning classifier/extractor prompts — compare precision/recall against the golden baseline.
-- Not a substitute for the e2e test suite: use `npm run test:e2e` to verify routing, retrieval, and answer quality.
-
----
-
-## 6. Quick reference
-
-| Topic | Reference |
-|---|---|
-| Architecture + phases | PLAN_v2.md |
-| Dependency rules | §2.1 above; domain → nothing, application → domain + ports, infra → both |
-| Processing pipeline | PLAN_v2.md §5.4; `src/infrastructure/pipeline/ProcessingPipeline.ts` |
-| Retrieval engine | PLAN_v2.md §10; `src/infrastructure/retrieval/MultiPathRetrievalEngine.ts` |
-| LLM slots | PLAN_v2.md §5.9; `src/app/config.ts` `JeevesLLMConfig` |
-| Channel state machine | PLAN_v2.md §5.1; `src/domain/repositories/ChannelConfigRepository.ts` |
-| Summary scheduling | `src/app/container.ts` `daily_summary_all` / `weekly_summary_all` jobs |
-| Env vars | PLAN_v2.md §7; `src/app/config.ts` |
-| Schema | PLAN_v2.md §6; `prisma/schema.prisma` |
-| Persona rules | PLAN_v2.md §11 — no exclamation marks, "I'm afraid" not "Sorry" |
-| Post-MVP items | Cross-channel retrieval, Redis/BullMQ, Drizzle ORM, v1 routing retirement |
-
-When in doubt, align with PLAN_v2.md and the existing codebase. If a change would cross architectural boundaries or contradict the plan, flag it before proceeding.
+Native Wire SDK requirements can prevent local CLI/tests from loading. See README's dependency
+notes for the container route. Record the actual validation environment with results.
