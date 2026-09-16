@@ -17,7 +17,7 @@ function makeRef(
   sendMessage: (m: unknown) => Promise<string> = vi.fn().mockResolvedValue("msg-id"),
   sendAsset: (conversationId: unknown, asset: unknown) => Promise<string> = vi.fn().mockResolvedValue("asset-id"),
 ): HandlerManagerRef {
-  return { current: { manager: { sendMessage, sendAsset } } };
+  return { current: { manager: { sendMessage, sendAsset, getUsers: vi.fn().mockResolvedValue([]) } } };
 }
 
 describe("WireOutboundAdapter contract", () => {
@@ -30,7 +30,7 @@ describe("WireOutboundAdapter contract", () => {
     expect(arg.text ?? (arg as { text: string }).text).toBe("Hello world");
   });
 
-  it("sendCompositePrompt sends a CompositeMessage with text item and button items", async () => {
+  it("sendCompositePrompt sends a CompositeMessage with a leading text item and button items", async () => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
     const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
     await adapter.sendCompositePrompt(convId, "Any actions?", [
@@ -40,23 +40,45 @@ describe("WireOutboundAdapter contract", () => {
     expect(sendMessage).toHaveBeenCalledOnce();
     const arg = sendMessage.mock.calls[0]![0] as {
       type?: string;
-      items?: Array<{ text?: { content: string }; button?: { id: string; text: string } }>;
+      conversationId?: QualifiedId;
+      items?: Array<{ type?: string; text?: string; id?: string }>;
     };
     expect(arg.type).toBe("composite");
-    expect(arg.items?.[0]?.text?.content).toBe("Any actions?");
-    expect(arg.items?.[1]?.button).toEqual({ id: "yes", text: "Yes" });
-    expect(arg.items?.[2]?.button).toEqual({ id: "no", text: "No" });
+    expect(arg.conversationId).toEqual(convId);
+    expect(arg.items).toHaveLength(3);
+    expect(arg.items?.[0]).toMatchObject({ type: "text", text: "Any actions?" });
+    expect(arg.items?.[1]).toMatchObject({ type: "composite_button", id: "yes", text: "Yes" });
+    expect(arg.items?.[2]).toMatchObject({ type: "composite_button", id: "no", text: "No" });
   });
 
-  it("sendReaction calls manager.sendMessage with a ReactionMessage", async () => {
+  it("sendReaction calls manager.sendMessage with a Reaction carrying the emoji set", async () => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
     const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
     await adapter.sendReaction(convId, "msg-1", "✓");
     expect(sendMessage).toHaveBeenCalledOnce();
-    const arg = sendMessage.mock.calls[0]![0] as { type?: string; emoji?: string; targetMessageId?: string };
+    const arg = sendMessage.mock.calls[0]![0] as { type?: string; messageId?: string; emojiSet?: Set<string> };
     expect(arg.type).toBe("reaction");
-    expect(arg.emoji).toBe("✓");
-    expect(arg.targetMessageId).toBe("msg-1");
+    expect(arg.messageId).toBe("msg-1");
+    expect(arg.emojiSet).toBeInstanceOf(Set);
+    expect([...(arg.emojiSet ?? [])]).toEqual(["✓"]);
+  });
+
+  it("getUserProfile resolves via manager.getUsers and maps the first result", async () => {
+    const getUsers = vi.fn().mockResolvedValue([
+      { id: { id: "user-1", domain: "wire.com" }, name: "Ada", handle: "ada" },
+    ]);
+    const ref: HandlerManagerRef = { current: { manager: { sendMessage: vi.fn(), sendAsset: vi.fn(), getUsers } } };
+    const adapter = createWireOutboundAdapter(ref, mockLogger);
+    const profile = await adapter.getUserProfile({ id: "user-1", domain: "wire.com" });
+    expect(getUsers).toHaveBeenCalledWith([{ id: "user-1", domain: "wire.com" }]);
+    expect(profile).toEqual({ id: { id: "user-1", domain: "wire.com" }, name: "Ada", handle: "ada" });
+  });
+
+  it("getUserProfile returns null when getUsers yields nothing", async () => {
+    const getUsers = vi.fn().mockResolvedValue([]);
+    const ref: HandlerManagerRef = { current: { manager: { sendMessage: vi.fn(), sendAsset: vi.fn(), getUsers } } };
+    const adapter = createWireOutboundAdapter(ref, mockLogger);
+    await expect(adapter.getUserProfile({ id: "ghost", domain: "wire.com" })).resolves.toBeNull();
   });
 
   it("sendFile calls manager.sendAsset with Uint8Array data", async () => {
