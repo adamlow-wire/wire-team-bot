@@ -98,6 +98,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const signalRepo = new PrismaConversationSignalRepository();
 
   const pipeline = new ProcessingPipeline({
+    auditLog: auditLogRepo,
     classifier,
     extraction,
     embeddingService,
@@ -118,7 +119,7 @@ export function createContainer(config: Config, logger: Logger): Container {
   const processingQueue = new InMemoryProcessingQueue<MessageJob>(
     (msg, meta) => logger.warn(msg, meta),
   );
-  processingQueue.setWorker((job) => pipeline.process(job.payload));
+  processingQueue.setWorker((job) => pipeline.process(job.payload, job.signal));
 
   // ── Phase 3: Multi-path retrieval engine ────────────────────────────────
   const queryAnalysis = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
@@ -200,13 +201,13 @@ export function createContainer(config: Config, logger: Logger): Container {
     if (job.type === "reminder" && typeof (job.payload as { reminderId?: string }).reminderId === "string") {
       const reminderId = (job.payload as { reminderId: string }).reminderId;
       void fireReminder.execute({ reminderId }).catch((err: unknown) => {
-        logger.error("FireReminder job failed", { reminderId, err: String(err) });
+        logger.error("FireReminder job failed", { reminderId, err: (err instanceof Error ? err.name : "UnknownError") });
       });
     }
     if (job.type === "secret_inactivity") {
       const convId = (job.payload as { convId: { id: string; domain: string } }).convId;
       void router.handleSecretModeInactivityCheck(convId).catch((err: unknown) => {
-        logger.error("SecretInactivity job failed", { convId: convId.id, err: String(err) });
+        logger.error("SecretInactivity job failed", { convId: convId.id, err: (err instanceof Error ? err.name : "UnknownError") });
       });
     }
     if (job.type === "daily_summary_all") {
@@ -216,9 +217,9 @@ export function createContainer(config: Config, logger: Logger): Container {
         for (const ch of channels) {
           void generateSummary
             .execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "daily", periodStart, periodEnd })
-            .catch((err: unknown) => logger.error("DailySummary job failed", { channelId: ch.channelId, err: String(err) }));
+            .catch((err: unknown) => logger.error("DailySummary job failed", { channelId: ch.channelId, err: (err instanceof Error ? err.name : "UnknownError") }));
         }
-      }).catch((err: unknown) => logger.error("DailySummary job failed to list channels", { err: String(err) }));
+      }).catch((err: unknown) => logger.error("DailySummary job failed to list channels", { err: (err instanceof Error ? err.name : "UnknownError") }));
       scheduler.schedule({ id: "daily_summary_all", type: "daily_summary_all", runAt: nextDailyAt8UTC(), payload: {} });
     }
     if (job.type === "weekly_summary_all") {
@@ -228,14 +229,14 @@ export function createContainer(config: Config, logger: Logger): Container {
         for (const ch of channels) {
           void generateSummary
             .execute({ channelId: ch.channelId, organisationId: ch.organisationId, granularity: "weekly", periodStart, periodEnd })
-            .catch((err: unknown) => logger.error("WeeklySummary job failed", { channelId: ch.channelId, err: String(err) }));
+            .catch((err: unknown) => logger.error("WeeklySummary job failed", { channelId: ch.channelId, err: (err instanceof Error ? err.name : "UnknownError") }));
         }
-      }).catch((err: unknown) => logger.error("WeeklySummary job failed to list channels", { err: String(err) }));
+      }).catch((err: unknown) => logger.error("WeeklySummary job failed to list channels", { err: (err instanceof Error ? err.name : "UnknownError") }));
       scheduler.schedule({ id: "weekly_summary_all", type: "weekly_summary_all", runAt: nextMondayAt8UTC(), payload: {} });
     }
     if (job.type === "staleness_check") {
       void checkStaleness.execute().catch((err: unknown) => {
-        logger.error("StalenessCheck job failed", { err: String(err) });
+        logger.error("StalenessCheck job failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       });
       const nextRun = new Date(Date.now() + 6 * 60 * 60 * 1000);
       scheduler.schedule({ id: "staleness_check", type: "staleness_check", runAt: nextRun, payload: {} });
@@ -316,7 +317,7 @@ export function createContainer(config: Config, logger: Logger): Container {
               }
             })
             .catch((err: unknown) => {
-              logger.error("Failed to rehydrate pending reminders", { err: String(err) });
+              logger.error("Failed to rehydrate pending reminders", { err: (err instanceof Error ? err.name : "UnknownError") });
             });
 
           // Hydrate the member cache from the SDK's persisted conversation store before
@@ -333,7 +334,7 @@ export function createContainer(config: Config, logger: Logger): Container {
               logger.info("Member cache hydrated from SDK store", { conversations: allConvs.length });
             }
           } catch (err: unknown) {
-            logger.error("Failed to hydrate member cache from SDK store", { err: String(err) });
+            logger.error("Failed to hydrate member cache from SDK store", { err: (err instanceof Error ? err.name : "UnknownError") });
           }
 
           return sdk;

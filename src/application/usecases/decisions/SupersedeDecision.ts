@@ -1,3 +1,4 @@
+import { sameQualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Decision } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
@@ -23,7 +24,7 @@ export class SupersedeDecision {
 
   async execute(input: SupersedeDecisionInput): Promise<Decision | null> {
     const oldDecision = await this.decisions.findById(input.supersedesDecisionId);
-    if (!oldDecision || oldDecision.conversationId.id !== input.conversationId.id) {
+    if (!oldDecision || !sameQualifiedId(oldDecision.conversationId, input.conversationId)) {
       return null;
     }
 

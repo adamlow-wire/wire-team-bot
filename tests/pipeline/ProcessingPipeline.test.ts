@@ -53,6 +53,7 @@ const emptyExtractResult: ExtractResult = {
 
 function makeDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
   return {
+    auditLog: { append: vi.fn().mockResolvedValue(undefined) },
     classifier: { classify: vi.fn().mockResolvedValue(lowSignalResult) },
     extraction: { extract: vi.fn().mockResolvedValue(emptyExtractResult) },
     embeddingService: {
@@ -360,5 +361,41 @@ describe("ProcessingPipeline", () => {
       await new Promise((r) => setTimeout(r, 50));
       expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("pipeline privacy boundary", () => {
+  it.each(["paused", "secure"])("does not classify %s channels", async state => {
+    const deps = makeDeps();
+    vi.mocked(deps.channelConfig.get).mockResolvedValue({ state } as never);
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.classifier.classify).not.toHaveBeenCalled();
+    expect(deps.signalRepo.create).not.toHaveBeenCalled();
+  });
+  it("fails closed when state cannot be read", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.channelConfig.get).mockRejectedValue(new Error("DB unavailable"));
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.classifier.classify).not.toHaveBeenCalled();
+  });
+  it("discards extraction finishing after cancellation", async () => {
+    const controller = new AbortController();
+    const deps = makeDeps({ classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) } });
+    vi.mocked(deps.extraction.extract).mockImplementation(async () => {
+      controller.abort();
+      return fullExtractResult;
+    });
+    await new ProcessingPipeline(deps).process(baseJob(), controller.signal);
+    expect(deps.decisionRepo.create).not.toHaveBeenCalled();
+    expect(deps.entityRepo.upsertWithDedup).not.toHaveBeenCalled();
+    expect(deps.signalRepo.create).not.toHaveBeenCalled();
+  });
+  it("does not copy low-signal or empty-extraction text into storage", async () => {
+    for (const classification of [lowSignalResult, highSignalResult]) {
+      const deps = makeDeps({ classifier: { classify: vi.fn().mockResolvedValue(classification) } });
+      await new ProcessingPipeline(deps).process({ ...baseJob(), text: "PRIVATE_CONTEXT_MARKER" });
+      expect(deps.signalRepo.create).toHaveBeenCalled();
+      expect(JSON.stringify(vi.mocked(deps.signalRepo.create).mock.calls)).not.toContain("PRIVATE_CONTEXT_MARKER");
+    }
   });
 });

@@ -10,6 +10,7 @@ import type { RetrievalResult, RetrievalScope } from "../../application/ports/Re
 import type { QueryPlan } from "../../application/ports/QueryAnalysisPort";
 import type { Decision } from "../../domain/entities/Decision";
 import type { Action } from "../../domain/entities/Action";
+import { sameQualifiedId } from "../../domain/ids/QualifiedId";
 import { fromChannelId } from "../../domain/ids/channelId";
 
 const MAX_RESULTS = 20;
@@ -47,6 +48,7 @@ export class StructuredRetrievalPath {
 
         const seen = new Set<string>();
         for (const d of decisions) {
+          if (d.deleted || !sameQualifiedId(d.conversationId, convId)) continue;
           if (!matchesTimeRange(d.decidedAt ?? d.timestamp, plan)) continue;
           results.push(decisionToResult(d, scope.channelId));
           seen.add(d.id);
@@ -57,7 +59,7 @@ export class StructuredRetrievalPath {
           if (seen.has(id)) continue;
           try {
             const d = await this.decisionRepo.findById(id);
-            if (d) results.push(decisionToResult(d, scope.channelId));
+            if (d && !d.deleted && sameQualifiedId(d.conversationId, convId)) results.push(decisionToResult(d, scope.channelId));
           } catch { /* non-fatal */ }
         }
       } catch {
@@ -80,6 +82,7 @@ export class StructuredRetrievalPath {
 
       const seen = new Set<string>();
       for (const a of actions) {
+        if (a.deleted || !sameQualifiedId(a.conversationId, convId)) continue;
         if (!matchesTimeRange(a.timestamp, plan)) continue;
         results.push(actionToResult(a, scope.channelId));
         seen.add(a.id);
@@ -90,7 +93,7 @@ export class StructuredRetrievalPath {
         if (seen.has(id)) continue;
         try {
           const a = await this.actionRepo.findById(id);
-          if (a) results.push(actionToResult(a, scope.channelId));
+          if (a && !a.deleted && sameQualifiedId(a.conversationId, convId)) results.push(actionToResult(a, scope.channelId));
         } catch { /* non-fatal */ }
       }
     } catch {

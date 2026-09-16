@@ -55,7 +55,7 @@ export class GenerateSummary {
       ]);
     } catch (err) {
       this.logger.warn("GenerateSummary: failed to query inputs", {
-        channelId, err: String(err),
+        channelId, err: (err instanceof Error ? err.name : "UnknownError"),
       });
       return null;
     }
@@ -101,7 +101,7 @@ export class GenerateSummary {
         granularity,
       );
     } catch (err) {
-      this.logger.warn("GenerateSummary: summarisation failed", { channelId, err: String(err) });
+      this.logger.warn("GenerateSummary: summarisation failed", { channelId, err: (err instanceof Error ? err.name : "UnknownError") });
       return null;
     }
 
@@ -124,7 +124,7 @@ export class GenerateSummary {
         modelVersion: result.modelVersion,
       });
     } catch (err) {
-      this.logger.warn("GenerateSummary: failed to persist summary", { channelId, err: String(err) });
+      this.logger.warn("GenerateSummary: failed to persist summary", { channelId, err: (err instanceof Error ? err.name : "UnknownError") });
       return null;
     }
   }

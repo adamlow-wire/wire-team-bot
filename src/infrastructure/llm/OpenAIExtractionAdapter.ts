@@ -140,7 +140,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     } catch (err) {
       this.logger.error("Extractor LLM call failed — writing fallback signal", {
         channelId: context.channelId,
-        err: String(err),
+        err: (err instanceof Error ? err.name : "UnknownError"),
       });
       return EMPTY_RESULT;
     }
@@ -151,7 +151,7 @@ export class OpenAIExtractionAdapter implements ExtractionPort {
     } catch {
       this.logger.warn("Extractor — failed to parse LLM response", {
         channelId: context.channelId,
-        preview: raw.slice(0, 300),
+        responseLength: raw.length,
       });
       return EMPTY_RESULT;
     }

@@ -46,7 +46,7 @@ export class FireReminder {
       console.error("[FireReminder] Failed to send reminder message", {
         reminderId: input.reminderId,
         convId,
-        err: String(err),
+        err: (err instanceof Error ? err.name : "UnknownError"),
       });
     }
   }

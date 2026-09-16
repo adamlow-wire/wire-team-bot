@@ -100,7 +100,7 @@ export class AnswerQuestion {
         retrievalResults = await this.retrievalEngine.retrieve(plan, scope);
       } catch (err) {
         // Non-fatal — answer with empty context rather than failing
-        this.logger?.warn("AnswerQuestion: retrieval failed, answering with no context", { err: String(err) });
+        this.logger?.warn("AnswerQuestion: retrieval failed, answering with no context", { err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 

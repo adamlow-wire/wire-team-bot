@@ -38,7 +38,7 @@ export class SummaryRetrievalPath {
     } catch (err) {
       this.logger.warn("SummaryRetrievalPath: query failed", {
         channelId: scope.channelId,
-        err: String(err),
+        err: (err instanceof Error ? err.name : "UnknownError"),
       });
       return [];
     }

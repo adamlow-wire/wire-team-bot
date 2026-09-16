@@ -37,7 +37,7 @@ describe("LogDecision", () => {
       authorName: "Alice",
       rawMessageId: "msg-1",
       summary: "We will use Prisma",
-      contextMessages: [],
+      contextMessages: [{ messageId: "context-1", senderId: authorId, senderName: "Alice", text: "PRIVATE_CONTEXT_MARKER", timestamp: new Date() }],
       participantIds: [authorId],
     });
 
@@ -47,11 +47,9 @@ describe("LogDecision", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0].text).toContain("DEC-0001");
     expect(sent[0].text).toContain("We will use Prisma");
-    expect(wireOutbound.sendCompositePrompt).toHaveBeenCalledWith(
-      convId,
-      "Any actions from this?",
-      expect.arrayContaining([expect.objectContaining({ id: "yes" }), expect.objectContaining({ id: "no" })]),
-      expect.any(Object),
-    );
+    expect(wireOutbound.sendCompositePrompt).not.toHaveBeenCalled();
+    expect(result.context).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_CONTEXT_MARKER");
+    expect(JSON.stringify(auditLog.append.mock.calls)).not.toContain("PRIVATE_CONTEXT_MARKER");
   });
 });

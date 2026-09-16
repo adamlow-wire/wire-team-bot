@@ -73,20 +73,20 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
       return vec[0] ?? null;
     } catch (primaryErr) {
       if (!isFallbackable(primaryErr)) {
-        this.logger.warn("Embedding call failed (non-retryable)", { err: String(primaryErr) });
+        this.logger.warn("Embedding call failed (non-retryable)", { err: (primaryErr instanceof Error ? primaryErr.name : "UnknownError") });
         return null;
       }
       this.logger.warn("Embedding primary model failed, retrying with fallback", {
         primaryModel: this.model,
         fallbackModel: this.fallbackModel,
-        err: String(primaryErr),
+        err: (primaryErr instanceof Error ? primaryErr.name : "UnknownError"),
       });
       try {
         const vec = await this.attempt(this.fallbackModel, [text]);
         this.recordSuccess();
         return vec[0] ?? null;
       } catch (fallbackErr) {
-        this.logger.warn("Embedding fallback model also failed", { err: String(fallbackErr) });
+        this.logger.warn("Embedding fallback model also failed", { err: (fallbackErr instanceof Error ? fallbackErr.name : "UnknownError") });
         this.recordFailure();
         return null;
       }
@@ -102,7 +102,7 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
       return texts.map((_, i) => vectors[i] ?? null);
     } catch (primaryErr) {
       if (!isFallbackable(primaryErr)) {
-        this.logger.warn("Batch embedding failed (non-retryable)", { err: String(primaryErr) });
+        this.logger.warn("Batch embedding failed (non-retryable)", { err: (primaryErr instanceof Error ? primaryErr.name : "UnknownError") });
         return texts.map(() => null);
       }
       try {
@@ -134,8 +134,7 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
 
     if (res.status === 503) throw new ServiceUnavailableError(model);
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Embedding request failed (${res.status}): ${text}`);
+      throw new Error(`Embedding request failed (${res.status})`);
     }
 
     const data = (await res.json()) as {

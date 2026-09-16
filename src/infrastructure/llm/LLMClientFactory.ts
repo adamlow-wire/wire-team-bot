@@ -82,7 +82,7 @@ export class LLMClientFactory {
         slot: effectiveSlot,
         primaryModel: slotCfg.model,
         fallbackModel: slotCfg.fallback,
-        err: String(err),
+        err: (err instanceof Error ? err.name : "UnknownError"),
       });
     }
 
@@ -123,8 +123,7 @@ export class LLMClientFactory {
     }
 
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`LLM request failed (${res.status}): ${text}`);
+      throw new Error(`LLM request failed (${res.status})`);
     }
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };

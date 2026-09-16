@@ -76,7 +76,7 @@ export class PrismaEmbeddingRepository implements EmbeddingRepository {
       `;
       return rows.map(toSimilarEmbedding);
     } catch (err) {
-      this.logger.warn("EmbeddingRepository.findSimilar failed", { channelId, err: String(err) });
+      this.logger.warn("EmbeddingRepository.findSimilar failed", { channelId, err: (err instanceof Error ? err.name : "UnknownError") });
       return [];
     }
   }

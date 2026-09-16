@@ -44,7 +44,7 @@ export class GraphRetrievalPath {
     try {
       return await this.bfsTraversal(plan.entities, scope.channelId);
     } catch (err) {
-      this.logger.warn("GraphRetrievalPath: traversal failed", { err: String(err) });
+      this.logger.warn("GraphRetrievalPath: traversal failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       return [];
     }
   }

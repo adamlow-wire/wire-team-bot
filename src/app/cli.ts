@@ -194,6 +194,7 @@ async function main() {
   const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
   const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
   const pipeline         = new ProcessingPipeline({
+    auditLog: auditLogRepo,
     classifier, extraction, embeddingService,
     entityRepo, embeddingRepo, signalRepo,
     decisionRepo: decisionsRepo, actionRepo: actionsRepo,
@@ -203,7 +204,7 @@ async function main() {
     contradictionThreshold: config.llm.jeeves.contradictionThreshold,
   });
   const processingQueue = new InMemoryProcessingQueue<MessageJob>((msg, meta) => logger.warn(msg, meta));
-  processingQueue.setWorker(job => pipeline.process(job.payload));
+  processingQueue.setWorker(job => pipeline.process(job.payload, job.signal));
 
   // Retrieval
   const queryAnalysis    = new OpenAIQueryAnalysisAdapter(llmFactory, logger);
@@ -255,9 +256,6 @@ async function main() {
     pipeline,
     orgId:                  DOMAIN,
   });
-
-  // Mark channel as known so hydrateChannelState is skipped on first message
-  (router as unknown as { knownConvs: Set<string> }).knownConvs.add(channelId);
 
   const isInteractive = process.stdin.isTTY;
 

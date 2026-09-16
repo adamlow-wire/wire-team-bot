@@ -115,7 +115,19 @@ export class WireEventRouter extends WireEventsHandler {
   // Entry point
   // ─────────────────────────────────────────────────────────────────────────
 
+  private readonly handlers = new Map<string, Promise<void>>();
+
   async onTextMessageReceived(wireMessage: TextMessage): Promise<void> {
+    const channelId = toChannelId(wireMessage.conversationId);
+    const previous = this.handlers.get(channelId) ?? Promise.resolve();
+    const current = previous.catch(() => {}).then(() => this.processTextMessage(wireMessage));
+    this.handlers.set(channelId, current);
+    try { await current; } finally {
+      if (this.handlers.get(channelId) === current) this.handlers.delete(channelId);
+    }
+  }
+
+  private async processTextMessage(wireMessage: TextMessage): Promise<void> {
     const text = wireMessage.text ?? "";
     const convId = wireMessage.conversationId as QualifiedId;
     const sender = wireMessage.sender as QualifiedId;
@@ -165,13 +177,6 @@ export class WireEventRouter extends WireEventsHandler {
       messageId: wireMessage.id,
     });
 
-    this.deps.messageBuffer.push(convId, {
-      messageId: wireMessage.id,
-      senderId: sender,
-      senderName: senderMember?.name ?? "",
-      text,
-      timestamp: new Date(),
-    });
     this.lastActivityByConv.set(channelId, Date.now());
 
     if (!this.knownConvs.has(channelId)) {
@@ -182,13 +187,13 @@ export class WireEventRouter extends WireEventsHandler {
     try {
       await this.handleTextMessage(wireMessage, text, convId, sender, channelId, log);
     } catch (err) {
-      log.error("Handler failed", { err: String(err), stack: err instanceof Error ? err.stack : undefined });
+      log.error("Handler failed", { err: (err instanceof Error ? err.name : "UnknownError"), errorType: err instanceof Error ? err.name : undefined });
       try {
         await this.deps.wireOutbound.sendPlainText(convId, "Something went wrong. Please try again.", {
           replyToMessageId: wireMessage.id,
         });
       } catch (sendErr) {
-        log.error("Failed to send error reply", { err: String(sendErr) });
+        log.error("Failed to send error reply", { err: (sendErr instanceof Error ? sendErr.name : "UnknownError") });
       }
     }
   }
@@ -212,8 +217,8 @@ export class WireEventRouter extends WireEventsHandler {
         this.channelStateCache.set(channelId, "active");
       }
     } catch (err) {
-      log.warn("Failed to hydrate channel state", { err: String(err) });
-      this.channelStateCache.set(channelId, "active");
+      log.warn("Failed to hydrate channel state", { err: (err instanceof Error ? err.name : "UnknownError") });
+      this.channelStateCache.set(channelId, "paused");
     }
   }
 
@@ -242,14 +247,6 @@ export class WireEventRouter extends WireEventsHandler {
       name: m.name,
     }));
 
-    this.deps.slidingWindow.push(channelId, {
-      messageId: wireMessage.id,
-      authorId: sender.id,
-      authorName: senderDisplayName,
-      text,
-      timestamp: new Date(),
-    });
-
     // ── PAUSED ────────────────────────────────────────────────────────────────
     if (channelState === "paused") {
       const botMentioned = wireMessage.mentions?.some((m) => m.userId.id === this.deps.botUserId.id) ?? false;
@@ -267,7 +264,7 @@ export class WireEventRouter extends WireEventsHandler {
       }
       await this.deps.wireOutbound.sendPlainText(
         convId,
-        "I'm currently standing by. Say _\"resume\"_ or mention me to bring me back.",
+        "I'm currently standing by. Mention me with _\"resume\"_ to bring me back.",
         { replyToMessageId: wireMessage.id },
       );
       return;
@@ -284,32 +281,6 @@ export class WireEventRouter extends WireEventsHandler {
       }
       log.debug("Secure mode active — message discarded");
       return;
-    }
-
-    // ── ACTIVE — enqueue background pipeline job ──────────────────────────────
-    // Skip explicit command messages (decision:, action:) — those are persisted
-    // synchronously by the command handlers below.  Re-processing them through
-    // the extraction pipeline creates duplicate entities in the database.
-    const isExplicitCommand = /^(?:decision|action):\s/i.test(text.trim());
-    if (!isExplicitCommand && this.deps.processingQueue && this.deps.pipeline) {
-      log.info("Message: enqueued for pipeline processing");
-      const orgId = this.deps.orgId ?? convId.domain;
-      const job: MessageJob = {
-        messageId: wireMessage.id,
-        channelId,
-        conversationId: convId,
-        senderId: sender,
-        senderName: senderDisplayName ?? "",
-        text,
-        timestamp: new Date(),
-        orgId,
-      };
-      this.deps.processingQueue.enqueue({
-        id: wireMessage.id,
-        channelId,
-        payload: job,
-        enqueuedAt: new Date(),
-      });
     }
 
     // ── ACTIVE — state-change commands ────────────────────────────────────────
@@ -370,6 +341,21 @@ export class WireEventRouter extends WireEventsHandler {
         }
       }
     }
+
+    this.deps.messageBuffer.push(convId, {
+      messageId: wireMessage.id,
+      senderId: sender,
+      senderName: senderDisplayName ?? "",
+      text,
+      timestamp: new Date(),
+    });
+    this.deps.slidingWindow.push(channelId, {
+      messageId: wireMessage.id,
+      authorId: sender.id,
+      authorName: senderDisplayName,
+      text,
+      timestamp: new Date(),
+    });
 
     // ── Fast-path: ID-based mutations ─────────────────────────────────────────
 
@@ -658,14 +644,34 @@ export class WireEventRouter extends WireEventsHandler {
         text: answer,
         timestamp: new Date(),
       });
-      this.deps.slidingWindow.push(channelId, {
-        messageId: botMsgId,
-        authorId: this.deps.botUserId.id,
-        authorName: "Jeeves",
-        text: `[Jeeves] ${answer}`,
+      return;
+    }
+    // ── ACTIVE — enqueue background pipeline job ──────────────────────────────
+    // Skip explicit command messages (decision:, action:) — those are persisted
+    // synchronously by the command handlers below.  Re-processing them through
+    // the extraction pipeline creates duplicate entities in the database.
+    const isExplicitCommand = /^(?:decision|action):\s/i.test(text.trim());
+    if (!isExplicitCommand && this.deps.processingQueue && this.deps.pipeline) {
+      log.info("Message: enqueued for pipeline processing");
+      const orgId = this.deps.orgId ?? convId.domain;
+      const job: MessageJob = {
+        messageId: wireMessage.id,
+        channelId,
+        conversationId: convId,
+        senderId: sender,
+        senderName: senderDisplayName ?? "",
+        text,
         timestamp: new Date(),
+        orgId,
+      };
+      this.deps.processingQueue.enqueue({
+        id: wireMessage.id,
+        channelId,
+        payload: job,
+        enqueuedAt: new Date(),
       });
     }
+
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -682,33 +688,28 @@ export class WireEventRouter extends WireEventsHandler {
   ): Promise<void> {
     const now = new Date();
     const prevState = this.channelStateCache.get(channelId) ?? "active";
-    this.channelStateCache.set(channelId, newState);
-    log.info("Channel state change", { channelId, newState });
-
+    // Stop locally first. Resume only after the durable state write succeeds.
+    this.channelStateCache.set(channelId, "paused");
+    this.deps.messageBuffer.clear(convId);
+    this.deps.slidingWindow.flush(channelId);
+    await this.deps.processingQueue?.cancelChannel(channelId);
     try {
       const existing = await this.deps.channelConfig.get(channelId);
-      if (existing) {
-        await this.deps.channelConfig.setState(channelId, newState, actorId, now);
-        if (newState === "secure") await this.deps.channelConfig.openSecureRange(channelId, now);
-        else if (prevState === "secure") await this.deps.channelConfig.closeSecureRange(channelId, now);
+      if (!existing) {
+        await this.deps.channelConfig.upsert({ channelId, organisationId: convId.domain,
+          state: "paused", secureRanges: [], timezone: "UTC", locale: "en" });
       }
-    } catch (err) {
-      log.warn("Failed to persist channel state", { err: String(err) });
+      await this.deps.channelConfig.setState(channelId, newState, actorId, now);
+      if (newState === "secure") await this.deps.channelConfig.openSecureRange(channelId, now);
+      else if (prevState === "secure") await this.deps.channelConfig.closeSecureRange(channelId, now);
+      this.channelStateCache.set(channelId, newState);
+    } catch {
+      log.error("Channel state persistence failed; processing remains blocked locally");
+      await this.deps.wireOutbound.sendPlainText(convId,
+        "Processing is stopped in this process, but I could not save the state. Retry the control command before restarting the bot.",
+        { replyToMessageId });
+      return;
     }
-
-    try {
-      const legacyCfg = await this.deps.conversationConfig.get(convId);
-      await this.deps.conversationConfig.upsert({
-        conversationId: convId,
-        timezone: legacyCfg?.timezone ?? "UTC",
-        locale: legacyCfg?.locale ?? "en",
-        secretMode: newState === "secure",
-        implicitDetectionEnabled: legacyCfg?.implicitDetectionEnabled,
-        sensitivity: legacyCfg?.sensitivity,
-        purpose: legacyCfg?.purpose,
-        raw: legacyCfg?.raw ?? null,
-      });
-    } catch { /* non-fatal */ }
 
     if (newState === "secure") {
       this.deps.slidingWindow.flush(channelId);
@@ -773,7 +774,7 @@ export class WireEventRouter extends WireEventsHandler {
 
       await this.deps.wireOutbound.sendPlainText(convId, "Noted. Context updated.", { replyToMessageId });
     } catch (err) {
-      log.warn("Failed to update channel context", { err: String(err) });
+      log.warn("Failed to update channel context", { err: (err instanceof Error ? err.name : "UnknownError") });
       await this.deps.wireOutbound.sendPlainText(convId,
         "I'm afraid I was unable to update the channel context just now.", { replyToMessageId });
     }
@@ -841,7 +842,7 @@ export class WireEventRouter extends WireEventsHandler {
       log.debug("Button action confirmation sent", { referenceMessageId });
     } catch (err) {
       // Also reached in unit tests where the SDK manager is not wired; harmless there.
-      log.warn("Failed to send button action confirmation", { err: String(err) });
+      log.warn("Failed to send button action confirmation", { err: (err instanceof Error ? err.name : "UnknownError") });
     }
   }
 
@@ -961,6 +962,8 @@ export class WireEventRouter extends WireEventsHandler {
   async onConversationDeleted(conversationId: QualifiedId): Promise<void> {
     const channelId = toChannelId(conversationId);
     this.deps.memberCache.clearConversation(conversationId as QualifiedId);
+    await this.deps.processingQueue?.cancelChannel(channelId);
+    this.deps.messageBuffer.clear(conversationId);
     this.deps.slidingWindow.clear(channelId);
     this.channelStateCache.delete(channelId);
     this.knownConvs.delete(channelId);

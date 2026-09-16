@@ -143,3 +143,14 @@ describe("StructuredRetrievalPath", () => {
     expect(results.some((r) => r.type === "action")).toBe(true);
   });
 });
+
+describe("qualified explicit-ID scope", () => {
+  it.each([{ id: "other", domain: "wire.com" }, { id: "conv-1", domain: "other.com" }])("denies foreign records %j", async conversationId => {
+    const decisions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn().mockResolvedValue(makeDecision({ conversationId })) };
+    const actions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn().mockResolvedValue(makeAction({ conversationId })) };
+    const path = new StructuredRetrievalPath(decisions as never, actions as never);
+    expect(await path.retrieve({ ...basePlan, entities: ["DEC-0001", "ACT-0001"] }, scope)).toEqual([]);
+    expect(decisions.findById).toHaveBeenCalled();
+    expect(actions.findById).toHaveBeenCalled();
+  });
+});

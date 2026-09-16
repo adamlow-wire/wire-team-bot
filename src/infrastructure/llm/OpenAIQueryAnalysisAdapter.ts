@@ -92,7 +92,7 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
       );
       raw = result.content;
     } catch (err) {
-      this.logger.warn("QueryAnalysisAdapter: LLM call failed, using default plan", { err: String(err) });
+      this.logger.warn("QueryAnalysisAdapter: LLM call failed, using default plan", { err: (err instanceof Error ? err.name : "UnknownError") });
       return DEFAULT_PLAN;
     }
 
@@ -101,7 +101,7 @@ export class OpenAIQueryAnalysisAdapter implements QueryAnalysisPort {
       const parsed = JSON.parse(json) as Record<string, unknown>;
       return parsePlan(parsed);
     } catch {
-      this.logger.warn("QueryAnalysisAdapter: malformed JSON, using default plan", { raw: raw.slice(0, 200) });
+      this.logger.warn("QueryAnalysisAdapter: malformed JSON, using default plan", { responseLength: raw.length });
       return DEFAULT_PLAN;
     }
   }

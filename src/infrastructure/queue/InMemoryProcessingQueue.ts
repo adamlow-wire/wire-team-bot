@@ -19,6 +19,7 @@ export interface ProcessingJob<T = unknown> {
   channelId: string;
   payload: T;
   enqueuedAt: Date;
+  signal?: AbortSignal;
 }
 
 export type WorkerFn<T> = (job: ProcessingJob<T>) => Promise<void>;
@@ -30,6 +31,8 @@ export class InMemoryProcessingQueue<T = unknown> {
   private readonly queue: ProcessingJob<T>[] = [];
   private worker: WorkerFn<T> | null = null;
   private running = 0;
+  private readonly active = new Map<string, AbortController>();
+  private readonly channelWaiters = new Map<string, Array<() => void>>();
   private readonly warn: (msg: string, meta?: Record<string, unknown>) => void;
 
   constructor(warn: (msg: string, meta?: Record<string, unknown>) => void = () => {}) {
@@ -69,11 +72,13 @@ export class InMemoryProcessingQueue<T = unknown> {
   waitForIdle(timeoutMs = 30_000): Promise<void> {
     if (this.running === 0 && this.queue.length === 0) return Promise.resolve();
     return new Promise((resolve, reject) => {
+      let stopped = false;
       const deadline = setTimeout(
-        () => reject(new Error("InMemoryProcessingQueue.waitForIdle timed out")),
+        () => { stopped = true; reject(new Error("InMemoryProcessingQueue.waitForIdle timed out")); },
         timeoutMs,
       );
       const poll = () => {
+        if (stopped) return;
         if (this.running === 0 && this.queue.length === 0) {
           clearTimeout(deadline);
           resolve();
@@ -87,18 +92,38 @@ export class InMemoryProcessingQueue<T = unknown> {
 
   private drain(): void {
     if (!this.worker) return;
-    while (this.running < MAX_CONCURRENCY && this.queue.length > 0) {
-      const job = this.queue.shift()!;
+    while (this.running < MAX_CONCURRENCY) {
+      // Preserve source order within a channel; independent channels still run concurrently.
+      const index = this.queue.findIndex(job => !this.active.has(job.channelId));
+      if (index < 0) break;
+      const [job] = this.queue.splice(index, 1);
+      const controller = new AbortController();
+      this.active.set(job.channelId, controller);
       this.running++;
-      void this.worker(job)
-        .catch(() => {
-          // Worker errors are the worker's responsibility to handle/log.
-          // We never let them crash the drain loop.
-        })
+      void this.worker({ ...job, signal: controller.signal })
+        .catch(() => { /* Worker owns error reporting. */ })
         .finally(() => {
           this.running--;
+          this.active.delete(job.channelId);
+          this.channelWaiters.get(job.channelId)?.forEach(resolve => resolve());
+          this.channelWaiters.delete(job.channelId);
           this.drain();
         });
     }
+  }
+
+  /** Discard queued context and wait for the cancelled worker to release all work. */
+  cancelChannel(channelId: string): Promise<void> {
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      if (this.queue[i].channelId === channelId) this.queue.splice(i, 1);
+    }
+    const active = this.active.get(channelId);
+    if (!active) return Promise.resolve();
+    active.abort();
+    return new Promise(resolve => {
+      const waiters = this.channelWaiters.get(channelId) ?? [];
+      waiters.push(resolve);
+      this.channelWaiters.set(channelId, waiters);
+    });
   }
 }

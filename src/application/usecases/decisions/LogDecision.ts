@@ -1,5 +1,5 @@
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
-import type { Decision, DecisionContextItem } from "../../../domain/entities/Decision";
+import type { Decision } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { AuditLogRepository } from "../../../domain/repositories/AuditLogRepository";
@@ -28,19 +28,11 @@ export class LogDecision {
     const now = new Date();
     const id = await this.decisions.nextId();
 
-    const context: DecisionContextItem[] = input.contextMessages.map((m) => ({
-      userId: m.senderId,
-      userName: m.senderName,
-      messageText: m.text,
-      messageId: m.messageId,
-      timestamp: m.timestamp,
-    }));
-
     const decision: Decision = {
       id,
       summary: input.summary,
       rawMessageId: input.rawMessageId,
-      context,
+      context: [],
       authorId: input.authorId,
       authorName: input.authorName,
       participants: input.participantIds,
@@ -71,13 +63,6 @@ export class LogDecision {
     await this.wireOutbound.sendPlainText(
       input.conversationId,
       `Decision **${saved.id}** logged: ${saved.summary}`,
-      { replyToMessageId: input.rawMessageId },
-    );
-
-    await this.wireOutbound.sendCompositePrompt(
-      input.conversationId,
-      "Any actions from this?",
-      [{ id: "yes", label: "Yes" }, { id: "no", label: "No" }],
       { replyToMessageId: input.rawMessageId },
     );
 

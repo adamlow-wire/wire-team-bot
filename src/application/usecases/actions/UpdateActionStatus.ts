@@ -1,3 +1,4 @@
+import { sameQualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
@@ -24,7 +25,7 @@ export class UpdateActionStatus {
 
   async execute(input: UpdateActionStatusInput): Promise<Action | null> {
     const action = await this.actions.findById(input.actionId);
-    if (!action || action.conversationId.id !== input.conversationId.id) return null;
+    if (!action || !sameQualifiedId(action.conversationId, input.conversationId)) return null;
 
     const updated: Action = {
       ...action,

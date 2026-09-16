@@ -103,7 +103,7 @@ export class OpenAISummarisationAdapter implements SummarisationPort {
       );
       raw = result.content;
     } catch (err) {
-      this.logger.warn("OpenAISummarisationAdapter: LLM call failed", { err: String(err) });
+      this.logger.warn("OpenAISummarisationAdapter: LLM call failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       return fallback(decisions, actions, signals);
     }
 
@@ -113,7 +113,7 @@ export class OpenAISummarisationAdapter implements SummarisationPort {
       return parseSummaryResult(parsed, decisions, actions, signals);
     } catch {
       this.logger.warn("OpenAISummarisationAdapter: malformed JSON, using fallback", {
-        raw: raw.slice(0, 200),
+        responseLength: raw.length,
       });
       return fallback(decisions, actions, signals);
     }

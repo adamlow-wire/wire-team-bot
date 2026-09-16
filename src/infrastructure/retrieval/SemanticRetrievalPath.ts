@@ -1,3 +1,4 @@
+import { toChannelId } from "../../domain/ids/channelId";
 /**
  * Semantic retrieval path — pgvector HNSW cosine similarity on the embeddings table.
  * Embeds the question, finds similar stored vectors, then enriches with source record details.
@@ -41,7 +42,7 @@ export class SemanticRetrievalPath {
     try {
       embedding = await this.embeddingService.embed(queryText);
     } catch (err) {
-      this.logger.warn("SemanticRetrievalPath: embedding failed", { err: String(err) });
+      this.logger.warn("SemanticRetrievalPath: embedding failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       return [];
     }
     if (!embedding) return [];
@@ -63,7 +64,7 @@ export class SemanticRetrievalPath {
       try {
         if (hit.sourceType === "decision") {
           const d = await this.decisionRepo.findById(hit.sourceId);
-          if (!d || d.deleted) continue;
+          if (!d || d.deleted || toChannelId(d.conversationId) !== scope.channelId) continue;
           const decidedBy = d.decidedBy?.join(", ") || d.authorName || "unknown";
           const date = d.decidedAt ?? d.timestamp;
           results.push({
@@ -85,7 +86,7 @@ export class SemanticRetrievalPath {
           });
         } else if (hit.sourceType === "action") {
           const a = await this.actionRepo.findById(hit.sourceId);
-          if (!a || a.deleted) continue;
+          if (!a || a.deleted || toChannelId(a.conversationId) !== scope.channelId) continue;
           const rawOwner = a.assigneeName && !UUID_RE.test(a.assigneeName) ? a.assigneeName : "";
           const owner = rawOwner || "unassigned";
           results.push({
@@ -108,7 +109,7 @@ export class SemanticRetrievalPath {
         }
       } catch (err) {
         this.logger.warn("SemanticRetrievalPath: source lookup failed", {
-          sourceId: hit.sourceId, err: String(err),
+          sourceId: hit.sourceId, err: (err instanceof Error ? err.name : "UnknownError"),
         });
       }
     }

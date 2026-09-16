@@ -39,7 +39,7 @@ export class CheckStaleness {
     try {
       openActions = await this.actionRepo.query({ statusIn: ["open", "in_progress"] });
     } catch (err) {
-      this.logger.warn("CheckStaleness: failed to query actions", { err: String(err) });
+      this.logger.warn("CheckStaleness: failed to query actions", { err: (err instanceof Error ? err.name : "UnknownError") });
       return;
     }
 
@@ -96,7 +96,7 @@ export class CheckStaleness {
           await this.wireOutbound.sendPlainText(convId, nudge);
         } catch (err) {
           this.logger.warn("CheckStaleness: failed to send nudge", {
-            actionId: action.id, err: String(err),
+            actionId: action.id, err: (err instanceof Error ? err.name : "UnknownError"),
           });
         }
 
@@ -105,7 +105,7 @@ export class CheckStaleness {
           await this.actionRepo.update({ ...action, lastStatusCheck: now });
         } catch (err) {
           this.logger.warn("CheckStaleness: failed to update last_status_check", {
-            actionId: action.id, err: String(err),
+            actionId: action.id, err: (err instanceof Error ? err.name : "UnknownError"),
           });
         }
       }

@@ -224,7 +224,7 @@ export class OpenAIGeneralAnswerAdapter implements GeneralAnswerService {
         this.logger.warn("OpenAIGeneralAnswerAdapter: request timed out");
         return "I'm afraid I wasn't able to respond in time — the request timed out.";
       }
-      this.logger.warn("OpenAIGeneralAnswerAdapter: request failed", { err: String(err) });
+      this.logger.warn("OpenAIGeneralAnswerAdapter: request failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       return "I wasn't able to generate a response just now.";
     }
   }

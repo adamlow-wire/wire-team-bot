@@ -1,3 +1,4 @@
+import { sameQualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Decision } from "../../../domain/entities/Decision";
 import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
@@ -21,7 +22,7 @@ export class RevokeDecision {
 
   async execute(input: RevokeDecisionInput): Promise<Decision | null> {
     const decision = await this.decisions.findById(input.decisionId);
-    if (!decision || decision.conversationId.id !== input.conversationId.id) {
+    if (!decision || !sameQualifiedId(decision.conversationId, input.conversationId)) {
       return null;
     }
 

@@ -1,12 +1,12 @@
-# Wire Team Bot (Jeeves)
+# Wire Team Bot
 
-Jeeves helps a Wire team capture decisions and actions, recall its history, and follow up on
+Wire Team Bot helps a Wire team capture decisions and actions, recall its history, and follow up on
 commitments. The existing app is being prepared for a small real-world pilot.
 
 **[PLAN.md](PLAN.md) defines the app, architecture, feature scope and delivery progress.**
 This README is the setup and operations guide. [AGENTS.md](AGENTS.md) contains contributor rules.
 
-Jeeves is an authorised participant and sees decrypted messages. Chat and embedding requests
+Wire Team Bot is an authorised participant and sees decrypted messages. Chat and embedding requests
 go to the providers you configure. Use local endpoints for both to keep inference on-premises.
 Structured records remain sensitive. Extract-and-forget is the design requirement; the
 [plan's current-state review](PLAN.md#3-current-delivery-state) records implementation gaps
@@ -40,7 +40,7 @@ docker compose up -d
 
 ### 3. Add the app to a Wire conversation
 
-A team admin adds the Jeeves app to any group conversation. Jeeves will ask for a brief channel purpose description on first join, then begin listening.
+A team admin adds the Wire Team Bot app to any group conversation. Wire Team Bot will ask for a brief channel purpose description on first join, then begin listening.
 
 ---
 
@@ -48,14 +48,14 @@ A team admin adds the Jeeves app to any group conversation. Jeeves will ask for 
 
 Everything below runs from a dev box with Docker. The image is built locally, so the host's glibc does not matter.
 
-1. **Register Jeeves as a Wire app** (needs a staging team account with admin/owner rights; the backend checks the
+1. **Register Wire Team Bot as a Wire app** (needs a staging team account with admin/owner rights; the backend checks the
    `CreateApp` team permission). The token is the `zuid` cookie the backend hands back; the script checks it against
    `/access` before writing anything.
 
    ```bash
    node scripts/register-app.mjs versions --host https://staging-nginz-https.zinfra.io          # sanity: API v15+ available
    node scripts/register-app.mjs create   --host https://staging-nginz-https.zinfra.io \
-        --email <team-admin@staging> --name "Jeeves (staging)" --out .env.staging
+        --email <team-admin@staging> --name "Wire Team Bot (staging)" --out .env.staging
    ```
 
    You are prompted for the admin password (never echoed). If the account has a second factor enabled, run
@@ -72,8 +72,8 @@ Everything below runs from a dev box with Docker. The image is built locally, so
    npm run staging:logs        # expect: migrations, "CoreCrypto initialized", websocket connected
    ```
 
-4. **Add the app to a conversation** as a team admin in the staging Wire client. Jeeves greets and asks for the
-   channel purpose. Then try `decision: ship it`, `@Jeeves what did we decide?`, `remind me in 2 minutes to test`.
+4. **Add the app to a conversation** as a team admin in the staging Wire client. Wire Team Bot greets and asks for the
+   channel purpose. Then try `decision: ship it`, `@Wire Team Bot what did we decide?`, `remind me in 2 minutes to test`.
 
 5. **Restart test**: `docker restart jeeves-staging`, then send another message. It must still decrypt; the SDK's
    persistent keystore is the point of this migration.
@@ -96,7 +96,7 @@ when you want to throw away the staging identity's crypto store and start over w
 
 | Variable | Description |
 |---|---|
-| `WIRE_SDK_API_TOKEN` | App authentication token minted by a team admin for the Jeeves application |
+| `WIRE_SDK_API_TOKEN` | App authentication token minted by a team admin for the Wire Team Bot application |
 | `WIRE_SDK_API_HOST` | Wire backend API base URL (e.g. `https://prod-nginz-https.wire.com`) |
 | `WIRE_SDK_APP_ID` | Wire UUID of the application; verified against the backend at startup |
 | `WIRE_SDK_APP_DOMAIN` | Wire federation domain of the application (e.g. `wire.example.com`) |
@@ -111,7 +111,7 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 |---|---|---|
 | `DATABASE_URL` | `postgres://wirebot:wirebot@localhost:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string. The docker-compose stack overrides this to `postgres:5432` automatically. |
 
-### Jeeves LLM
+### Wire Team Bot LLM
 
 | Variable | Default | Description |
 |---|---|---|
@@ -169,7 +169,7 @@ configuration keys; provider-specific examples are not a guarantee of model avai
 |---|---|---|
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `MESSAGE_BUFFER_SIZE` | `50` | Recent messages kept per conversation for Q&A context (max 500). Does not affect the Tier 2 extraction window, which is always 30. |
-| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Jeeves prompts the team to resume (minimum 60 000) |
+| `SECRET_MODE_INACTIVITY_MS` | `1800000` | Milliseconds of inactivity in SECURE mode before Wire Team Bot prompts the team to resume (minimum 60 000) |
 
 ---
 
@@ -188,10 +188,10 @@ Replace sample references with the IDs returned by your bot.
 | Update an action | `ACT-0001 done`, `ACT-0001 reassign to Bob`, `ACT-0001 due Friday` |
 | Set a reminder | `remind me in 2 minutes to check the deployment` |
 | Manage reminders | `show reminders`, `cancel REM-0001`, `snooze REM-0001 1 hour` |
-| Ask/catch up | `@Jeeves what did we decide?`, `@Jeeves catch me up` |
-| Inspect channel | `@Jeeves status` |
-| Set purpose | `@Jeeves context: This channel coordinates the platform migration` |
-| Control listening | `@Jeeves pause`, `@Jeeves secure mode`, `@Jeeves resume` |
+| Ask/catch up | `@Wire Team Bot what did we decide?`, `@Wire Team Bot catch me up` |
+| Inspect channel | `@Wire Team Bot status` |
+| Set purpose | `@Wire Team Bot context: This channel coordinates the platform migration` |
+| Control listening | `@Wire Team Bot pause`, `@Wire Team Bot secure mode`, `@Wire Team Bot resume` |
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.

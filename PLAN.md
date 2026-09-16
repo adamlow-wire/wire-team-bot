@@ -1,4 +1,4 @@
-# Jeeves — App and Delivery Plan
+# Wire Team Bot — App and Delivery Plan
 
 Updated: 2026-09-16. Source review: `f034d2f`.
 
@@ -11,7 +11,7 @@ rules. Update progress here; do not create another versioned plan or gap backlog
 
 ## 1. What we are building
 
-Jeeves is a Wire participant that helps a team remember decisions, keep track of commitments,
+Wire Team Bot is a Wire participant that helps a team remember decisions, keep track of commitments,
 and catch up on work without maintaining a separate record by hand.
 
 | Team need | Useful outcome | Pilot boundary |
@@ -19,7 +19,7 @@ and catch up on work without maintaining a separate record by hand.
 | Capture | Record a decision, action, owner or reminder from the conversation. | Explicit commands plus the existing passive extractor; tolerate conservative capture. |
 | Recall | Answer what was decided, why, by whom and when, using the team's record. | Current channel only; say when the available record cannot answer. |
 | Progress | See open/overdue work, mark it done, change an owner or deadline, receive reminders. | Existing action lists, updates, nudges and summaries; no new project-management system. |
-| Control | Know when Jeeves is listening and stop processing sensitive discussion. | ACTIVE / PAUSED / SECURE, with verified context isolation. |
+| Control | Know when Wire Team Bot is listening and stop processing sensitive discussion. | ACTIVE / PAUSED / SECURE, with verified context isolation. |
 
 The pilot should answer: **does this save the team work, with sufficiently few mistakes and
 interruptions that they choose to keep using it?** A large feature count is not a success measure.
@@ -32,10 +32,10 @@ Product rules:
   Ask a short clarifying question when a consequential choice is ambiguous.
 - Keep `DEC-`, `ACT-` and `REM-` references for reliable corrections during the pilot. Removing
   them requires a proven replacement, not a blanket presentation change.
-- In groups, teach users to mention Jeeves for questions and use the documented commands for
+- In groups, teach users to mention Wire Team Bot for questions and use the documented commands for
   changes. Existing unmentioned follow-ups are a heuristic, not a general conversation contract.
 - Keep passive capture quiet. Fix misleading prompts and dead controls before adding new ones.
-- Retain the existing Jeeves voice: concise, no exclamation marks, “I'm afraid” rather than
+- Retain the existing Wire Team Bot voice: concise, no exclamation marks, “I'm afraid” rather than
   “Sorry”, “Shall I” for a supported offer. Accuracy matters more than persona polish.
 
 ## 2. Architecture and data contract
@@ -90,7 +90,7 @@ team conversations.
   audit payloads or diagnostic logs. Store the requested decision/action/reminder content,
   structured extractions and source IDs/timestamps. Structured knowledge is still sensitive;
   this is not a claim that retained information cannot reveal a conversation.
-- Jeeves sees decrypted messages as a Wire participant. Model requests go to the configured
+- Wire Team Bot sees decrypted messages as a Wire participant. Model requests go to the configured
   providers. On-premises processing requires both chat and embedding endpoints to be local;
   Wire encryption does not keep content away from a configured external model provider.
 - **ACTIVE:** normal processing. **PAUSED:** stop ambient processing; accept supported control
@@ -187,7 +187,7 @@ replacement. If the existing baseline is adequate, proceed to the pilot without 
 
 ### Development goal and finish line
 
-**Build Jeeves v3 as a tested release candidate for the small team pilot: close P1, complete
+**Build Wire Team Bot v3 as a tested release candidate for the small team pilot: close P1, complete
 P0 and P2 acceptance, preserve the current architecture, and deliver reproducible evidence
 that capture, recall, actions, reminders and privacy controls work on the chosen deployment.**
 
@@ -300,8 +300,8 @@ reason; an implementation or historical passing count alone does not close a rel
 |---|---|---|---|
 | 2026-09-16 | Consolidation | Root plans reviewed against `f034d2f`; conflicting claims replaced, V3 scope triaged | Run P0 and fix P1 |
 | 2026-09-16 | Development-goal review | Separated release-candidate acceptance from P3; identified simulation scoring limits and reminder send-failure gap by source review | Complete P0–P2; do not claim runtime verification from this review |
-| — | P0 baseline | Pending; golden file is an instruction placeholder | Record sample, configuration, counts and reviewed failures |
-| — | P1 privacy/access | Pending; source gaps listed in §3 | Implement targeted fixes and negative tests |
+| 2026-09-16 | P0 baseline | Commit `e35428b`: 151 unit/contract tests passed in `node:22-trixie-slim`; host contract suites blocked by glibc 2.38 requirement. Isolated pgvector 16 database created on loopback port 55439; 11 migrations applied. Configured `claude-haiku-4-5` responded to a synthetic probe. | Measure stored facts with fixed source events; human quality review pending |
+| 2026-09-16 | P1 implementation | Qualified retrieval/mutation checks, raw-context removal, cancelled channel queue work, both-buffer clearing, fail-closed hydration/resume, and content-free model error diagnostics implemented. Container unit/contract run: 166 passed; lint passed. | Complete isolated DB marker inspection and model/Wire journeys before closing gate |
 | — | P2 core journeys | Pending; SDK staging success is historical only | Record current CLI/e2e and Wire results |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 

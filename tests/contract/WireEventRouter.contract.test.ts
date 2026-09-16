@@ -49,7 +49,7 @@ function makeDeps(overrides: Partial<WireEventRouterDeps> = {}): WireEventRouter
       sendReaction: vi.fn().mockResolvedValue(undefined),
       sendFile: vi.fn().mockResolvedValue(undefined),
     },
-    messageBuffer: { push: vi.fn(), getLastN: vi.fn().mockReturnValue([]) },
+    messageBuffer: { clear: vi.fn(), push: vi.fn(), getLastN: vi.fn().mockReturnValue([]) },
     dateTimeService: { parse: vi.fn().mockReturnValue(null) },
     memberCache: {
       setMembers: vi.fn(), addMembers: vi.fn(), getMembers: vi.fn().mockReturnValue([]),
@@ -472,5 +472,50 @@ describe("WireEventRouter contract: Phase 4 catch me up routing", () => {
     await router.onTextMessageReceived(msg);
     // catchMeUpCommand absent — should not throw, router continues
     expect(deps.wireOutbound.sendPlainText).not.toThrow();
+  });
+});
+
+describe("privacy state contract", () => {
+  const addressed = (text: string) => ({ ...makeMessage(text), mentions: [{ userId: { id: "bot-1", domain: "wire.com" } }] });
+  it.each(["pause", "secure mode"])("clears both buffers and discards %s-period text across resume", async command => {
+    const deps = makeDeps();
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(makeMessage("before"));
+    await router.onTextMessageReceived(addressed(command));
+    expect(deps.messageBuffer.clear).toHaveBeenCalledWith(convId);
+    expect(deps.slidingWindow.flush).toHaveBeenCalledWith("conv-1@wire.com");
+    vi.mocked(deps.messageBuffer.push).mockClear();
+    vi.mocked(deps.slidingWindow.push).mockClear();
+    await router.onTextMessageReceived(makeMessage("EXCLUDED_MARKER"));
+    expect(deps.messageBuffer.push).not.toHaveBeenCalled();
+    expect(deps.slidingWindow.push).not.toHaveBeenCalled();
+    await router.onTextMessageReceived(addressed("resume"));
+    await router.onTextMessageReceived(makeMessage("after"));
+    expect(JSON.stringify(vi.mocked(deps.messageBuffer.push).mock.calls)).not.toContain("EXCLUDED_MARKER");
+  });
+  it("restores secure state before buffering on restart", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.channelConfig.get).mockResolvedValue({ state: "secure" } as never);
+    await new WireEventRouter(deps).onTextMessageReceived(makeMessage("EXCLUDED_MARKER"));
+    expect(deps.messageBuffer.push).not.toHaveBeenCalled();
+    expect(deps.slidingWindow.push).not.toHaveBeenCalled();
+  });
+  it("does not resume after a failed state write", async () => {
+    const deps = makeDeps();
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(addressed("pause"));
+    vi.mocked(deps.channelConfig.setState).mockRejectedValue(new Error("DB down"));
+    await router.onTextMessageReceived(addressed("resume"));
+    await router.onTextMessageReceived(makeMessage("decision: excluded"));
+    expect(deps.logDecision.execute).not.toHaveBeenCalled();
+  });
+  it("keeps mentioned explicit commands and questions out of passive extraction", async () => {
+    const enqueue = vi.fn();
+    const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
+    const router = new WireEventRouter(deps);
+    await router.onTextMessageReceived(addressed("@Jeeves decision: use Postgres"));
+    await router.onTextMessageReceived(addressed("@Jeeves what did we decide?"));
+    expect(deps.logDecision.execute).toHaveBeenCalledOnce();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });

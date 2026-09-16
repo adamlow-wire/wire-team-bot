@@ -1,3 +1,4 @@
+import { sameQualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Reminder } from "../../../domain/entities/Reminder";
 import type { ReminderRepository } from "../../../domain/repositories/ReminderRepository";
 import type { SchedulerPort } from "../../ports/SchedulerPort";
@@ -25,7 +26,7 @@ export class CancelReminder {
     if (
       !reminder ||
       !reminder.conversationId ||
-      reminder.conversationId.id !== input.conversationId.id
+      !sameQualifiedId(reminder.conversationId, input.conversationId)
     ) {
       await this.wireOutbound.sendPlainText(
         input.conversationId,

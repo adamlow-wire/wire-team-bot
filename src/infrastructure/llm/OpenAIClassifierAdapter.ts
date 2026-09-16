@@ -66,7 +66,7 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
         { role: "user", content: userContent },
       ], { max_tokens: 150, temperature: 0 });
     } catch (err) {
-      this.logger.warn("Classifier LLM call failed", { err: String(err) });
+      this.logger.warn("Classifier LLM call failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       return FALLBACK;
     }
 
@@ -80,7 +80,7 @@ export class OpenAIClassifierAdapter implements ClassifierPort {
     try {
       parsed = JSON.parse(result.content.replace(/^```json\s*|\s*```$/g, "").trim()) as typeof parsed;
     } catch {
-      this.logger.warn("Classifier — failed to parse LLM response", { preview: result.content.slice(0, 200) });
+      this.logger.warn("Classifier — failed to parse LLM response", { responseLength: result.content.length });
       return FALLBACK;
     }
 

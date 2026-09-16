@@ -1,3 +1,4 @@
+import type { AuditLogRepository } from "../../domain/repositories/AuditLogRepository";
 /**
  * ProcessingPipeline — three-tier background processing of conversation messages.
  *
@@ -41,6 +42,7 @@ export interface MessageJob {
 }
 
 export interface PipelineDeps {
+  auditLog: AuditLogRepository;
   classifier: ClassifierPort;
   extraction: ExtractionPort;
   embeddingService: EmbeddingService;
@@ -63,7 +65,7 @@ export interface PipelineDeps {
 export class ProcessingPipeline {
   constructor(private readonly deps: PipelineDeps) {}
 
-  async process(job: MessageJob): Promise<void> {
+  async process(job: MessageJob, signal?: AbortSignal): Promise<void> {
     const { channelId, conversationId, senderId, senderName, text, timestamp, orgId, messageId } = job;
     const log = this.deps.logger.child({ channelId, messageId, senderName: senderName || undefined });
 
@@ -71,13 +73,15 @@ export class ProcessingPipeline {
     let channelCtx: ChannelContext;
     try {
       const cfg = await this.deps.channelConfig.get(channelId);
+      if (signal?.aborted || (cfg && cfg.state !== "active")) return;
       channelCtx = {
         channelId,
         purpose: cfg?.purpose,
         contextType: cfg?.contextType ?? undefined,
       };
     } catch {
-      channelCtx = { channelId };
+      log.warn("Pipeline: channel state unavailable — processing stopped");
+      return;
     }
 
     // ── Tier 1: Classify ────────────────────────────────────────────────────
@@ -88,13 +92,14 @@ export class ProcessingPipeline {
     try {
       classifyResult = await this.deps.classifier.classify(text, channelCtx, windowTexts);
     } catch (err) {
-      log.warn("Pipeline: Tier 1 classify failed", { err: String(err) });
+      log.warn("Pipeline: Tier 1 classify failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       // Write a fallback discussion signal and stop
       await this.writeSignal(channelId, orgId, messageId, timestamp, "discussion",
-        "Unclassified message", [], 0.3, log);
+        "Unclassified message", [], 0.3, log, signal);
       return;
     }
 
+    if (signal?.aborted) return;
     log.info("Pipeline: Tier 1 classify", {
       categories: classifyResult.categories,
       is_high_signal: classifyResult.is_high_signal,
@@ -108,7 +113,7 @@ export class ProcessingPipeline {
         : classifyResult.categories.includes("update") ? "update"
         : "discussion";
       await this.writeSignal(channelId, orgId, messageId, timestamp, signalType,
-        text.slice(0, 200), classifyResult.entities, classifyResult.confidence, log);
+        "Conversation activity", classifyResult.entities, classifyResult.confidence, log, signal);
       return;
     }
 
@@ -136,16 +141,18 @@ export class ProcessingPipeline {
       }));
     } catch { /* non-fatal — extraction continues without dedup hints */ }
 
+    if (signal?.aborted) return;
     let extracted;
     try {
       extracted = await this.deps.extraction.extract(currentMsg, window, channelCtx, knownEntities, knownActions);
     } catch (err) {
-      log.error("Pipeline: Tier 2 extraction failed — writing fallback signal", { err: String(err) });
+      log.error("Pipeline: Tier 2 extraction failed — writing fallback signal", { err: (err instanceof Error ? err.name : "UnknownError") });
       await this.writeSignal(channelId, orgId, messageId, timestamp, "discussion",
-        "High-signal message — extraction failed", classifyResult.entities, 0.3, log);
+        "High-signal message — extraction failed", classifyResult.entities, 0.3, log, signal);
       return;
     }
 
+    if (signal?.aborted) return;
     log.info("Pipeline: Tier 2 extract", {
       decisions: extracted.decisions.length,
       actions: extracted.actions.length,
@@ -159,6 +166,7 @@ export class ProcessingPipeline {
     // ── Entities (resolve IDs for relationship wiring) ────────────────────
     const entityNameToId = new Map<string, string>();
     for (const entity of extracted.entities) {
+      if (signal?.aborted) return;
       try {
         const id = await this.deps.entityRepo.upsertWithDedup(entity, channelId, orgId);
         entityNameToId.set(entity.name.toLowerCase(), id);
@@ -166,28 +174,31 @@ export class ProcessingPipeline {
           entityNameToId.set(alias.toLowerCase(), id);
         }
       } catch (err) {
-        log.warn("Pipeline: entity upsert failed", { name: entity.name, err: String(err) });
+        log.warn("Pipeline: entity upsert failed", { name: entity.name, err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 
     // ── Relationships ──────────────────────────────────────────────────────
     for (const rel of extracted.relationships) {
+      if (signal?.aborted) return;
       const sourceId = entityNameToId.get(rel.sourceName.toLowerCase());
       const targetId = entityNameToId.get(rel.targetName.toLowerCase());
       if (!sourceId || !targetId) continue;
       try {
         await this.deps.entityRepo.upsertRelationship(sourceId, targetId, rel);
       } catch (err) {
-        log.warn("Pipeline: relationship upsert failed", { err: String(err) });
+        log.warn("Pipeline: relationship upsert failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 
     // ── Decisions ─────────────────────────────────────────────────────────
     const newDecisionIds: string[] = [];
     for (const d of extracted.decisions) {
+      if (signal?.aborted) return;
       if (d.confidence < this.deps.extractConfidenceMin) continue;
       try {
         const id = await this.deps.decisionRepo.nextId();
+        if (signal?.aborted) return;
         const decision: Decision = {
           id,
           conversationId,
@@ -219,10 +230,11 @@ export class ProcessingPipeline {
           },
         };
         await this.deps.decisionRepo.create(decision);
+        await this.audit(job, "Decision", id, "entity_created");
         newDecisionIds.push(id);
 
         // Tier 3: embed decision (fire-and-forget)
-        void this.embedAndStore({
+        await this.embedAndStore({
           text: d.summary,
           sourceType: "decision",
           sourceId: id,
@@ -231,14 +243,15 @@ export class ProcessingPipeline {
           authorId: senderId.id,
           createdAt: timestamp,
           topicTags: d.tags,
-        }, conversationId, log);
+        }, conversationId, log, signal);
       } catch (err) {
-        log.warn("Pipeline: decision create failed", { err: String(err) });
+        log.warn("Pipeline: decision create failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 
     // ── Completions — close existing actions announced as done ─────────────
     for (const c of extracted.completions) {
+      if (signal?.aborted) return;
       const target = openActions.find(a => a.id === c.actionId);
       if (!target) continue;
       try {
@@ -248,14 +261,16 @@ export class ProcessingPipeline {
           completionNote: c.note ?? null,
           updatedAt: now,
         });
+        await this.audit(job, "Action", target.id, "entity_updated");
         log.info("Pipeline: action completed via NL announcement", { actionId: target.id });
       } catch (err) {
-        log.warn("Pipeline: completion update failed", { actionId: c.actionId, err: String(err) });
+        log.warn("Pipeline: completion update failed", { actionId: c.actionId, err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 
     // ── Actions ───────────────────────────────────────────────────────────
     for (const a of extracted.actions) {
+      if (signal?.aborted) return;
       if (a.confidence < this.deps.extractConfidenceMin) continue;
       try {
         // If this action supersedes an existing one, close the old one first
@@ -268,7 +283,8 @@ export class ProcessingPipeline {
               completionNote: `Superseded by: ${a.description}`,
               updatedAt: now,
             });
-            log.info("Pipeline: action superseded", { closedId: toClose.id, newDescription: a.description });
+            await this.audit(job, "Action", toClose.id, "entity_updated");
+            log.info("Pipeline: action superseded", { closedId: toClose.id });
           }
         }
 
@@ -278,6 +294,7 @@ export class ProcessingPipeline {
         const resolvedOwner = looksLikeUuid(a.ownerName) ? undefined : a.ownerName;
         const resolvedSender = looksLikeUuid(senderName) ? "" : senderName;
         // Owner resolution: use sender as creator; ownerName may not map to a QualifiedId at MVP
+        if (signal?.aborted) return;
         const action: Action = {
           id,
           conversationId,
@@ -306,9 +323,10 @@ export class ProcessingPipeline {
           },
         };
         await this.deps.actionRepo.create(action);
+        await this.audit(job, "Action", id, "entity_created");
 
         // Tier 3: embed action (fire-and-forget)
-        void this.embedAndStore({
+        await this.embedAndStore({
           text: a.description,
           sourceType: "action",
           sourceId: id,
@@ -317,16 +335,17 @@ export class ProcessingPipeline {
           authorId: senderId.id,
           createdAt: timestamp,
           topicTags: a.tags,
-        }, conversationId, log);
+        }, conversationId, log, signal);
       } catch (err) {
-        log.warn("Pipeline: action create failed", { err: String(err) });
+        log.warn("Pipeline: action create failed", { err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
 
     // ── Signals ───────────────────────────────────────────────────────────
     for (const s of extracted.signals) {
+      if (signal?.aborted) return;
       await this.writeSignal(channelId, orgId, messageId, timestamp,
-        s.signalType, s.summary, s.tags, s.confidence, log);
+        s.signalType, s.summary, s.tags, s.confidence, log, signal);
     }
     // Always write at least one signal for high-signal messages with no explicit signals
     if (extracted.signals.length === 0) {
@@ -334,18 +353,24 @@ export class ProcessingPipeline {
         : extracted.actions.length > 0 ? "update"
         : "discussion";
       await this.writeSignal(channelId, orgId, messageId, timestamp, signalType,
-        text.slice(0, 200), classifyResult.entities, classifyResult.confidence, log);
+        "Conversation activity", classifyResult.entities, classifyResult.confidence, log, signal);
     }
 
     // ── Contradiction detection (async, non-blocking) ─────────────────────
     if (newDecisionIds.length > 0) {
-      void this.checkContradictions(newDecisionIds, channelId, conversationId, log);
+      await this.checkContradictions(newDecisionIds, channelId, conversationId, log, signal);
     }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────
+
+  private async audit(job: MessageJob, entityType: string, entityId: string, action: "entity_created" | "entity_updated"): Promise<void> {
+    await this.deps.auditLog.append({ timestamp: new Date(), actorId: job.senderId,
+      conversationId: job.conversationId, entityType, entityId, action,
+      details: { sourceMessageId: job.messageId } });
+  }
 
   private async embedAndStore(params: {
     text: string;
@@ -356,10 +381,11 @@ export class ProcessingPipeline {
     authorId: string;
     createdAt: Date;
     topicTags: string[];
-  }, _convId: QualifiedId, log: Logger): Promise<void> {
+  }, _convId: QualifiedId, log: Logger, signal?: AbortSignal): Promise<void> {
     try {
+      if (signal?.aborted) return;
       const vector = await this.deps.embeddingService.embed(params.text);
-      if (!vector || vector.length === 0) return;
+      if (signal?.aborted || !vector || vector.length === 0) return;
       await this.deps.embeddingRepo.store({
         sourceType: params.sourceType as import("../../domain/repositories/EmbeddingRepository").EmbeddingSourceType,
         sourceId: params.sourceId,
@@ -371,7 +397,7 @@ export class ProcessingPipeline {
         embedding: vector,
       });
     } catch (err) {
-      log.warn("Pipeline: Tier 3 embed/store failed", { sourceId: params.sourceId, err: String(err) });
+      log.warn("Pipeline: Tier 3 embed/store failed", { sourceId: params.sourceId, err: (err instanceof Error ? err.name : "UnknownError") });
     }
   }
 
@@ -385,8 +411,10 @@ export class ProcessingPipeline {
     tags: string[],
     confidence: number,
     log: Logger,
+    signal?: AbortSignal,
   ): Promise<void> {
     try {
+      if (signal?.aborted) return;
       await this.deps.signalRepo.create({
         channelId,
         orgId,
@@ -402,7 +430,7 @@ export class ProcessingPipeline {
         },
       });
     } catch (err) {
-      log.warn("Pipeline: signal write failed", { err: String(err) });
+      log.warn("Pipeline: signal write failed", { err: (err instanceof Error ? err.name : "UnknownError") });
     }
   }
 
@@ -411,12 +439,14 @@ export class ProcessingPipeline {
     channelId: string,
     conversationId: QualifiedId,
     log: Logger,
+    signal?: AbortSignal,
   ): Promise<void> {
     for (const decisionId of newDecisionIds) {
       try {
-        await this.detectContradictionForDecision(decisionId, channelId, conversationId, log);
+        if (signal?.aborted) return;
+        await this.detectContradictionForDecision(decisionId, channelId, conversationId, log, signal);
       } catch (err) {
-        log.warn("Contradiction check failed", { decisionId, err: String(err) });
+        log.warn("Contradiction check failed", { decisionId, err: (err instanceof Error ? err.name : "UnknownError") });
       }
     }
   }
@@ -426,13 +456,14 @@ export class ProcessingPipeline {
     channelId: string,
     conversationId: QualifiedId,
     log: Logger,
+    signal?: AbortSignal,
   ): Promise<void> {
     const decision = await this.deps.decisionRepo.findById(decisionId);
-    if (!decision) return;
+    if (signal?.aborted || !decision) return;
 
     // Get embedding for the new decision
     const newEmbedding = await this.deps.embeddingService.embed(decision.summary);
-    if (!newEmbedding || newEmbedding.length === 0) return;
+    if (signal?.aborted || !newEmbedding || newEmbedding.length === 0) return;
 
     // Find similar decision embeddings in the channel (last 90 days)
     const similar = await this.deps.embeddingRepo.findSimilar(
@@ -450,6 +481,7 @@ export class ProcessingPipeline {
       if (candidate.similarity < this.deps.contradictionThreshold) continue;
 
       const existing = await this.deps.decisionRepo.findById(candidate.sourceId);
+      if (signal?.aborted) return;
       if (!existing || existing.status !== "active") continue;
 
       // Suppress if either decision is < 30 min old (might be the same conversation)
@@ -469,15 +501,16 @@ export class ProcessingPipeline {
         continue;
       }
 
+      if (signal?.aborted) return;
       if (answer.startsWith("yes")) {
         log.info("Contradiction detected", { newDecisionId: decisionId, existingDecisionId: existing.id });
         try {
           await this.deps.wireOutbound.sendPlainText(
             conversationId,
-            `One notes that a recent decision ("${decision.summary.slice(0, 80)}") appears to differ from an earlier one ("${existing.summary.slice(0, 80)}"). Shall I mark the earlier decision as superseded, or is this a separate matter?`,
+            `One notes that a recent decision ("${decision.summary.slice(0, 80)}") appears to differ from an earlier one ("${existing.summary.slice(0, 80)}"). Review ${existing.id} and ${decisionId}. If the earlier decision is no longer valid, use: revoke ${existing.id} replaced by ${decisionId}.`,
           );
         } catch (err) {
-          log.warn("Failed to send contradiction notice", { err: String(err) });
+          log.warn("Failed to send contradiction notice", { err: (err instanceof Error ? err.name : "UnknownError") });
         }
       }
     }
