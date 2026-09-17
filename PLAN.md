@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-17. Release runtime: `17b8e42` (baseline `e35428b`).
+Updated: 2026-09-17. Release runtime: `ad01b3a` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -175,7 +175,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 56/59, three adjudications and Wire acceptance pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Mention repair implemented; real-model regression 56/60, decision-attribution fix and acceptance checks pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -290,32 +290,36 @@ Provisional thresholds for this small pilot (not production SLAs):
 
 ### Candidate disposition — 2026-09-17
 
-**Implemented and packaged; not yet pilot ready.** Runtime `17b8e42` is available locally as
-`wire-team-bot:v3-rc-17b8e42`. This image is now active on the designated staging backend;
-user-driven Wire smoke checks are underway. No production deployment was performed.
-Human review and designated Wire acceptance still prevent closing P0–P2.
-[Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
-and check boundaries without credentials.
+**Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `ad01b3a` is available
+locally as `wire-team-bot:v3-rc-ad01b3a` and active on the designated staging backend.
+No production deployment was performed. A reproduced decision-attribution answer bug, human
+review and designated Wire acceptance prevent closing P0–P2.
+[Release evidence](tests/acceptance/release-evidence.json) records configuration and check boundaries.
 
-- Fresh final build, `npx tsc --noEmit` and lint pass. **260 tests pass** in 39 files, including
-  six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
-  image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
-- Full real-model e2e: **56/59**, with original assertions retained in
-  [e2e-report.json](tests/acceptance/e2e-report.json). The full suite was rerun against immutable
-  image `17b8e42`, retaining its compiled runtime and production dependencies; only the test
-  harness/tooling was mounted read-only. The added addressed-assignment journey passes; scoped
-  DB inspection verifies exactly one Bob-owned slide-deck action with its Friday deadline and
-  one creation audit. Previous formatted-action/reminder journeys also pass. The original
-  assertions are unchanged. The judge now receives the current UTC date for relative deadlines.
-  `TC-ACT-07` passes; `TC-PIPE-06` and attribution/wording judge failures `TC-ID-03`/`TC-ID-06`
-  remain visible failures. Successful and failed outputs are retained.
+- Fresh build, `npx tsc --noEmit` and lint pass. **278 tests pass** in 39 files, including six
+  isolated Postgres/pgvector integration tests. Native SDK loading passes in the image
+  (Node 22.23.2, glibc 2.41, linux x86_64).
+- Full real-model e2e: **56/60**, with original assertions retained in
+  [e2e-report.json](tests/acceptance/e2e-report.json). The immutable `ad01b3a` runtime and production
+  dependencies were used with a read-only harness. Both named-assignment scenarios and previous
+  formatted-action/reminder journeys pass. Post-process inspection of all actions and audits
+  confirms one correctly owned/dated action for the structured-mention demo; no inferred
+  Monday action or raw project-context clause is stored. See the
+  [structured-mention report](tests/acceptance/structured-mention-report.json).
+- `TC-DEC-07` fails in the full run and unchanged isolated reproduction: the record says Carol
+  and Dave agreed, but recall labels recorder Alice as “Decided by”. This is a real attribution
+  answer bug, not a passing result or merely a judge discrepancy. A focused correction remains
+  required before acceptance; the mention fix does not change decision/Q&A behavior.
+- `TC-QA-05` was rejected for offering reminder syntax rather than continuing the conversation;
+  its output asks the user to choose timing and says no reminder was created. The unchanged
+  isolated reproduction passes. Both outputs are retained; full counts remain 56/60.
 - Stored-record quality evaluation at earlier image `2ba7a1f`: **20/20 correct unique captures out of
   20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
   precision/recall **100%/100%**, versus baseline 100%/50% (10/10/20). Half the expected events
   are passive; scoring queries all persisted records after drain and matches facts/source/owner.
   No marker in inspected DB records or diagnostics. See [candidate report](tests/acceptance/candidate-report.json)
   and [baseline report](tests/acceptance/baseline-report.json). This is a small synthetic sample,
-  not human-approved extraction quality. It was not rerun for the routing fixes through `17b8e42`, which affect
+  not human-approved extraction quality. It was not rerun for the routing fixes through `ad01b3a`, which affect
   command routing rather than classification/extraction or answer prompts.
 - Assistant inspection finds all ten known answers match the expected facts and the unknown
   budget question correctly reports no record. **Human correctness/usefulness review pending.**
@@ -327,15 +331,10 @@ and check boundaries without credentials.
   no-guessed-owner rule; do not silently change either the assertion or ownership policy.
 - `TC-ACT-07` previously rejected the correct end-of-month answer; it now passes with dated
   judge context and the same assertion. Its previous failures remain in Git history.
-- `TC-ID-06` returned Bob's checklist as “You have one open item”, explicitly listed Bob as
-  owner, and distinguished Alice's slides. The judge nevertheless rejected it for not confirming
-  Bob as requester. Its unchanged isolated rerun passed on `a51a7af`; the current full run
-  repeats the judge false negative. Raw outputs are retained, totals remain 56/59, and human
-  adjudication remains pending.
-- `TC-ID-03` returned “You did” to Alice instead of naming Alice explicitly, which the judge
-  rejected. Scoped DB inspection confirms Alice is the stored author. The unchanged isolated
-  rerun names Alice and passes. The full-run result remains a visible acceptance discrepancy;
-  no assertion was weakened.
+- `TC-ID-06` passes this full run. Its earlier caller-wording judge failures remain in Git.
+- `TC-ID-03` again returns “You did” to Alice and the judge rejects the absence of literal Alice.
+  The previous image's isolated rerun passed unchanged; this full-run failure remains visible.
+  No assertion was weakened.
 - Chat configuration: classify/judge `claude-haiku-4-5`; extract, summarise, query analysis,
   respond and complex synthesis `claude-opus-5`, with the same per-slot fallback models.
   Embeddings **off**, configured dimension 2560. DB vector behaviour was exercised with synthetic
@@ -496,23 +495,23 @@ use case. The demonstrated preceding project-deadline clause supplies no guessed
 second action; only the named assignment and its own deadline are persisted. Questions,
 negation, hypothetical wording and multiple assignments do not use this new write route.
 PAUSED/SECURE remain checked first. Unknown/ambiguous names use existing member resolution.
-Build/type-check/lint and 260 tests pass; immutable-image e2e is 56/59 as detailed above.
+That build/type-check/lint and 260-test run passed; its immutable-image e2e was 56/59.
 The [named-assignment report](tests/acceptance/named-assignment-report.json) verifies exactly
 one stored Bob-owned slide-deck action, Friday deadline, Alice creator and one audit entry.
 Classifier/extractor/pipeline and answer prompts are unchanged; the earlier quality sample
 remains attributed to its measured image. This is not general natural-language intent execution.
 
-Staging now runs `wire-team-bot:v3-rc-17b8e42`, preserving database and crypto volumes.
+At 15:05 UTC staging was updated to `wire-team-bot:v3-rc-17b8e42`, preserving database and crypto volumes.
 Readable snapshots and override: `/tmp/wire-v3-assignment-backup-vcoikohf/`. No reminders were
 pending before the switch. Startup connected, hydrated two conversations and reported zero
-SDK errors. Operator replay of the original demo sentence remains pending. Rollback with current volumes:
+SDK errors. The subsequent operator replay exposed the structured-mention regression below. Previous rollback command:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
 Structured mention regression (2026-09-17): the next demo used `@member really needs to`.
 Three before-fix contract cases fail: routing dropped the qualified mention ID, and the adverb
 became part of the display-name lookup. SDK metadata confirms both designated accounts are
 members of **Demo for Anna**, `8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io`.
-The repair binds validated UTF-16 person spans before command parsing and carries the qualified
+Runtime `ad01b3a` binds validated UTF-16 person spans before command parsing and carries the qualified
 identity through natural/explicit action creation and reassignment. The resolver verifies exact
 membership in the qualified conversation without falling back to the label. Labels remain for
 display; plain-text names retain existing ambiguity checks. The synthetic CLI now represents
@@ -521,16 +520,20 @@ Fresh build/type-check/lint and **278 tests** (including six isolated DB tests) 
 model invocation omitted provider settings and stopped at its configuration preflight; the
 configured TC-ACT-11 run passes. Post-process DB inspection finds exactly one Bob-owned action,
 Alice creator, Friday September 18 12:00 UTC deadline, version 1 and one creation audit. No
-project-context clause or internal mention token is retained. Immutable-image regression and
-staging activation remain pending.
+project-context clause or internal mention token is retained. The immutable-image run is 56/60 as detailed above. Staging activation preserves the existing
+volumes; fresh backup/override: `/tmp/wire-v3-mention-backup-8fiicc11/`. Startup at 15:36:12 UTC
+hydrated two conversations and connected with zero SDK errors. Operator replay remains
+pending. Rollback using `/tmp/wire-v3-assignment-backup-vcoikohf/candidate.override.yml` with
+the README compose command. Detailed stored-record evidence is in the
+[structured-mention report](tests/acceptance/structured-mention-report.json).
 
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
    and unknown-answer output; record reviewed numerators and denominators here (thresholds above).
    Review simulation misses/false positives using `npm run simulate:review` as supporting evidence.
-2. Adjudicate the three e2e cases above. Preserve the raw results; any changed behaviour needs a
-   regression run. Review latency and unsolicited output with the team.
+2. Fix the reproduced recorder/decider attribution error, then adjudicate the other three
+   e2e failures above. Preserve raw results; changed behavior requires a regression run. Review latency and unsolicited output with the team.
 3. Use @adamhuman and @adamlow_wire for assignment checks in the designated conversation. Run the
    [Wire smoke steps](README.md#designated-wire-smoke-test) on the pinned image, including names,
    decryption, correction commands, reminder downtime/failed-send recovery and both privacy states.
@@ -582,6 +585,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Cancellation/snooze prepared; combined-message gap observed | User screenshot shows two requests in one message falling into Q&A with misleading question guidance. Separate messages created REM-0003 and REM-0004; scoped DB confirms both pending, version 1, target @adamlow_wire, due 14:38:57.346 and 14:39:27.709 UTC. | Prioritise cancel/snooze as requested; return to bounded combined-command routing/guidance fix afterward |
 | 2026-09-17 | Addressed assignment demo gap | Screenshot shows a named slide-deck assignment being treated as read-only Q&A; scoped DB confirms no slide/presentation action. Two routing cases reproduce the failure. A bounded @member-needs-to variant now calls the existing audited action use case, keeps the assignment deadline separate from preceding project context, and refuses questions/negation/hypotheticals/multiple assignments. Build/type-check/lint and 260 tests pass. REM-0003/4 had already fired; cancellation/snooze remain untested. | Validate stored assignment and full image regression, then retry the demo; keep combined-command and remaining Wire gates pending |
 | 2026-09-17 | Named-assignment fix validated and staged | `17b8e42`: 260 tests, build/type-check/lint pass; targeted post-process inventory confirms one correctly owned/dated/audited action. Immutable-image e2e 56/59, new scenario passes; TC-ID-03 wording failure passes unchanged on single rerun and remains in full-run totals. Staging connected with preserved volumes, readable backups and zero SDK errors. | Retry the demo sentence; use fresh cancellation/snooze tests; combined-command and remaining acceptance gaps stay open |
+| 2026-09-17 | Structured mention repair validated and staged | `ad01b3a`: 278 tests and build/type-check/lint pass. Immutable-image e2e 56/60; new demo and all action commands pass. Post-process DB confirms qualified owner, Friday deadline, one action/audit. Full run reveals a reproducible recorder/decider answer bug; preserved as an open gate. | Repeat the demo with the real person mention; fix attribution, review remaining failures and complete Wire/human gates |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

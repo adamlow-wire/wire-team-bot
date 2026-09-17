@@ -1,15 +1,15 @@
 {
-  "runId": "mu5nk3hk",
+  "runId": "mu5ombtd",
   "passed": 56,
-  "failed": 3,
+  "failed": 4,
   "scenarios": [
     {
       "id": "TC-DEC-01",
       "description": "Log a decision \u2014 gets a DEC reference back",
       "passed": true,
-      "elapsedMs": 1428,
+      "elapsedMs": 1559,
       "outputs": [
-        "Decision **DEC-0256** logged: we will use PostgreSQL as our primary database"
+        "Decision **DEC-0277** logged: we will use PostgreSQL as our primary database"
       ],
       "failures": []
     },
@@ -17,10 +17,10 @@
       "id": "TC-DEC-02",
       "description": "Log then retrieve by topic",
       "passed": true,
-      "elapsedMs": 10582,
+      "elapsedMs": 10099,
       "outputs": [
-        "Decision **DEC-0257** logged: the team will move to two-week sprints",
-        "You decided to move to two-week sprints.\n\n\u2022 **[DEC-0257] The team will move to two-week sprints**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
+        "Decision **DEC-0278** logged: the team will move to two-week sprints",
+        "On sprint length, there's one decision recorded:\n\n\u2022 **[DEC-0278] The team will move to two-week sprints**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
       ],
       "failures": []
     },
@@ -28,10 +28,10 @@
       "id": "TC-DEC-03",
       "description": "List decisions \u2014 includes the previously logged decision",
       "passed": true,
-      "elapsedMs": 1978,
+      "elapsedMs": 2537,
       "outputs": [
-        "Decision **DEC-0258** logged: we will standardise on kebab-case for all URL slugs",
-        "- **DEC-0258** \u2014 we will standardise on kebab-case for all URL slugs _(2026-09-17)_"
+        "Decision **DEC-0279** logged: we will standardise on kebab-case for all URL slugs",
+        "- **DEC-0279** \u2014 we will standardise on kebab-case for all URL slugs _(2026-09-17)_"
       ],
       "failures": []
     },
@@ -39,10 +39,10 @@
       "id": "TC-DEC-04",
       "description": "Supersede a decision \u2014 old marked, new logged",
       "passed": true,
-      "elapsedMs": 1889,
+      "elapsedMs": 2272,
       "outputs": [
-        "Decision **DEC-0259** logged: we will deploy on Fridays",
-        "Decision **DEC-0260** logged _(supersedes DEC-0259)_: we will never deploy on Fridays"
+        "Decision **DEC-0280** logged: we will deploy on Fridays",
+        "Decision **DEC-0281** logged _(supersedes DEC-0280)_: we will never deploy on Fridays"
       ],
       "failures": []
     },
@@ -50,10 +50,10 @@
       "id": "TC-DEC-05",
       "description": "Revoke a decision \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 2186,
+      "elapsedMs": 1731,
       "outputs": [
-        "Decision **DEC-0261** logged: all standups at 9am",
-        "**DEC-0261** revoked."
+        "Decision **DEC-0282** logged: all standups at 9am",
+        "**DEC-0282** revoked."
       ],
       "failures": []
     },
@@ -61,32 +61,39 @@
       "id": "TC-DEC-06",
       "description": "Decision with named participants \u2014 response references who decided",
       "passed": true,
-      "elapsedMs": 1214,
+      "elapsedMs": 1185,
       "outputs": [
-        "Decision **DEC-0262** logged: Alice and Bob agreed we will adopt a monorepo structure for all services"
+        "Decision **DEC-0283** logged: Alice and Bob agreed we will adopt a monorepo structure for all services"
       ],
       "failures": []
     },
     {
       "id": "TC-DEC-07",
       "description": "Retrieved decision \u2014 who decided is included in the response",
-      "passed": true,
-      "elapsedMs": 11778,
+      "passed": false,
+      "elapsedMs": 9683,
       "outputs": [
-        "Decision **DEC-0263** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
-        "\u2022 **[DEC-0263] @Carol and @Dave agreed we will use Terraform for infrastructure provisioning**\n  **Decided by:** @Alice | **Date:** 2026-09-17\n\nThat is the full record \u2014 no rationale or tags were captured against it.\n\nTo revise or withdraw it, use `revoke DEC-0263 <reason>`, or log a superseding entry with `decision: <new decision>`."
+        "Decision **DEC-0284** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+        "\u2022 **[DEC-0284] Carol and Dave agreed we will use Terraform for infrastructure provisioning**\n  **Decided by:** @Alice | **Date:** 2026-09-17\n\nNo rationale was captured alongside it. If that record needs correcting \u2014 for instance if the decision should be attributed to Carol and Dave rather than you \u2014 use `revoke DEC-0284 <reason>` and log a replacement with `decision: ...`."
       ],
-      "failures": []
+      "failures": [
+        {
+          "step": "@jeeves tell me about DEC-0284",
+          "assertion": "Jeeves describes the Terraform infrastructure decision and references Carol and/or Dave as the participants who made it",
+          "judgeReason": "Decision attributes it to Alice, not Carol and Dave as required.",
+          "botOutput": "\u2022 **[DEC-0284] Carol and Dave agreed we will use Terraform for infrastructure provisioning**\n  **Decided by:** @Alice | **Date:** 2026-09-17\n\nNo rationale was captured alongside it. If that record needs correcting \u2014 for instance if the decision should be attributed to Carol and Dave rather than you \u2014 use `revoke DEC-0284 <reason>` and log a replacement with `decision: ...`."
+        }
+      ]
     },
     {
       "id": "TC-PIPE-01",
       "description": "Pipeline extracts decision from natural conversation",
       "passed": true,
-      "elapsedMs": 25115,
+      "elapsedMs": 22822,
       "outputs": [
         "",
         "",
-        "**[DEC-0264] Adopt TypeScript strict mode across the entire codebase.**\n**Decided by:** @Alice | **Date:** 2026-09-17\n*Tags: typescript, code-standards, tooling*"
+        "You agreed to adopt TypeScript strict mode across the entire codebase.\n\n\u2022 **[DEC-0285] Adopt TypeScript strict mode across the entire codebase.**\n  **Decided by:** @Alice | **Date:** 2026-09-17\n  *Tags: typescript, code-quality, standards*"
       ],
       "failures": []
     },
@@ -94,10 +101,10 @@
       "id": "TC-PIPE-02",
       "description": "Pipeline extracts action from natural statement",
       "passed": true,
-      "elapsedMs": 19011,
+      "elapsedMs": 18518,
       "outputs": [
         "",
-        "One action is currently outstanding:\n\n\u2022 **[ACT-0271] Update the deployment runbook ahead of the next release**\n  **Owner:** @Bob | **Status:** open\n  *Tags: documentation, deployment, release*\n\nNo deadline has been set against it. To add one, @Bob can mark it complete with `ACT-0271 done`, or it can be reassigned with `ACT-0271 reassign to <name>`."
+        "One action is currently outstanding:\n\n\u2022 **[ACT-0296] Update the deployment runbook ahead of the next release**\n  **Owner:** @Bob | **Status:** open\n  *Tags: documentation, deployment, release*"
       ],
       "failures": []
     },
@@ -105,11 +112,11 @@
       "id": "TC-PIPE-03",
       "description": "Verbal commitment \u2014 action attributed to the person who committed",
       "passed": true,
-      "elapsedMs": 22752,
+      "elapsedMs": 22380,
       "outputs": [
         "",
         "",
-        "@Bob has one open action:\n\n\u2022 **[ACT-0272] Bob to send the contract template to the new supplier**\n  **Owner:** @Bob | **Status:** open | **Due:** 2026-09-17\n  *Tags: contract, supplier, onboarding*\n\nThis matches what was just discussed \u2014 he confirmed he'd send it over today, ahead of the Friday deadline. To close it once done: `ACT-0272 done`"
+        "@Bob has one open action:\n\n\u2022 **[ACT-0297] Send the contract template to the new supplier**\n  **Owner:** Bob | **Status:** open | **Due:** 2026-09-17\n  *Tags: contracts, suppliers*\n\nThis matches what he committed to earlier in this conversation."
       ],
       "failures": []
     },
@@ -117,12 +124,12 @@
       "id": "TC-PIPE-04",
       "description": "Decision synthesised from a multi-turn debate",
       "passed": true,
-      "elapsedMs": 17233,
+      "elapsedMs": 18616,
       "outputs": [
         "",
         "",
         "",
-        "@Carol settled it earlier in this conversation \u2014 managed over self-hosted.\n\n\u2022 **[DEC-0265] Team will use a managed Postgres service rather than self-hosting the database.**\n  **Decided by:** Carol | **Date:** 2026-09-17\n  **Rationale:** Given the small team size, the higher monthly cost is offset by reduced ops effort and a stronger SLA.\n  *Tags: infrastructure, database, postgres, hosting*"
+        "You've gone with a managed Postgres service rather than self-hosting.\n\n\u2022 **[DEC-0286] Adopt a managed Postgres service rather than self-hosting the database.**\n  **Decided by:** @Carol | **Date:** 2026-09-17\n  **Rationale:** Given the small team size, the ops time saved and stronger SLA outweigh the higher monthly cost.\n  *Tags: infrastructure, database, postgres, hosting*\n\nThis matches the discussion earlier in this conversation, where @Dave noted the higher monthly cost was offset by reduced ops burden and a better SLA."
       ],
       "failures": []
     },
@@ -130,11 +137,11 @@
       "id": "TC-PIPE-05",
       "description": "Pronoun resolution \u2014 'she'll handle it' attributed via sliding window",
       "passed": true,
-      "elapsedMs": 26864,
+      "elapsedMs": 21732,
       "outputs": [
         "",
         "",
-        "You're leading the GDPR data-retention audit:\n\n\u2022 **[ACT-0273] Lead the GDPR data-retention audit**\n  **Owner:** @Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nEarlier in this conversation you mentioned it needs wrapping up before the end of the quarter, but no deadline is recorded against the action. To set one: `ACT-0273 due end of quarter`."
+        "You're leading the GDPR data-retention audit:\n\n\u2022 **[ACT-0298] Lead the GDPR data-retention audit**\n  **Owner:** @Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nNo due date is recorded against it, though you mentioned just now that it needs wrapping up before the end of the quarter. To capture that, send:\n\n`ACT-0298 due 2026-12-31`"
       ],
       "failures": []
     },
@@ -142,18 +149,18 @@
       "id": "TC-PIPE-06",
       "description": "Action dedup \u2014 same commitment stated twice produces one action",
       "passed": false,
-      "elapsedMs": 19476,
+      "elapsedMs": 20945,
       "outputs": [
         "",
         "",
-        "You have no open actions \u2014 nothing has been recorded in this channel yet.\n\nTo log one: `action: <description> for Alice`"
+        "I'm afraid there are no actions recorded in this channel yet \u2014 nothing is open against you or anyone else.\n\nTo log one, use: `action: <description> for Alice`"
       ],
       "failures": [
         {
           "step": "@jeeves what are Alice's open actions?",
           "assertion": "Jeeves lists Alice's open actions and mentions the API documentation update \u2014 it does not list the same task twice or mention two separate API documentation actions",
-          "judgeReason": "Bot response shows no open actions exist; assertion requires listing Alice's actions including API documentation.",
-          "botOutput": "You have no open actions \u2014 nothing has been recorded in this channel yet.\n\nTo log one: `action: <description> for Alice`"
+          "judgeReason": "Bot response shows no actions exist; assertion requires listing Alice's open actions including API documentation.",
+          "botOutput": "I'm afraid there are no actions recorded in this channel yet \u2014 nothing is open against you or anyone else.\n\nTo log one, use: `action: <description> for Alice`"
         }
       ]
     },
@@ -161,11 +168,11 @@
       "id": "TC-PIPE-07",
       "description": "NDA lifecycle \u2014 verbal commitment \u2192 confirmation \u2192 completion announcement does not duplicate",
       "passed": true,
-      "elapsedMs": 22530,
+      "elapsedMs": 21358,
       "outputs": [
         "",
         "",
-        "You have one outstanding action:\n\n\u2022 **[ACT-0274] Email the NDA to the client**\n  **Owner:** Alice | **Status:** open | **Due:** 2026-09-17\n  *Tags: nda, client, legal*\n\nThis matches what you committed to earlier in this conversation. To close it once sent: `ACT-0274 done`",
+        "You have one outstanding action:\n\n\u2022 **[ACT-0299] Email the NDA to the client**\n  **Owner:** Alice | **Status:** open | **Due:** 2026-09-17\n  *Tags: nda, client, legal*\n\nThis matches what you took on earlier in this conversation after @Bob raised sending the NDA. To close it out, use `ACT-0299 done`.",
         "",
         "No open actions in this conversation."
       ],
@@ -175,9 +182,9 @@
       "id": "TC-ACT-01",
       "description": "Log an action \u2014 gets an ACT reference back",
       "passed": true,
-      "elapsedMs": 1238,
+      "elapsedMs": 1401,
       "outputs": [
-        "Action **ACT-0275** created for **Alice**: write the database migration scripts"
+        "Action **ACT-0300** created for **Alice**: write the database migration scripts"
       ],
       "failures": []
     },
@@ -185,9 +192,9 @@
       "id": "TC-ACT-02",
       "description": "Assign action to a named member",
       "passed": true,
-      "elapsedMs": 1364,
+      "elapsedMs": 1272,
       "outputs": [
-        "Action **ACT-0276** created for **Bob**: review the open PR"
+        "Action **ACT-0301** created for **Bob**: review the open PR"
       ],
       "failures": []
     },
@@ -195,10 +202,10 @@
       "id": "TC-ACT-03",
       "description": "List my actions \u2014 includes the previously logged action",
       "passed": true,
-      "elapsedMs": 2250,
+      "elapsedMs": 1821,
       "outputs": [
-        "Action **ACT-0277** created for **Alice**: update the runbook",
-        "- **ACT-0277** `open` \u2014 update the runbook"
+        "Action **ACT-0302** created for **Alice**: update the runbook",
+        "- **ACT-0302** `open` \u2014 update the runbook"
       ],
       "failures": []
     },
@@ -206,10 +213,10 @@
       "id": "TC-ACT-04",
       "description": "List team actions \u2014 includes the previously logged action",
       "passed": true,
-      "elapsedMs": 1873,
+      "elapsedMs": 1821,
       "outputs": [
-        "Action **ACT-0278** created for **Alice**: review the infrastructure cost report",
-        "**Alice**\n- **ACT-0278** `open` \u2014 review the infrastructure cost report"
+        "Action **ACT-0303** created for **Alice**: review the infrastructure cost report",
+        "**Alice**\n- **ACT-0303** `open` \u2014 review the infrastructure cost report"
       ],
       "failures": []
     },
@@ -217,10 +224,10 @@
       "id": "TC-ACT-05",
       "description": "Mark action done \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 1891,
+      "elapsedMs": 1857,
       "outputs": [
-        "Action **ACT-0279** created for **Alice**: deploy the staging environment",
-        "**ACT-0279** marked as `done`."
+        "Action **ACT-0304** created for **Alice**: deploy the staging environment",
+        "**ACT-0304** marked as `done`."
       ],
       "failures": []
     },
@@ -228,10 +235,10 @@
       "id": "TC-ACT-06",
       "description": "Reassign action to another member",
       "passed": true,
-      "elapsedMs": 2033,
+      "elapsedMs": 1670,
       "outputs": [
-        "Action **ACT-0280** created for **Alice**: write the release notes",
-        "**ACT-0280** reassigned from **Alice** to **Bob**."
+        "Action **ACT-0305** created for **Alice**: write the release notes",
+        "**ACT-0305** reassigned from **Alice** to **Bob**."
       ],
       "failures": []
     },
@@ -239,13 +246,13 @@
       "id": "TC-ACT-09",
       "description": "Pasted inline-code action commands reassign, change deadline and complete",
       "passed": true,
-      "elapsedMs": 13363,
+      "elapsedMs": 14512,
       "outputs": [
-        "Action **ACT-0281** created for **Alice**: review the formatting smoke checklist",
-        "**ACT-0281** reassigned from **Alice** to **@Bob**.",
-        "**ACT-0281** deadline set to **18 Sept 2026, 14:59**.",
-        "**ACT-0281** marked as `done`.",
-        "\u2022 **[ACT-0281] review the formatting smoke checklist**\n  **Owner:** @Bob | **Status:** done | **Due:** 2026-09-18\n\nIt is assigned to you and already marked complete."
+        "Action **ACT-0306** created for **Alice**: review the formatting smoke checklist",
+        "**ACT-0306** reassigned from **Alice** to **@Bob**.",
+        "**ACT-0306** deadline set to **18 Sept 2026, 15:29**.",
+        "**ACT-0306** marked as `done`.",
+        "\u2022 **[ACT-0306] review the formatting smoke checklist**\n  **Owner:** @Bob | **Status:** done | **Due:** 2026-09-18\n\nIt's assigned to you and already marked complete."
       ],
       "failures": []
     },
@@ -253,10 +260,21 @@
       "id": "TC-ACT-10",
       "description": "Addressed named assignment keeps its Friday deadline apart from Monday project context",
       "passed": true,
-      "elapsedMs": 2590,
+      "elapsedMs": 2756,
       "outputs": [
-        "Action **ACT-0282** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
-        "**@Bob**\n- **ACT-0282** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+        "Action **ACT-0307** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
+        "**@Bob**\n- **ACT-0307** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+      ],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-11",
+      "description": "A structured member mention followed by really keeps the correct owner and task deadline",
+      "passed": true,
+      "elapsedMs": 2841,
+      "outputs": [
+        "Action **ACT-0308** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+        "**@Bob**\n- **ACT-0308** `open` \u2014 prepare the deck _(due 2026-09-18)_"
       ],
       "failures": []
     },
@@ -264,9 +282,9 @@
       "id": "TC-ACT-07",
       "description": "Action with owner and due date \u2014 both present in response",
       "passed": true,
-      "elapsedMs": 1562,
+      "elapsedMs": 1427,
       "outputs": [
-        "Action **ACT-0283** created for **Carol**: write the API documentation (due end of month: 30 Sept 2026, 23:59)"
+        "Action **ACT-0309** created for **Carol**: write the API documentation (due end of month: 30 Sept 2026, 23:59)"
       ],
       "failures": []
     },
@@ -274,9 +292,9 @@
       "id": "TC-ACT-08",
       "description": "Action with specific date \u2014 deadline is correct in response",
       "passed": true,
-      "elapsedMs": 1591,
+      "elapsedMs": 1274,
       "outputs": [
-        "Action **ACT-0284** created for **Dave**: complete the security audit (due April 3rd: 3 Apr 2027, 12:00)"
+        "Action **ACT-0310** created for **Dave**: complete the security audit (due April 3rd: 3 Apr 2027, 12:00)"
       ],
       "failures": []
     },
@@ -284,11 +302,11 @@
       "id": "TC-ID-01",
       "description": "My actions returns caller's actions only \u2014 not other members'",
       "passed": true,
-      "elapsedMs": 2741,
+      "elapsedMs": 2313,
       "outputs": [
-        "Action **ACT-0285** created for **Alice**: update the security documentation",
-        "Action **ACT-0286** created for **Bob**: refactor the payment module",
-        "- **ACT-0285** `open` \u2014 update the security documentation"
+        "Action **ACT-0311** created for **Alice**: update the security documentation",
+        "Action **ACT-0312** created for **Bob**: refactor the payment module",
+        "- **ACT-0311** `open` \u2014 update the security documentation"
       ],
       "failures": []
     },
@@ -296,11 +314,11 @@
       "id": "TC-ID-02",
       "description": "Actions for a named member returns that member's actions only",
       "passed": true,
-      "elapsedMs": 10591,
+      "elapsedMs": 9916,
       "outputs": [
-        "Action **ACT-0287** created for **Alice**: prepare the sprint retrospective slides",
-        "Action **ACT-0288** created for **Bob**: deploy the hotfix to staging",
-        "@Bob has one open action:\n\n\u2022 **[ACT-0288] deploy the hotfix to staging**\n  **Owner:** Bob | **Status:** open"
+        "Action **ACT-0313** created for **Alice**: prepare the sprint retrospective slides",
+        "Action **ACT-0314** created for **Bob**: deploy the hotfix to staging",
+        "@Bob has one open action:\n\n\u2022 **[ACT-0314] deploy the hotfix to staging**\n  **Owner:** Bob | **Status:** open\n\nNo deadline is recorded against it. To set one, use `ACT-0314 due <date>`."
       ],
       "failures": []
     },
@@ -308,17 +326,17 @@
       "id": "TC-ID-03",
       "description": "Decision is attributed to the member who logged it",
       "passed": false,
-      "elapsedMs": 11400,
+      "elapsedMs": 9998,
       "outputs": [
-        "Decision **DEC-0266** logged: we will enforce semantic versioning for all internal packages",
-        "You did \u2014 DEC-0266 was recorded on 17 September 2026: enforcing semantic versioning for all internal packages."
+        "Decision **DEC-0287** logged: we will enforce semantic versioning for all internal packages",
+        "You did, on 17 September 2026 \u2014 the decision to enforce semantic versioning for all internal packages."
       ],
       "failures": [
         {
-          "step": "@jeeves who made DEC-0266?",
+          "step": "@jeeves who made DEC-0287?",
           "assertion": "Jeeves identifies Alice as the author or participant who made the decision",
-          "judgeReason": "Response identifies a decision but doesn't mention Alice as author/participant.",
-          "botOutput": "You did \u2014 DEC-0266 was recorded on 17 September 2026: enforcing semantic versioning for all internal packages."
+          "judgeReason": "Response doesn't identify Alice as author/participant of the decision.",
+          "botOutput": "You did, on 17 September 2026 \u2014 the decision to enforce semantic versioning for all internal packages."
         }
       ]
     },
@@ -326,11 +344,11 @@
       "id": "TC-ID-04",
       "description": "My reminders returns only the caller's reminders \u2014 not others'",
       "passed": true,
-      "elapsedMs": 3321,
+      "elapsedMs": 3394,
       "outputs": [
-        "Reminder **REM-0098** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice",
-        "Reminder **REM-0099** set for **Friday, 18 Sept 2026, 12:00**: send the weekly report",
-        "- **REM-0098** \u2014 chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
+        "Reminder **REM-0110** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice",
+        "Reminder **REM-0111** set for **Friday, 18 Sept 2026, 12:00**: send the weekly report",
+        "- **REM-0110** \u2014 chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
       ],
       "failures": []
     },
@@ -338,11 +356,11 @@
       "id": "TC-ID-05",
       "description": "Team actions lists all members' actions \u2014 not just the caller's",
       "passed": true,
-      "elapsedMs": 2717,
+      "elapsedMs": 2477,
       "outputs": [
-        "Action **ACT-0289** created for **Alice**: write the API specification",
-        "Action **ACT-0290** created for **Bob**: set up the CI pipeline",
-        "**Bob**\n- **ACT-0290** `open` \u2014 set up the CI pipeline\n**Alice**\n- **ACT-0289** `open` \u2014 write the API specification"
+        "Action **ACT-0315** created for **Alice**: write the API specification",
+        "Action **ACT-0316** created for **Bob**: set up the CI pipeline",
+        "**Bob**\n- **ACT-0316** `open` \u2014 set up the CI pipeline\n**Alice**\n- **ACT-0315** `open` \u2014 write the API specification"
       ],
       "failures": []
     },
@@ -350,12 +368,12 @@
       "id": "TC-REM-06",
       "description": "Pasted reminder commands create, list, snooze and cancel",
       "passed": true,
-      "elapsedMs": 7662,
+      "elapsedMs": 5502,
       "outputs": [
-        "Reminder **REM-0100** set for **Thursday, 17 Sept 2026, 15:02**: check the formatting smoke reminder",
-        "- **REM-0100** \u2014 check the formatting smoke reminder _(Thursday, 17 Sept 2026, 15:02)_",
-        "**REM-0100** snoozed until **17 Sept 2026, 16:00**.",
-        "**REM-0100** cancelled."
+        "Reminder **REM-0112** set for **Thursday, 17 Sept 2026, 15:32**: check the formatting smoke reminder",
+        "- **REM-0112** \u2014 check the formatting smoke reminder _(Thursday, 17 Sept 2026, 15:32)_",
+        "**REM-0112** snoozed until **17 Sept 2026, 16:30**.",
+        "**REM-0112** cancelled."
       ],
       "failures": []
     },
@@ -363,9 +381,9 @@
       "id": "TC-REM-01",
       "description": "Create a reminder \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 3241,
+      "elapsedMs": 1456,
       "outputs": [
-        "Reminder **REM-0101** set for **Friday, 18 Sept 2026, 15:00**: review the deployment checklist"
+        "Reminder **REM-0113** set for **Friday, 18 Sept 2026, 15:30**: review the deployment checklist"
       ],
       "failures": []
     },
@@ -373,10 +391,10 @@
       "id": "TC-REM-02",
       "description": "List reminders \u2014 includes the previously created reminder",
       "passed": true,
-      "elapsedMs": 1905,
+      "elapsedMs": 2060,
       "outputs": [
-        "Reminder **REM-0102** set for **Tuesday, 22 Sept 2026, 12:00**: send the weekly status report",
-        "- **REM-0102** \u2014 send the weekly status report _(Tuesday, 22 Sept 2026, 12:00)_"
+        "Reminder **REM-0114** set for **Tuesday, 22 Sept 2026, 12:00**: send the weekly status report",
+        "- **REM-0114** \u2014 send the weekly status report _(Tuesday, 22 Sept 2026, 12:00)_"
       ],
       "failures": []
     },
@@ -384,10 +402,10 @@
       "id": "TC-REM-03",
       "description": "Cancel a reminder \u2014 confirmed",
       "passed": true,
-      "elapsedMs": 1954,
+      "elapsedMs": 2036,
       "outputs": [
-        "Reminder **REM-0103** set for **Saturday, 19 Sept 2026, 15:00**: update the docs",
-        "**REM-0103** cancelled."
+        "Reminder **REM-0115** set for **Saturday, 19 Sept 2026, 15:30**: update the docs",
+        "**REM-0115** cancelled."
       ],
       "failures": []
     },
@@ -395,9 +413,9 @@
       "id": "TC-REM-04",
       "description": "Reminder with specific date \u2014 date is accurate in confirmation",
       "passed": true,
-      "elapsedMs": 1570,
+      "elapsedMs": 1407,
       "outputs": [
-        "Reminder **REM-0104** set for **Monday, 5 Apr 2027, 12:00**: submit the quarterly report"
+        "Reminder **REM-0116** set for **Monday, 5 Apr 2027, 12:00**: submit the quarterly report"
       ],
       "failures": []
     },
@@ -405,9 +423,9 @@
       "id": "TC-REM-05",
       "description": "Reminder with day and time \u2014 both preserved in confirmation",
       "passed": true,
-      "elapsedMs": 2610,
+      "elapsedMs": 1319,
       "outputs": [
-        "Reminder **REM-0105** set for **Monday, 21 Sept 2026, 09:00**: prepare the sprint review slides"
+        "Reminder **REM-0117** set for **Monday, 21 Sept 2026, 09:00**: prepare the sprint review slides"
       ],
       "failures": []
     },
@@ -415,11 +433,11 @@
       "id": "TC-QA-01",
       "description": "Answer a question from recent conversation context",
       "passed": true,
-      "elapsedMs": 20830,
+      "elapsedMs": 19600,
       "outputs": [
         "",
         "",
-        "Redis, per **[DEC-0267]** \u2014 recorded on 2026-09-17 by @Alice.\n\nThe reasoning, as you noted earlier in this conversation, was Redis's native TTL support.\n\nThat rationale isn't captured on the decision record itself. If you want it attached, log it with:\n\n`decision: use Redis as the session cache \u2014 native TTL support`"
+        "Redis, per the decision recorded on 17 September 2026.\n\n\u2022 **[DEC-0288] Redis will be used for the session cache.**\n  **Decided by:** @Alice | **Date:** 2026-09-17\n  *Tags: infrastructure, caching*\n\nThe reason given earlier in this conversation was Redis's native TTL support. That rationale isn't attached to DEC-0288 itself \u2014 if you want it on the record, log it with:\n\n`decision: use Redis for the session cache because it supports TTL natively`"
       ],
       "failures": []
     },
@@ -427,10 +445,10 @@
       "id": "TC-QA-02",
       "description": "Answer from a logged decision",
       "passed": true,
-      "elapsedMs": 11014,
+      "elapsedMs": 9309,
       "outputs": [
-        "Decision **DEC-0268** logged: all API responses must use JSON:API format",
-        "JSON:API format, per a decision you recorded on 17 September 2026.\n\n\u2022 **[DEC-0268] All API responses must use JSON:API format**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
+        "Decision **DEC-0289** logged: all API responses must use JSON:API format",
+        "JSON:API format.\n\n\u2022 **[DEC-0289] All API responses must use JSON:API format**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
       ],
       "failures": []
     },
@@ -438,9 +456,9 @@
       "id": "TC-QA-03",
       "description": "General knowledge question \u2014 answered, not 'no record'",
       "passed": true,
-      "elapsedMs": 12413,
+      "elapsedMs": 12511,
       "outputs": [
-        "**TCP** is connection-oriented and reliable. It establishes a connection via a three-way handshake, guarantees delivery, preserves ordering, retransmits lost packets, and applies flow and congestion control. That reliability costs latency and overhead.\n\n**UDP** is connectionless and best-effort. It fires datagrams without a handshake, offers no delivery guarantee, no ordering, and no retransmission. Header overhead is smaller (8 bytes versus TCP's 20+), and there's no head-of-line blocking.\n\n**Typical uses:**\n\n| | TCP | UDP |\n|---|---|---|\n| Suited to | Web (HTTP/1.1, HTTP/2), email, file transfer, SSH | DNS, VoIP, video streaming, gaming, QUIC/HTTP/3 |\n| Priority | Correctness over speed | Speed over correctness |\n\nWorth noting that QUIC builds reliability on top of UDP, so the modern picture is less clear-cut than the textbook split suggests."
+        "**TCP** is connection-oriented and reliable. It establishes a session via a three-way handshake, guarantees delivery, preserves packet order, and handles retransmission, flow control, and congestion control. The cost is higher latency and overhead.\n\n**UDP** is connectionless and fire-and-forget. It sends datagrams with no handshake, no delivery guarantee, no ordering, and no retransmission. Minimal overhead and lower latency.\n\n| | TCP | UDP |\n|---|---|---|\n| Connection | Handshake required | None |\n| Reliability | Guaranteed delivery | Best effort |\n| Ordering | Preserved | Not preserved |\n| Header size | 20+ bytes | 8 bytes |\n| Speed | Slower | Faster |\n\n**Typical uses:** TCP for HTTP/HTTPS, email, file transfer, SSH \u2014 anything where missing data breaks things. UDP for live video and voice, gaming, DNS lookups, and streaming telemetry, where a dropped packet matters less than delay.\n\nWorth noting that HTTP/3 runs over QUIC, which is built on UDP but reimplements reliability and ordering in userspace to avoid TCP's head-of-line blocking."
       ],
       "failures": []
     },
@@ -448,28 +466,35 @@
       "id": "TC-QA-04",
       "description": "Meta question \u2014 describes capabilities",
       "passed": true,
-      "elapsedMs": 9726,
+      "elapsedMs": 9286,
       "outputs": [
-        "I track three things for this channel:\n\n- **Decisions** \u2014 what was agreed, who agreed it, and the reasoning behind it\n- **Actions** \u2014 tasks with an owner, status, and deadline where one is set\n- **Reminders** \u2014 time-based nudges\n\nI also answer questions using the channel's conversation history alongside those records.\n\nNothing has been recorded here yet. To start, use commands such as:\n\n- `decision: use Postgres`\n- `action: review the contract for Bob`\n- `remind me in 2 hours to review the checklist`"
+        "I track three things for this channel:\n\n- **Decisions** \u2014 what was agreed, who decided it, and the reasoning behind it\n- **Actions** \u2014 tasks with an owner, status, and deadline where one is set\n- **Reminders** \u2014 time-based nudges for you or the team\n\nI also answer questions using the channel's conversation history alongside those records.\n\nNothing has been recorded here yet. To start, use commands such as:\n\n- `decision: use Postgres for the audit log`\n- `action: review the contract for Bob`\n- `remind me in 2 hours to review the checklist`"
       ],
       "failures": []
     },
     {
       "id": "TC-QA-05",
       "description": "Follow-up 'yes' is coherent \u2014 not a no-record fallback",
-      "passed": true,
-      "elapsedMs": 20011,
+      "passed": false,
+      "elapsedMs": 20416,
       "outputs": [
-        "That's a sensible one to have. I can't create it from here, but the text command will:\n\n`remind me in 2 hours to review the deployment checklist`\n\nSwap the interval for whatever suits \u2014 `remind me tomorrow at 9am to review the deployment checklist` works equally well. Just send it as a message and it'll be logged.",
-        "Send it as a message and it'll be logged:\n\n`remind me in 2 hours to review the deployment checklist`\n\nIf two hours isn't right, tell me when you'd like it and I'll give you the exact command for that timing."
+        "Your call \u2014 if you want one, you'll need to give it a time. The command format is:\n\n`remind me in 2 hours to review the deployment checklist`\n\nor with a fixed time:\n\n`remind me tomorrow at 9am to review the deployment checklist`",
+        "Go ahead and send the command yourself \u2014 I can't schedule it from here. Pick whichever timing suits:\n\n`remind me in 2 hours to review the deployment checklist`\n\n`remind me tomorrow at 9am to review the deployment checklist`\n\nSubstitute any interval or fixed time you prefer."
       ],
-      "failures": []
+      "failures": [
+        {
+          "step": "@jeeves yes",
+          "assertion": "Jeeves responds coherently to the follow-up \u2014 either creates a reminder or continues the prior conversation \u2014 and does not say it has no record",
+          "judgeReason": "Bot deflects task to user instead of creating reminder or continuing conversation.",
+          "botOutput": "Go ahead and send the command yourself \u2014 I can't schedule it from here. Pick whichever timing suits:\n\n`remind me in 2 hours to review the deployment checklist`\n\n`remind me tomorrow at 9am to review the deployment checklist`\n\nSubstitute any interval or fixed time you prefer."
+        }
+      ]
     },
     {
       "id": "TC-STATE-01",
       "description": "Pause \u2014 bot acknowledges and steps out",
       "passed": true,
-      "elapsedMs": 1313,
+      "elapsedMs": 1124,
       "outputs": [
         "Understood. I shall step out. Do let me know when you require my attention again."
       ],
@@ -479,7 +504,7 @@
       "id": "TC-STATE-02",
       "description": "Pause then resume \u2014 bot confirms it is active again",
       "passed": true,
-      "elapsedMs": 1960,
+      "elapsedMs": 1826,
       "outputs": [
         "Understood. I shall step out. Do let me know when you require my attention again.",
         "Listening has resumed. I am active again."
@@ -490,7 +515,7 @@
       "id": "TC-STATE-03",
       "description": "Secure mode \u2014 bot confirms context cleared",
       "passed": true,
-      "elapsedMs": 1399,
+      "elapsedMs": 1236,
       "outputs": [
         "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice."
       ],
@@ -500,10 +525,10 @@
       "id": "TC-PERSONA-01",
       "description": "No exclamation marks in any response",
       "passed": true,
-      "elapsedMs": 10436,
+      "elapsedMs": 10493,
       "outputs": [
-        "Decision **DEC-0269** logged: we will adopt agile methodology",
-        "You decided to adopt agile methodology.\n\n\u2022 **[DEC-0269] We will adopt agile methodology**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
+        "Decision **DEC-0290** logged: we will adopt agile methodology",
+        "You decided to adopt agile methodology.\n\n\u2022 **[DEC-0290] We will adopt agile methodology**\n  **Decided by:** @Alice | **Date:** 2026-09-17"
       ],
       "failures": []
     },
@@ -511,9 +536,9 @@
       "id": "TC-PERSONA-02",
       "description": "No hollow opener \u2014 no 'Certainly', 'Of course', 'Great question'",
       "passed": true,
-      "elapsedMs": 13625,
+      "elapsedMs": 13424,
       "outputs": [
-        "Continuous integration (CI) is the practice of merging developers' work into a shared main branch frequently \u2014 typically several times a day \u2014 with each merge automatically triggering a build and test run.\n\nThe core mechanics:\n\n- **Frequent small merges** rather than long-lived feature branches, so conflicts surface early and stay cheap to resolve\n- **Automated build and test** on every push, giving fast feedback on whether a change broke anything\n- **A single source of truth** \u2014 the main branch is always expected to be in a working, releasable state\n- **Visible failure** \u2014 a broken build is treated as a priority to fix, not something to work around\n\nThe main benefit is reducing integration risk. Without CI, teams discover incompatibilities only at a late merge point, when untangling them is expensive. With it, defects are caught within minutes of introduction, while the change is still fresh in the author's mind.\n\nCI is usually paired with **continuous delivery (CD)**, which extends the automation through to deployment \u2014 so that any commit passing the pipeline could in principle ship to production. Common tooling includes GitHub Actions, GitLab CI, Jenkins, CircleCI, and Buildkite."
+        "Continuous integration (CI) is the practice of merging developers' code changes into a shared mainline frequently \u2014 typically several times a day \u2014 with each merge automatically verified by a build and test suite.\n\nThe core mechanics:\n\n- **Frequent small commits** to a shared branch, rather than long-lived feature branches that diverge for weeks\n- **Automated build** triggered on every push, catching compilation and dependency breakage immediately\n- **Automated tests** run against that build, so regressions surface within minutes of the change that caused them\n- **Fast feedback** to the author, with a broken build treated as the team's top priority to fix\n\nThe point is to avoid \"integration hell\" \u2014 the painful, unpredictable merge effort that accumulates when branches drift apart. By integrating constantly, each merge is small and the cause of any failure is obvious.\n\nCI is usually the first stage of a broader pipeline. Continuous delivery extends it by ensuring every passing build is deployable; continuous deployment goes further and releases automatically. Common tooling includes GitHub Actions, GitLab CI, Jenkins, CircleCI, and Buildkite."
       ],
       "failures": []
     },
@@ -521,9 +546,9 @@
       "id": "TC-PERSONA-03",
       "description": "Error case uses 'I'm afraid' phrasing, not 'Sorry'",
       "passed": true,
-      "elapsedMs": 11682,
+      "elapsedMs": 11529,
       "outputs": [
-        "I'm afraid I have no record of a board meeting last Tuesday, nor any attendee list \u2014 nothing on that has been captured in this channel.\n\nIf you'd like it on record, you can log it as a decision or action, for example:\n\n- `decision: board meeting attendees were Alice, Bob and Carol`\n- `action: circulate board meeting minutes for Bob`"
+        "I'm afraid I have no record of a board meeting last Tuesday, or of who attended it. Nothing has been logged in this channel \u2014 there are no decisions or actions recorded at all, and there's no prior conversation here covering it.\n\nIf the meeting produced outcomes worth keeping, you can log them directly:\n\n- `decision: <what was decided>`\n- `action: <task> for <person>`"
       ],
       "failures": []
     },
@@ -531,11 +556,11 @@
       "id": "TC-NEG-DEC-01",
       "description": "Hypothetical discussion is not recorded as a decision",
       "passed": true,
-      "elapsedMs": 10247,
+      "elapsedMs": 11670,
       "outputs": [
         "",
         "",
-        "No decisions have been recorded in this channel yet, on Kubernetes or anything else.\n\nIf you'd like to log one, use `decision: <summary>` \u2014 for example, `decision: adopt Kubernetes for production workloads`."
+        "I'm afraid there are no decisions recorded in this channel yet \u2014 nothing on Kubernetes or otherwise.\n\nIf you'd like to log one, use:\n\n`decision: <summary>`\n\nFor example: `decision: adopt Kubernetes for production workloads`"
       ],
       "failures": []
     },
@@ -543,10 +568,10 @@
       "id": "TC-NEG-DEC-02",
       "description": "Open question is not logged as a decision",
       "passed": true,
-      "elapsedMs": 11843,
+      "elapsedMs": 12960,
       "outputs": [
         "",
-        "I'm afraid nothing has been recorded on that \u2014 there are no decisions logged in this channel yet, and there's no prior discussion of TypeScript versus JavaScript for the new service in what I can see.\n\nIf the call has already been made, you can log it with:\n\n`decision: use TypeScript for the new service`\n\nAdding a brief rationale helps later \u2014 for example `decision: use TypeScript for the new service \u2014 type safety across shared models`."
+        "I'm afraid I have no record of a decision on TypeScript versus JavaScript for the new service \u2014 no decisions have been logged in this channel yet.\n\nIf that call has already been made, you can record it with:\n\n`decision: use TypeScript for the new service`"
       ],
       "failures": []
     },
@@ -554,7 +579,7 @@
       "id": "TC-NEG-DEC-03",
       "description": "Status update is not logged as a decision",
       "passed": true,
-      "elapsedMs": 7464,
+      "elapsedMs": 6681,
       "outputs": [
         "",
         "No recent decisions in this conversation."
@@ -565,7 +590,7 @@
       "id": "TC-NEG-DEC-04",
       "description": "Announcement of a fact is not logged as a decision",
       "passed": true,
-      "elapsedMs": 2871,
+      "elapsedMs": 3354,
       "outputs": [
         "",
         "No recent decisions in this conversation."
@@ -576,10 +601,10 @@
       "id": "TC-NEG-ACT-01",
       "description": "Completed past activity does not become an open action",
       "passed": true,
-      "elapsedMs": 14664,
+      "elapsedMs": 15716,
       "outputs": [
         "",
-        "Nothing has been recorded yet \u2014 there are no actions logged in this channel, so @Bob has none outstanding.\n\nTo log one: `action: <description> for Bob`"
+        "I'm afraid there are no actions recorded in this channel at all yet \u2014 so nothing open against @Bob.\n\nTo log one: `action: <description> for Bob`"
       ],
       "failures": []
     },
@@ -587,7 +612,7 @@
       "id": "TC-NEG-ACT-02",
       "description": "Vague ownerless suggestion is not logged as an action",
       "passed": true,
-      "elapsedMs": 2828,
+      "elapsedMs": 3213,
       "outputs": [
         "",
         "No open actions in this conversation."
@@ -598,7 +623,7 @@
       "id": "TC-NEG-ACT-03",
       "description": "Social greeting chat does not produce actions",
       "passed": true,
-      "elapsedMs": 4422,
+      "elapsedMs": 4093,
       "outputs": [
         "",
         "",
@@ -610,7 +635,7 @@
       "id": "TC-NEG-ACT-04",
       "description": "General status update about ongoing work is not an action",
       "passed": true,
-      "elapsedMs": 8237,
+      "elapsedMs": 7543,
       "outputs": [
         "",
         "No open actions in this conversation."
@@ -621,7 +646,7 @@
       "id": "TC-NEG-CHAT-01",
       "description": "General chat thread produces no false decisions or actions",
       "passed": true,
-      "elapsedMs": 6135,
+      "elapsedMs": 5561,
       "outputs": [
         "",
         "",
@@ -634,7 +659,7 @@
       "id": "TC-NEG-CHAT-02",
       "description": "Meeting small-talk produces no false actions",
       "passed": true,
-      "elapsedMs": 5805,
+      "elapsedMs": 5984,
       "outputs": [
         "",
         "",
@@ -647,10 +672,10 @@
       "id": "TC-NEG-ACT-05",
       "description": "First-person completion announcement is not logged as an open action",
       "passed": true,
-      "elapsedMs": 14375,
+      "elapsedMs": 17133,
       "outputs": [
         "",
-        "I'm afraid there are no open actions recorded for you \u2014 in fact, no actions have been logged in this channel at all yet.\n\nTo create one: `action: <description> for Alice`"
+        "You have no open actions \u2014 no actions have been recorded in this channel yet.\n\nTo log one: `action: <description> for Alice`"
       ],
       "failures": []
     },
@@ -658,7 +683,7 @@
       "id": "TC-NEG-ACT-06",
       "description": "Team past-tense completion is not logged as an open action",
       "passed": true,
-      "elapsedMs": 8120,
+      "elapsedMs": 8424,
       "outputs": [
         "",
         "No open actions in this conversation."
@@ -668,55 +693,67 @@
     {
       "id": "TC-ID-06",
       "description": "Current caller remains Bob after Alice's questions in the same conversation",
-      "passed": false,
-      "elapsedMs": 19347,
+      "passed": true,
+      "elapsedMs": 19116,
       "outputs": [
-        "Action **ACT-0291** created for **Bob**: review the launch checklist (due Friday: 18 Sept 2026, 12:00)",
-        "Action **ACT-0292** created for **Alice**: prepare the retrospective slides",
-        "You have one open item:\n\n\u2022 **[ACT-0292] prepare the retrospective slides**\n  **Owner:** @Alice | **Status:** open\n\nThe launch checklist review (ACT-0291) sits with @Bob, due 18 September 2026.",
-        "You have one open item:\n\n\u2022 **[ACT-0291] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0292) sit with @Alice."
+        "Action **ACT-0317** created for **Bob**: review the launch checklist (due Friday: 18 Sept 2026, 12:00)",
+        "Action **ACT-0318** created for **Alice**: prepare the retrospective slides",
+        "You're down for one open item:\n\n\u2022 **[ACT-0318] prepare the retrospective slides**\n  **Owner:** @Alice | **Status:** open\n\nNo deadline is attached to it. If you want one, send `ACT-0318 due Friday` \u2014 or mark it off with `ACT-0318 done`.\n\nThe launch checklist review (ACT-0317) sits with @Bob, due 18 September.",
+        "You have one open item:\n\n\u2022 **[ACT-0317] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nMark it off with `ACT-0317 done`, or hand it over with `ACT-0317 reassign to <name>`."
       ],
-      "failures": [
-        {
-          "step": "Bob: @Wire Team Bot What am I responsible for here?",
-          "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0291. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
-          "judgeReason": "Response correctly identifies Bob as owner of ACT-0291, but doesn't confirm Bob is the current requester.",
-          "botOutput": "You have one open item:\n\n\u2022 **[ACT-0291] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0292) sit with @Alice."
-        }
-      ]
+      "failures": []
     }
   ],
-  "runtimeCommit": "17b8e42",
+  "runtimeCommit": "ad01b3a",
   "runDate": "2026-09-17",
-  "image": "wire-team-bot:v3-rc-17b8e42",
-  "imageId": "sha256:98c02be69688c8977b7fa1ef64015e18c4837d1e23bca5cc19ba891dcdcde201",
-  "harnessCommit": "17b8e42",
-  "execution": "Immutable image runtime and production dependencies; read-only test harness/tooling; isolated DB",
-  "judgeContext": "Current UTC evaluation time supplied; existing assertions retained",
+  "image": "wire-team-bot:v3-rc-ad01b3a",
+  "imageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476",
+  "harnessCommit": "ad01b3a",
+  "execution": "Immutable image runtime and production dependencies, read-only harness mounts, isolated Postgres and approved real model configuration",
+  "judgeContext": "Current UTC time; scenario assertions unchanged",
   "targetedRechecks": [
     {
-      "runId": "mu5nvm54",
+      "runId": "mu5oxt58",
+      "passed": 0,
+      "failed": 1,
+      "scenarios": [
+        {
+          "id": "TC-DEC-07",
+          "description": "Retrieved decision \u2014 who decided is included in the response",
+          "passed": false,
+          "elapsedMs": 12074,
+          "outputs": [
+            "Decision **DEC-0291** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+            "\u2022 **[DEC-0291] @Carol and @Dave agreed we will use Terraform for infrastructure provisioning**\n  **Decided by:** Alice (you) | **Date:** 2026-09-17\n\nNo rationale or tags were captured against this record. To amend it, use `revoke DEC-0291 <reason>` followed by a fresh `decision: ...` entry."
+          ],
+          "failures": [
+            {
+              "step": "@jeeves tell me about DEC-0291",
+              "assertion": "Jeeves describes the Terraform infrastructure decision and references Carol and/or Dave as the participants who made it",
+              "judgeReason": "Bot attributes decision to Alice, not Carol/Dave as stated in assertion.",
+              "botOutput": "\u2022 **[DEC-0291] @Carol and @Dave agreed we will use Terraform for infrastructure provisioning**\n  **Decided by:** Alice (you) | **Date:** 2026-09-17\n\nNo rationale or tags were captured against this record. To amend it, use `revoke DEC-0291 <reason>` followed by a fresh `decision: ...` entry."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "mu5oxs3x",
       "passed": 1,
       "failed": 0,
       "scenarios": [
         {
-          "id": "TC-ID-03",
-          "description": "Decision is attributed to the member who logged it",
+          "id": "TC-QA-05",
+          "description": "Follow-up 'yes' is coherent \u2014 not a no-record fallback",
           "passed": true,
-          "elapsedMs": 9927,
+          "elapsedMs": 18610,
           "outputs": [
-            "Decision **DEC-0270** logged: we will enforce semantic versioning for all internal packages",
-            "DEC-0270 was decided by you, @Alice, on 17 September 2026 \u2014 enforcing semantic versioning for all internal packages."
+            "That's yours to call, though it's a sensible thing to have logged. You'll need to specify when.\n\nUse one of these:\n\n- `remind me in 2 hours to review the deployment checklist`\n- `remind me tomorrow at 9am to review the deployment checklist`\n\nJust tell me the timing you want and I'll give you the exact command.",
+            "Timing is the missing piece \u2014 I can't set one on your behalf.\n\nSend whichever fits:\n\n- `remind me in 2 hours to review the deployment checklist`\n- `remind me tomorrow at 9am to review the deployment checklist`\n\nOr substitute your own timing in the same format."
           ],
           "failures": []
         }
       ]
     }
-  ],
-  "storedAttributionInspection": {
-    "scenario": "TC-ID-03",
-    "record": "DEC-0266",
-    "authorId": "alice@cli.local",
-    "authorName": "Alice"
-  }
+  ]
 }

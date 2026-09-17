@@ -1,6 +1,6 @@
 {
   "date": "2026-09-17",
-  "runtimeCommit": "17b8e42",
+  "runtimeCommit": "ad01b3a",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,20 +49,21 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 260,
+      "passed": 278,
       "integrationTests": 6,
       "testFiles": 39,
-      "validationCommit": "17b8e42"
+      "validationCommit": "ad01b3a"
     },
     "realModelE2E": {
       "passed": 56,
-      "failed": 3,
+      "failed": 4,
       "report": "e2e-report.json",
-      "commit": "17b8e42",
+      "commit": "ad01b3a",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
-        "TC-ID-06: correct current-caller answer rejected by model judge",
-        "TC-ID-03: correct requester-relative author answer omits literal Alice; stored author verified Alice"
+        "TC-ID-03: requester-relative author wording omits literal Alice",
+        "TC-DEC-07: reproducible recall bug conflates recorder with named deciding participants; fix pending",
+        "TC-QA-05: reminder follow-up judge discrepancy; unchanged isolated rerun passes"
       ],
       "execution": "Immutable release image with read-only test harness and external ts-node tooling",
       "harnessCommit": "17b8e42",
@@ -71,15 +72,15 @@
     }
   },
   "image": {
-    "tag": "wire-team-bot:v3-rc-17b8e42",
-    "id": "sha256:98c02be69688c8977b7fa1ef64015e18c4837d1e23bca5cc19ba891dcdcde201",
-    "commit": "17b8e42",
+    "tag": "wire-team-bot:v3-rc-ad01b3a",
+    "id": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476",
+    "commit": "ad01b3a",
     "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
     "cliSmoke": [
-      "full 59-scenario real-model regression",
-      "named assignment keeps its own Friday deadline, with one stored action and creation audit"
+      "full 60-scenario real-model regression, 56 passed / 4 failed",
+      "structured member mention: one stored action with qualified Bob owner, Friday deadline and one audit"
     ],
-    "stagingStartup": "passed; member cache hydrated; no SDK errors observed during startup"
+    "stagingStartup": "passed: two conversations hydrated and client connected; zero SDK errors"
   },
   "quality": {
     "report": "candidate-report.json",
@@ -131,20 +132,26 @@
     "secondParticipant": "@adamlow_wire",
     "membershipEvidence": "Scoped stored ACT-0002 owner and creator map to the two operator accounts; screenshot confirms Adam Low sent the subsequent question.",
     "displayedBotName": "AI Team Bot (adamlow, staging)",
-    "displayNameAcceptance": "pending change to Wire Team Bot"
+    "displayNameAcceptance": "pending change to Wire Team Bot",
+    "additionalDemoConversation": {
+      "name": "Demo for Anna",
+      "qualifiedId": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+      "membersVerified": "Both @adamhuman and @adamlow_wire present in qualified SDK membership metadata",
+      "reportedFailure": "Structured person mention was reparsed as a name including the following adverb; scoped DB found zero demo actions before the repair"
+    }
   },
   "stagingActivation": {
-    "startedAt": "2026-09-17T15:05:26.829983523Z",
-    "image": "wire-team-bot:v3-rc-17b8e42",
-    "imageId": "sha256:98c02be69688c8977b7fa1ef64015e18c4837d1e23bca5cc19ba891dcdcde201",
-    "previousImageId": "sha256:a1427d5d359c41a02d5db4574547dc4308c4b640da0f099e1030e0df418e4849",
+    "startedAt": "2026-09-17T15:36:12.040270226Z",
+    "image": "wire-team-bot:v3-rc-ad01b3a",
+    "imageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476",
+    "previousImageId": "sha256:98c02be69688c8977b7fa1ef64015e18c4837d1e23bca5cc19ba891dcdcde201",
     "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-assignment-backup-vcoikohf",
+    "backupDirectory": "/tmp/wire-v3-mention-backup-8fiicc11",
     "backupReadChecks": "passed",
     "pendingRemindersBeforeSwitch": 0,
     "memberCacheHydratedConversations": 2,
     "sdkErrorDiagnostics": 0,
-    "transportRoundTrip": "pending operator named-assignment retry on this image"
+    "transportRoundTrip": "pending operator retry with structured @Adam Low mention"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -325,6 +332,10 @@
       "automated": "260 tests and build/type-check/lint passed; targeted real-model journey and post-process DB/audit inspection passed",
       "report": "named-assignment-report.json",
       "wireRetest": "pending operator retry; 17b8e42 is active in staging"
+    },
+    "structuredMentionAssignment": {
+      "result": "pending replay on ad01b3a",
+      "beforeFix": "Operator screenshot: member lookup failed on @Adam Low really needs to; both qualified members present; zero stored demo actions"
     }
   },
   "previousImageSmoke": {
@@ -426,6 +437,19 @@
       "sdkErrorDiagnostics": 0,
       "containerRestarts": 0,
       "transportRoundTrip": "passed: operator screenshot of reminder creation and subsequent delivery on f3b2eed"
+    },
+    {
+      "startedAt": "2026-09-17T15:05:26.829983523Z",
+      "image": "wire-team-bot:v3-rc-17b8e42",
+      "imageId": "sha256:98c02be69688c8977b7fa1ef64015e18c4837d1e23bca5cc19ba891dcdcde201",
+      "previousImageId": "sha256:a1427d5d359c41a02d5db4574547dc4308c4b640da0f099e1030e0df418e4849",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-assignment-backup-vcoikohf",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "memberCacheHydratedConversations": 2,
+      "sdkErrorDiagnostics": 0,
+      "transportRoundTrip": "passed receive/reply, but operator demo exposed structured-member parsing failure"
     }
   ],
   "formattedActionSmoke": {
@@ -443,5 +467,12 @@
     "report": "named-assignment-report.json",
     "commit": "17b8e42",
     "result": "passed: exactly one action for Bob, created by Alice, Friday deadline, one audit entry, no guessed-owner Monday action"
+  },
+  "structuredMentionSmoke": {
+    "report": "structured-mention-report.json",
+    "commit": "ad01b3a",
+    "result": "passed: one stored Bob-owned action, Friday deadline, Alice creator, one audit; no project context or internal mention tokens stored",
+    "unitContractAndIntegrationTests": 278,
+    "wireReplay": "pending"
   }
 }

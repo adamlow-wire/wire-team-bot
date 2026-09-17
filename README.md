@@ -290,7 +290,7 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The current local image is `wire-team-bot:v3-rc-17b8e42`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-17)
+The current local image is `wire-team-bot:v3-rc-ad01b3a`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-17)
 for passing checks, the retained e2e failures and human/Wire acceptance still required.
 
 Use synthetic data in a separate database. The development run used Postgres 16 + pgvector,
@@ -374,7 +374,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-17b8e42 \
+  --entrypoint node wire-team-bot:v3-rc-ad01b3a \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```

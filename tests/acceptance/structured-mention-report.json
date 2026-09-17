@@ -1,0 +1,91 @@
+{
+  "date": "2026-09-17",
+  "runtimeCommit": "ad01b3a",
+  "execution": "Real-model judge and isolated Postgres; synthetic CLI includes qualified member mention fields; all action/audit records inspected after process completion",
+  "scenario": {
+    "runId": "mu5oiw07",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ACT-11",
+        "description": "A structured member mention followed by really keeps the correct owner and task deadline",
+        "passed": true,
+        "elapsedMs": 3483,
+        "outputs": [
+          "Action **ACT-0295** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0295** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+        ],
+        "failures": []
+      }
+    ]
+  },
+  "stored": {
+    "actions": [
+      {
+        "id": "ACT-0295",
+        "description": "prepare the deck",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "@Bob",
+        "deadline": "2026-09-18T12:00:00",
+        "status": "open",
+        "version": 1,
+        "rawMessageId": "2047280a-3bb0-4d60-9a8c-b84604da134c"
+      }
+    ],
+    "audits": [
+      {
+        "action": "entity_created",
+        "entityId": "ACT-0295",
+        "details": {
+          "assigneeId": {
+            "id": "bob",
+            "domain": "cli.local"
+          },
+          "description": "prepare the deck"
+        }
+      }
+    ]
+  },
+  "checks": {
+    "actions": 1,
+    "qualifiedOwner": "bob@cli.local",
+    "creator": "alice",
+    "deadline": "2026-09-18T12:00:00.000Z",
+    "auditEntries": 1,
+    "guessedOwnerActions": 0,
+    "projectContextOrMentionTokensStored": false
+  },
+  "boundary": "Natural and explicit creation/reassignment preserve structured user identities; live Wire replay remains pending.",
+  "immutableImageStored": {
+    "actions": [
+      {
+        "id": "ACT-0308",
+        "description": "prepare the deck",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "deadline": "2026-09-18T12:00:00",
+        "status": "open",
+        "version": 1,
+        "rawMessageId": "4dc92dd7-bc03-4782-86ca-dc866eaf60f7"
+      }
+    ],
+    "audits": [
+      {
+        "action": "entity_created",
+        "entityId": "ACT-0308",
+        "details": {
+          "assigneeId": {
+            "id": "bob",
+            "domain": "cli.local"
+          },
+          "description": "prepare the deck"
+        }
+      }
+    ]
+  },
+  "immutableImageRunId": "mu5ombtd"
+}
