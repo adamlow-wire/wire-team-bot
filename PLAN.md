@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-17. Release runtime: `f3b2eed` (baseline `e35428b`).
+Updated: 2026-09-17. Release runtime: `17b8e42` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -175,7 +175,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 56/58, two adjudications and Wire acceptance pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Implemented; real-model regression 56/59, three adjudications and Wire acceptance pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -290,23 +290,24 @@ Provisional thresholds for this small pilot (not production SLAs):
 
 ### Candidate disposition — 2026-09-17
 
-**Implemented and packaged; not yet pilot ready.** Runtime `f3b2eed` is available locally as
-`wire-team-bot:v3-rc-f3b2eed`. This image is now active on the designated staging backend;
+**Implemented and packaged; not yet pilot ready.** Runtime `17b8e42` is available locally as
+`wire-team-bot:v3-rc-17b8e42`. This image is now active on the designated staging backend;
 user-driven Wire smoke checks are underway. No production deployment was performed.
 Human review and designated Wire acceptance still prevent closing P0–P2.
 [Release evidence](tests/acceptance/release-evidence.json) records the image digest, configuration
 and check boundaries without credentials.
 
-- Fresh final build, `npx tsc --noEmit` and lint pass. **248 tests pass** in 39 files, including
+- Fresh final build, `npx tsc --noEmit` and lint pass. **260 tests pass** in 39 files, including
   six isolated Postgres/pgvector integration tests. Native SDK loading passes in the release
   image (Node 22.23.2, glibc 2.41, linux x86_64); the older host glibc cannot load it.
-- Full real-model e2e: **56/58**, with original assertions retained in
+- Full real-model e2e: **56/59**, with original assertions retained in
   [e2e-report.json](tests/acceptance/e2e-report.json). The full suite was rerun against immutable
-  image `f3b2eed`, retaining its compiled runtime and production dependencies; only the test
-  harness/tooling was mounted read-only. Formatted-action and reminder journeys pass, including
-  targeted post-process DB/audit inspection for reminder creation, snooze and cancellation. The original
+  image `17b8e42`, retaining its compiled runtime and production dependencies; only the test
+  harness/tooling was mounted read-only. The added addressed-assignment journey passes; scoped
+  DB inspection verifies exactly one Bob-owned slide-deck action with its Friday deadline and
+  one creation audit. Previous formatted-action/reminder journeys also pass. The original
   assertions are unchanged. The judge now receives the current UTC date for relative deadlines.
-  `TC-ACT-07` passes; `TC-PIPE-06` and the repeated judge rejection of the correct `TC-ID-06` answer
+  `TC-ACT-07` passes; `TC-PIPE-06` and attribution/wording judge failures `TC-ID-03`/`TC-ID-06`
   remain visible failures. Successful and failed outputs are retained.
 - Stored-record quality evaluation at earlier image `2ba7a1f`: **20/20 correct unique captures out of
   20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
@@ -314,7 +315,7 @@ and check boundaries without credentials.
   are passive; scoring queries all persisted records after drain and matches facts/source/owner.
   No marker in inspected DB records or diagnostics. See [candidate report](tests/acceptance/candidate-report.json)
   and [baseline report](tests/acceptance/baseline-report.json). This is a small synthetic sample,
-  not human-approved extraction quality. It was not rerun for the command-formatting fixes through `f3b2eed`, which affect
+  not human-approved extraction quality. It was not rerun for the routing fixes through `17b8e42`, which affect
   command routing rather than classification/extraction or answer prompts.
 - Assistant inspection finds all ten known answers match the expected facts and the unknown
   budget question correctly reports no record. **Human correctness/usefulness review pending.**
@@ -329,8 +330,12 @@ and check boundaries without credentials.
 - `TC-ID-06` returned Bob's checklist as “You have one open item”, explicitly listed Bob as
   owner, and distinguished Alice's slides. The judge nevertheless rejected it for not confirming
   Bob as requester. Its unchanged isolated rerun passed on `a51a7af`; the current full run
-  repeats the judge false negative. Raw outputs are retained, totals remain 56/58, and human
+  repeats the judge false negative. Raw outputs are retained, totals remain 56/59, and human
   adjudication remains pending.
+- `TC-ID-03` returned “You did” to Alice instead of naming Alice explicitly, which the judge
+  rejected. Scoped DB inspection confirms Alice is the stored author. The unchanged isolated
+  rerun names Alice and passes. The full-run result remains a visible acceptance discrepancy;
+  no assertion was weakened.
 - Chat configuration: classify/judge `claude-haiku-4-5`; extract, summarise, query analysis,
   respond and complex synthesis `claude-opus-5`, with the same per-slot fallback models.
   Embeddings **off**, configured dimension 2560. DB vector behaviour was exercised with synthetic
@@ -450,7 +455,7 @@ records a passing real-model create/list/snooze/cancel journey and post-process 
 one reminder for Alice, snoozed trigger matching its audit entry, cancelled status, version 3,
 three audit entries. This does not establish live reminder delivery.
 
-Staging now runs `wire-team-bot:v3-rc-f3b2eed`, with the same database and crypto volumes.
+That update activated `wire-team-bot:v3-rc-f3b2eed`, with the same database and crypto volumes.
 Readable snapshots and override: `/tmp/wire-v3-reminder-format-backup-gjeyvsyr/`. No reminders
 were pending before the switch; startup connected, hydrated one conversation and reported zero
 SDK errors. The failed Wire reminder attempt created no record. The subsequent operator screenshot
@@ -485,12 +490,30 @@ at the scoped DB check on September 17, 14:30 UTC. The operator missed the mutat
 a later scoped check found both fired at their original deadlines, version 2. Cancellation and
 snooze remain untested and require fresh reminders.
 
+Named-assignment fix and staging update (2026-09-17 15:05 UTC): `17b8e42` adds the bounded
+bot-addressed `@member needs to <task> by <deadline>` variant to the existing audited action
+use case. The demonstrated preceding project-deadline clause supplies no guessed owner or
+second action; only the named assignment and its own deadline are persisted. Questions,
+negation, hypothetical wording and multiple assignments do not use this new write route.
+PAUSED/SECURE remain checked first. Unknown/ambiguous names use existing member resolution.
+Build/type-check/lint and 260 tests pass; immutable-image e2e is 56/59 as detailed above.
+The [named-assignment report](tests/acceptance/named-assignment-report.json) verifies exactly
+one stored Bob-owned slide-deck action, Friday deadline, Alice creator and one audit entry.
+Classifier/extractor/pipeline and answer prompts are unchanged; the earlier quality sample
+remains attributed to its measured image. This is not general natural-language intent execution.
+
+Staging now runs `wire-team-bot:v3-rc-17b8e42`, preserving database and crypto volumes.
+Readable snapshots and override: `/tmp/wire-v3-assignment-backup-vcoikohf/`. No reminders were
+pending before the switch. Startup connected, hydrated two conversations and reported zero
+SDK errors. Operator replay of the original demo sentence remains pending. Rollback with current volumes:
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build jeeves`.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
    and unknown-answer output; record reviewed numerators and denominators here (thresholds above).
    Review simulation misses/false positives using `npm run simulate:review` as supporting evidence.
-2. Adjudicate the two e2e cases above. Preserve the raw results; any changed behaviour needs a
+2. Adjudicate the three e2e cases above. Preserve the raw results; any changed behaviour needs a
    regression run. Review latency and unsolicited output with the team.
 3. Use @adamhuman and @adamlow_wire for assignment checks in the designated conversation. Run the
    [Wire smoke steps](README.md#designated-wire-smoke-test) on the pinned image, including names,
@@ -542,6 +565,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Wire reminder delivery after restart passed | Operator screenshot confirms REM-0002 arrived at 12:45 UK time after the recorded restart. Scoped DB confirms fired status, version 2, original trigger, and two audit events including exactly one firing update; fired state saved 129 ms after due time. | Test cancellation, snooze and overdue-during-downtime recovery |
 | 2026-09-17 | Cancellation/snooze prepared; combined-message gap observed | User screenshot shows two requests in one message falling into Q&A with misleading question guidance. Separate messages created REM-0003 and REM-0004; scoped DB confirms both pending, version 1, target @adamlow_wire, due 14:38:57.346 and 14:39:27.709 UTC. | Prioritise cancel/snooze as requested; return to bounded combined-command routing/guidance fix afterward |
 | 2026-09-17 | Addressed assignment demo gap | Screenshot shows a named slide-deck assignment being treated as read-only Q&A; scoped DB confirms no slide/presentation action. Two routing cases reproduce the failure. A bounded @member-needs-to variant now calls the existing audited action use case, keeps the assignment deadline separate from preceding project context, and refuses questions/negation/hypotheticals/multiple assignments. Build/type-check/lint and 260 tests pass. REM-0003/4 had already fired; cancellation/snooze remain untested. | Validate stored assignment and full image regression, then retry the demo; keep combined-command and remaining Wire gates pending |
+| 2026-09-17 | Named-assignment fix validated and staged | `17b8e42`: 260 tests, build/type-check/lint pass; targeted post-process inventory confirms one correctly owned/dated/audited action. Immutable-image e2e 56/59, new scenario passes; TC-ID-03 wording failure passes unchanged on single rerun and remains in full-run totals. Staging connected with preserved volumes, readable backups and zero SDK errors. | Retry the demo sentence; use fresh cancellation/snooze tests; combined-command and remaining acceptance gaps stay open |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

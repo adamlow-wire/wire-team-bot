@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-17",
+  "runtimeCommit": "17b8e42",
+  "execution": "Working-build CLI with real-model judge and isolated Postgres; all scoped actions/audits inspected after processing finished",
+  "scenario": {
+    "runId": "mu5nhalw",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ACT-10",
+        "description": "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+        "passed": true,
+        "elapsedMs": 2874,
+        "outputs": [
+          "Action **ACT-0270** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0270** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+        ],
+        "failures": []
+      }
+    ]
+  },
+  "stored": {
+    "actions": [
+      {
+        "id": "ACT-0270",
+        "description": "prepare the slide deck",
+        "creator": "alice",
+        "owner": "bob",
+        "status": "open",
+        "deadline": "2026-09-18T12:00:00",
+        "version": 1,
+        "sourceId": "24c7cf83-9ecc-4909-8c01-89842f46eeac"
+      }
+    ],
+    "audits": [
+      {
+        "action": "entity_created",
+        "entityId": "ACT-0270",
+        "details": {
+          "assigneeId": {
+            "id": "bob",
+            "domain": "cli.local"
+          },
+          "description": "prepare the slide deck"
+        }
+      }
+    ]
+  },
+  "checks": {
+    "actions": 1,
+    "description": "prepare the slide deck",
+    "creator": "alice",
+    "owner": "bob",
+    "deadline": "2026-09-18T12:00:00.000Z",
+    "auditEntries": 1,
+    "guessedOwnerActions": 0,
+    "projectContextInActionOrAudit": false
+  },
+  "boundary": "Bounded @member needs to assignment variant; no general multi-request intent executor. Wire retry pending."
+}
