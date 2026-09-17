@@ -28,6 +28,7 @@ function customMention(command: string) {
 
 it.each([
   "@Adam (Test) needs to prepare the slide deck by this Friday.",
+  "we really need to get this presentation to Yellow Taxis done by Monday, @Adam (Test) really needs to prepare the slide deck by this Friday.",
   "we really need to get this presentation done by Monday, @Adam (Test) needs to prepare the slide deck by this Friday.",
 ])("records a clear addressed assignment with its own deadline: %s", async text => {
   const enqueue = vi.fn();
@@ -37,11 +38,54 @@ it.each([
   await new WireEventRouter(deps).onTextMessageReceived(message);
   expect(deps.createActionFromExplicit.execute).toHaveBeenCalledOnce();
   expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
-    description: "prepare the slide deck", assigneeReference: "@Adam (Test)", deadlineText: "this Friday",
+    description: "prepare the slide deck", assigneeReference: "@Adam (Test)", assigneeId: { id: "target", domain: "wire.com" }, deadlineText: "this Friday",
     creatorId: sender, conversationId: convId, rawMessageId: "msg-1",
   }));
   expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
   expect(enqueue).not.toHaveBeenCalled();
+});
+
+it.each(["@Adam really", "@Maybe Needs To", "@Adam, Low 🤖"])("uses the structured owner despite grammar in the label: %s", async label => {
+  const deps = makeDeps();
+  const message = customMention(`${label} really needs to prepare the deck by Friday`);
+  message.mentions.push({ userId: { id: "target", domain: "remote.test" }, offset: message.text.indexOf(label), length: label.length });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
+    assigneeId: { id: "target", domain: "remote.test" }, assigneeReference: label,
+    description: "prepare the deck", deadlineText: "Friday",
+  }));
+});
+
+it("does not attach a mentioned task participant as the unmentioned owner", async () => {
+  const deps = makeDeps();
+  const message = customMention("@Alice needs to discuss slides with @Bob by Friday");
+  message.mentions.push({ userId: { id: "bob", domain: "wire.com" }, offset: message.text.indexOf("@Bob"), length: 4 });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
+    assigneeReference: "@Alice", assigneeId: undefined, description: "discuss slides with @Bob",
+  }));
+});
+
+it.each(["out-of-bounds", "overlap", "fractional"])("refuses malformed person mention spans: %s", async variant => {
+  const deps = makeDeps();
+  const message = customMention("@Adam needs to prepare slides by Friday");
+  const mention = { userId: { id: "target", domain: "wire.com" }, offset: message.text.indexOf("@Adam"), length: 5 };
+  if (variant === "out-of-bounds") mention.length = 10000;
+  if (variant === "fractional") mention.offset += 0.5;
+  message.mentions.push(mention);
+  if (variant === "overlap") message.mentions.push({ ...mention });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.createActionFromExplicit.execute).not.toHaveBeenCalled();
+});
+
+it.each(["action: prepare slides for @Adam", "`action: prepare slides for` @Adam", "action: @Adam to prepare slides"])("preserves actual mention identity for explicit creation: %s", async text => {
+  const deps = makeDeps();
+  const message = customMention(text);
+  message.mentions.push({ userId: { id: "target", domain: "remote.test" }, offset: message.text.indexOf("@Adam"), length: 5 });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
+    assigneeReference: "@Adam", assigneeId: { id: "target", domain: "remote.test" }, description: "prepare slides",
+  }));
 });
 
 it.each([
@@ -132,7 +176,7 @@ it.each([
     message.mentions.push({ userId: { id: "target", domain: "wire.com" }, offset: message.text.indexOf("@Adam"), length: "@Adam (Test)".length });
     await new WireEventRouter(deps).onTextMessageReceived(message);
     expect(deps.reassignAction.execute).toHaveBeenCalledWith(expect.objectContaining({
-      actionId: "ACT-0002", newAssigneeReference: "@Adam (Test)", conversationId: convId,
+      actionId: "ACT-0002", newAssigneeReference: "@Adam (Test)", newAssigneeId: { id: "target", domain: "wire.com" }, conversationId: convId,
     }));
     expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();

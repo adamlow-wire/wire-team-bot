@@ -508,6 +508,22 @@ pending before the switch. Startup connected, hydrated two conversations and rep
 SDK errors. Operator replay of the original demo sentence remains pending. Rollback with current volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
+Structured mention regression (2026-09-17): the next demo used `@member really needs to`.
+Three before-fix contract cases fail: routing dropped the qualified mention ID, and the adverb
+became part of the display-name lookup. SDK metadata confirms both designated accounts are
+members of **Demo for Anna**, `8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io`.
+The repair binds validated UTF-16 person spans before command parsing and carries the qualified
+identity through natural/explicit action creation and reassignment. The resolver verifies exact
+membership in the qualified conversation without falling back to the label. Labels remain for
+display; plain-text names retain existing ambiguity checks. The synthetic CLI now represents
+roster @mentions as structured fields too. No classifier/extractor/pipeline changes.
+Fresh build/type-check/lint and **278 tests** (including six isolated DB tests) pass. An initial
+model invocation omitted provider settings and stopped at its configuration preflight; the
+configured TC-ACT-11 run passes. Post-process DB inspection finds exactly one Bob-owned action,
+Alice creator, Friday September 18 12:00 UTC deadline, version 1 and one creation audit. No
+project-context clause or internal mention token is retained. Immutable-image regression and
+staging activation remain pending.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers

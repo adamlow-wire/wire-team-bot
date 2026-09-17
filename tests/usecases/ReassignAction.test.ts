@@ -72,6 +72,24 @@ describe("ReassignAction", () => {
     expect(sent[0]).toContain("Bob");
   });
 
+  it.each(["match", "wrong-domain", "absent"])("preserves a structured reassignment identity: %s", async variant => {
+    const resolved = variant === "match" ? newUserId : variant === "wrong-domain" ? { ...newUserId, domain: "other.test" } : null;
+    const repo = { findById: vi.fn().mockResolvedValue(action), update: vi.fn(async a => a) };
+    const resolution = { resolveByHandleOrName: vi.fn().mockResolvedValue({ userId: resolved, ambiguous: false }) };
+    const audit = { append: vi.fn() };
+    const useCase = new ReassignAction(repo as never, resolution, { sendPlainText: vi.fn() } as never, audit);
+    const result = await useCase.execute({ actionId: action.id, conversationId: convId, actorId, newAssigneeReference: "@Bob", newAssigneeId: newUserId });
+    expect(resolution.resolveByHandleOrName).toHaveBeenCalledExactlyOnceWith("@Bob", { conversationId: convId, userId: newUserId });
+    if (variant === "match") {
+      expect(result?.assigneeId).toEqual(newUserId);
+      expect(audit.append).toHaveBeenCalledOnce();
+    } else {
+      expect(result).toBeNull();
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(audit.append).not.toHaveBeenCalled();
+    }
+  });
+
   it("sends error when assignee ambiguous", async () => {
     const actionsRepo: ActionRepository = {
       nextId: vi.fn(),

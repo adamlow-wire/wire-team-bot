@@ -128,6 +128,11 @@ function buildMessage(text: string, sender: QualifiedId): object {
   const mentions = botMentionPattern.test(text.trim())
     ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: text.trim().match(botMentionPattern)![0].length }]
     : [];
+  // The synthetic roster's @names model actual Wire person mentions in e2e.
+  for (const match of text.matchAll(/@(Alice|Bob|Carol|Dave)\b/gi)) {
+    const member = MEMBERS.find(m => m.name.toLowerCase() === match[1].toLowerCase())!;
+    mentions.push({ userId: member.id, offset: match.index!, length: match[0].length });
+  }
   return {
     id: `cli-msg-${randomUUID()}`,
     conversationId: CHANNEL_ID_RAW,

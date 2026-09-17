@@ -28,3 +28,19 @@ it("rejects a handle/display-name collision instead of selecting a person", asyn
   expect(await new MemberCacheUserResolutionService(cache).resolveByHandleOrName("@second_test", { conversationId }))
     .toMatchObject({ userId: null, ambiguous: true });
 });
+
+it("resolves structured mentions by qualified identity even with duplicate or stale labels", async () => {
+  const cache = new InMemoryMemberCache();
+  const conversationId = { id: "channel", domain: "one.test" };
+  const target = { id: "same-id", domain: "remote.test" };
+  cache.setMembers(conversationId, [
+    { userId: { ...target, domain: "one.test" }, role: "member", name: "Adam" },
+    { userId: target, role: "member", name: "Adam" },
+  ]);
+  const service = new MemberCacheUserResolutionService(cache);
+  expect((await service.resolveByHandleOrName("@old label", { conversationId, userId: target })).userId).toEqual(target);
+  expect((await service.resolveByHandleOrName("@Adam", { conversationId, userId: { ...target, domain: "absent.test" } })).userId).toBeNull();
+  expect((await service.resolveByHandleOrName("@Adam", { conversationId: { ...conversationId, domain: "other.test" }, userId: target })).userId).toBeNull();
+  cache.removeMembers(conversationId, [target]);
+  expect((await service.resolveByHandleOrName("@Adam", { conversationId, userId: target })).userId).toBeNull();
+});

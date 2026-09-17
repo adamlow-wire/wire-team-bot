@@ -22,3 +22,24 @@ it("stores the parsed deadline instead of only echoing it in the description", a
   expect(result?.deadline).toEqual(due);
   expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({deadline:due}));
 });
+
+it.each(["match", "wrong-domain", "absent"])("uses a scoped structured assignee without a name fallback: %s", async variant => {
+  const target = { id: "target", domain: "remote.test" };
+  const resolved = variant === "match" ? target : variant === "wrong-domain" ? { ...target, domain: "other.test" } : null;
+  const repo = { nextId: vi.fn().mockResolvedValue("ACT-1"), query: vi.fn().mockResolvedValue([]), create: vi.fn(async a => a) };
+  const resolution = { resolveByHandleOrName: vi.fn().mockResolvedValue({ userId: resolved, ambiguous: false }) };
+  const audit = { append: vi.fn() };
+  const useCase = new CreateActionFromExplicit(repo as never, {} as never, {} as never, resolution, { sendPlainText: vi.fn() } as never, audit, { info: vi.fn() } as never);
+  const conversationId = { id: "channel", domain: "local.test" };
+  const result = await useCase.execute({ conversationId, creatorId: { id: "sender", domain: "local.test" }, authorName: "Sender", rawMessageId: "source", description: "prepare slides", assigneeReference: "@Duplicate name", assigneeId: target });
+  expect(resolution.resolveByHandleOrName).toHaveBeenCalledExactlyOnceWith("@Duplicate name", { conversationId, userId: target });
+  if (variant === "match") {
+    expect(result?.assigneeId).toEqual(target);
+    expect(result?.assigneeName).toBe("@Duplicate name");
+    expect(audit.append).toHaveBeenCalledOnce();
+  } else {
+    expect(result).toBeNull();
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(audit.append).not.toHaveBeenCalled();
+  }
+});

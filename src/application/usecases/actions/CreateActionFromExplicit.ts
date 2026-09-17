@@ -1,4 +1,5 @@
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
+import { sameQualifiedId } from "../../../domain/ids/QualifiedId";
 import type { Action } from "../../../domain/entities/Action";
 import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
 import type { DateTimeService } from "../../../domain/services/DateTimeService";
@@ -15,6 +16,7 @@ export interface CreateActionFromExplicitInput {
   rawMessageId: string;
   description: string;
   assigneeReference?: string;
+  assigneeId?: QualifiedId;
   deadlineText?: string;
   linkedDecisionId?: string;
 }
@@ -40,7 +42,8 @@ export class CreateActionFromExplicit {
     const id = await this.actions.nextId();
 
     const assigneeResult = await this.resolveAssignee(input);
-    if (!assigneeResult.userId || assigneeResult.ambiguous) {
+    if (!assigneeResult.userId || assigneeResult.ambiguous
+      || (input.assigneeId && !sameQualifiedId(input.assigneeId, assigneeResult.userId))) {
       await this.wireOutbound.sendPlainText(input.conversationId,
         assigneeResult.ambiguous ? "Multiple members match that name. Please use a unique member ID."
           : "I could not find that member. Please use a current member's name or ID.",
@@ -101,11 +104,12 @@ export class CreateActionFromExplicit {
   }
 
   private async resolveAssignee(input: CreateActionFromExplicitInput) {
-    if (!input.assigneeReference) {
+    if (!input.assigneeReference && !input.assigneeId) {
       return { userId: input.creatorId, ambiguous: false };
     }
-    return this.userResolutionService.resolveByHandleOrName(input.assigneeReference, {
+    return this.userResolutionService.resolveByHandleOrName(input.assigneeReference ?? "", {
       conversationId: input.conversationId,
+      ...(input.assigneeId ? { userId: input.assigneeId } : {}),
     });
   }
 

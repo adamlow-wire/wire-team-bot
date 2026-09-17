@@ -356,6 +356,14 @@ export const scenarios: Scenario[] = [
     ],
   },
   {
+    id: "TC-ACT-11",
+    description: "A structured member mention followed by really keeps the correct owner and task deadline",
+    steps: [
+      { input: "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday", captureAs: "ACT", assert: "An action was actually created for Bob to prepare the deck, due this Friday. It must not report an unknown member, only offer syntax, assign it to Alice, or use Monday as this action's deadline." },
+      { input: "@Wire Team Bot team actions", assert: "Exactly one action is listed: {{ACT}}, preparing the deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice." },
+    ],
+  },
+  {
     id: "TC-ACT-07",
     description: "Action with owner and due date — both present in response",
     steps: [

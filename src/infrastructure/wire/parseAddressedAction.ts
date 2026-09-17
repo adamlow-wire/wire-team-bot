@@ -10,7 +10,7 @@ export function parseAddressedAction(text: string): AddressedAction | null {
 
   // The optional project deadline is surrounding context, never the action's
   // deadline or an instruction to assign another action to the sender.
-  const match = text.match(/^(?:we(?:\s+really)?\s+need\s+to\s+(?:get\s+[^,;]+?\s+done|(?:finish|complete)\s+[^,;]+?)\s+by\s+[^,;]+[,;]\s*)?(@[^,;]+?)\s+needs\s+to\s+(.+)$/i);
+  const match = text.match(/^(?:we(?:\s+really)?\s+need\s+to\s+(?:get\s+[^,;]+?\s+done|(?:finish|complete)\s+[^,;]+?)\s+by\s+[^,;]+[,;]\s*)?(@[^,;]+?)\s+(?:really\s+)?needs\s+to\s+(.+)$/i);
   if (!match) return null;
   const task = match[2].replace(/[.!]$/, "").trim();
   if (/\bneeds?\s+to\b|(?:,\s*|\band\s+)@|;/i.test(task)) return null;

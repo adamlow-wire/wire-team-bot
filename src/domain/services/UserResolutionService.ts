@@ -12,9 +12,9 @@ export interface UserResolutionResult {
  * by the member cache and Wire SDK in infrastructure.
  */
 export interface UserResolutionService {
+  /** When userId is supplied, verify that exact qualified member; never fall back to the label. */
   resolveByHandleOrName(
     reference: string,
-    options: { conversationId: QualifiedId },
+    options: { conversationId: QualifiedId; userId?: QualifiedId },
   ): Promise<UserResolutionResult>;
 }
-

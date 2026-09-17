@@ -10,6 +10,7 @@ export interface ReassignActionInput {
   actionId: string;
   conversationId: QualifiedId;
   newAssigneeReference: string;
+  newAssigneeId?: QualifiedId;
   actorId: QualifiedId;
   replyToMessageId?: string;
 }
@@ -30,10 +31,11 @@ export class ReassignAction {
 
     const resolved = await this.userResolution.resolveByHandleOrName(
       input.newAssigneeReference,
-      { conversationId: input.conversationId },
+      { conversationId: input.conversationId, ...(input.newAssigneeId ? { userId: input.newAssigneeId } : {}) },
     );
 
-    if (!resolved.userId || resolved.ambiguous) {
+    if (!resolved.userId || resolved.ambiguous
+      || (input.newAssigneeId && !sameQualifiedId(input.newAssigneeId, resolved.userId))) {
       await this.wireOutbound.sendPlainText(
         input.conversationId,
         resolved.ambiguous

@@ -1,4 +1,5 @@
 import type { QualifiedId } from "../../domain/ids/QualifiedId";
+import { sameQualifiedId } from "../../domain/ids/QualifiedId";
 import type {
   UserResolutionService,
   UserResolutionResult,
@@ -20,8 +21,14 @@ export class MemberCacheUserResolutionService implements UserResolutionService {
 
   async resolveByHandleOrName(
     reference: string,
-    options: { conversationId: QualifiedId },
+    options: { conversationId: QualifiedId; userId?: QualifiedId },
   ): Promise<UserResolutionResult> {
+    // A real mention is an identity, never a name lookup or a fallback to one.
+    if (options.userId) {
+      const member = this.memberCache.getMembers(options.conversationId)
+        .find(m => sameQualifiedId(m.userId, options.userId!));
+      return { userId: member?.userId ?? null, ambiguous: false };
+    }
     const normalised = reference.replace(/^@/, "").trim().toLowerCase();
     if (!normalised) {
       return { userId: null, ambiguous: false };

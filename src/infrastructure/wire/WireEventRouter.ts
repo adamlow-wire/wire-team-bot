@@ -35,6 +35,7 @@ import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
 import { toChannelId } from "../../domain/ids/channelId";
+import { bindUserMentions } from "./bindUserMentions";
 import { parseAddressedAction } from "./parseAddressedAction";
 
 const CONTEXT_WINDOW = 10;
@@ -245,6 +246,14 @@ export class WireEventRouter extends WireEventsHandler {
     // command prefix, or whole command. Do not unwrap prose, fences or multiline code.
     const commandText = addressedText.replace(/^`([^`\r\n]+)`(?=\s|$)/, "$1");
     const commandLowered = commandText.toLowerCase();
+    // Bind person spans before removing prefixes/formatting: Wire offsets refer to
+    // the original UTF-16 text. Labels must never be reparsed as user identities.
+    const mentionBindings = bindUserMentions(text, wireMessage.mentions ?? [], this.deps.botUserId);
+    const identityText = mentionBindings
+      ? (isBotAddressed ? this.stripAddressedBotPrefix(mentionBindings.text, wireMessage) : mentionBindings.text.trim())
+        .replace(/^`([^`\r\n]+)`(?=\s|$)/, "$1")
+      : "";
+    const restoreLabels = (value: string) => mentionBindings?.restore(value) ?? value;
 
     const cachedMembers = this.deps.memberCache.getMembers(convId);
     const senderEntry = cachedMembers.find((m) => sameQualifiedId(m.userId, sender));
@@ -381,12 +390,12 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // ACT-NNNN reassign / assign ACT-NNNN to <name>
-    const actReassignMatch = commandText.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
+    const actReassignMatch = identityText.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
     if (actReassignMatch) {
       const actionId = (actReassignMatch[1] ?? actReassignMatch[3])!;
       const newAssignee = (actReassignMatch[2] ?? actReassignMatch[4])!.trim();
       await this.deps.reassignAction.execute({
-        actionId, conversationId: convId, newAssigneeReference: newAssignee, actorId: sender, replyToMessageId: wireMessage.id,
+        actionId, conversationId: convId, newAssigneeReference: restoreLabels(newAssignee), newAssigneeId: mentionBindings?.owner(newAssignee)?.userId, actorId: sender, replyToMessageId: wireMessage.id,
       });
       return;
     }
@@ -456,7 +465,7 @@ export class WireEventRouter extends WireEventsHandler {
     }
 
     // action: <description> [for <Name>] or action: <Name> to <description>
-    const actionMatch = commandText.match(/^action:\s*(.+)$/i);
+    const actionMatch = identityText.match(/^action:\s*(.+)$/i);
     if (actionMatch) {
       const rawWithDeadline = actionMatch[1].trim();
       const due = rawWithDeadline.match(/\s+(?:by|due)\s+(.+)$/i);
@@ -479,9 +488,10 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.createActionFromExplicit.execute({
         conversationId: convId, creatorId: sender, authorName: senderName,
         rawMessageId: wireMessage.id,
-        description,
-        assigneeReference,
-        deadlineText,
+        description: restoreLabels(description),
+        assigneeReference: assigneeReference ? restoreLabels(assigneeReference) : undefined,
+        assigneeId: mentionBindings?.owner(assigneeReference)?.userId,
+        deadlineText: deadlineText ? restoreLabels(deadlineText) : undefined,
       });
       return;
     }
@@ -577,10 +587,14 @@ export class WireEventRouter extends WireEventsHandler {
       return;
     }
 
-    const addressedAction = isBotAddressed ? parseAddressedAction(commandText) : null;
+    const addressedAction = isBotAddressed ? parseAddressedAction(identityText) : null;
     if (addressedAction) {
       await this.deps.createActionFromExplicit.execute({
         ...addressedAction,
+        description: restoreLabels(addressedAction.description),
+        assigneeReference: restoreLabels(addressedAction.assigneeReference),
+        assigneeId: mentionBindings?.owner(addressedAction.assigneeReference)?.userId,
+        deadlineText: addressedAction.deadlineText ? restoreLabels(addressedAction.deadlineText) : undefined,
         conversationId: convId, creatorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
       });

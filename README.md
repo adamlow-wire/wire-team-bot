@@ -199,8 +199,9 @@ SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in A
 Use text commands for corrections. Supported text commands also accept a leading single-line inline-code span
 around the command prefix or whole command when pasted from an example. This includes
 reminders, decisions, actions and addressed privacy controls; code blocks and prose examples
-are not treated as direct commands. Person
-mentions can be used as assignee names; use an unambiguous full name or handle.
+are not treated as direct commands. Actual person mentions carry their qualified user identity through action creation and
+reassignment, with membership checked in this conversation. Plain-text assignees require an
+unambiguous full name or handle. The addressed named-task variant also accepts `@Bob really needs to …`.
 Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
 
 ## Development
