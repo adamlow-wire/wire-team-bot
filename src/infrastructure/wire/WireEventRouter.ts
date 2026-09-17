@@ -242,7 +242,7 @@ export class WireEventRouter extends WireEventsHandler {
     const addressedText = isBotAddressed ? this.stripAddressedBotPrefix(text, wireMessage) : text.trim();
     // Pasted command examples may retain inline-code delimiters around the ID,
     // command prefix, or whole command. Do not unwrap prose, fences or multiline code.
-    const commandText = addressedText.replace(/^`(ACT-\d+\b[^`\r\n]*)`(?=\s|$)/i, "$1");
+    const commandText = addressedText.replace(/^`([^`\r\n]+)`(?=\s|$)/, "$1");
     const commandLowered = commandText.toLowerCase();
 
     const cachedMembers = this.deps.memberCache.getMembers(convId);

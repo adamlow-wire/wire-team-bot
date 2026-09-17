@@ -475,6 +475,17 @@ export const scenarios: Scenario[] = [
   // ── Feature 3: Reminders ────────────────────────────────────────────────
 
   {
+    id: "TC-REM-06",
+    description: "Pasted reminder commands create, list, snooze and cancel",
+    steps: [
+      { input: "@Wire Team Bot `remind me in 2 minutes to check the formatting smoke reminder`", captureAs: "REM", assert: "A reminder was scheduled to check the formatting smoke reminder, with a REM reference and time. The bot must not merely explain syntax or say it cannot schedule." },
+      { input: "@Wire Team Bot `show reminders`", assert: "The reminder list contains {{REM}} for checking the formatting smoke reminder." },
+      { input: "@Wire Team Bot `snooze {{REM}} 1 hour`", assert: "Reminder {{REM}} was snoozed and a new time is confirmed." },
+      { input: "@Wire Team Bot `cancel {{REM}}`", assert: "Reminder {{REM}} was cancelled." },
+    ],
+  },
+
+  {
     id: "TC-REM-01",
     description: "Create a reminder — confirmed",
     steps: [

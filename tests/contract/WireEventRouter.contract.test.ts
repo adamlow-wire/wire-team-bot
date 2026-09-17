@@ -27,6 +27,58 @@ function customMention(command: string) {
 }
 
 it.each([
+  "`remind me in 2 minutes to check the smoke reminder`",
+  "`remind me` in 2 minutes to check the smoke reminder",
+])("routes a pasted reminder to creation without Q&A: %s", async text => {
+  for (const addressed of [false, true]) {
+    const enqueue = vi.fn();
+    const triggerAt = new Date("2026-09-17T12:02:00Z");
+    const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
+    vi.mocked(deps.dateTimeService.parse).mockReturnValue({ value: triggerAt } as never);
+    await new WireEventRouter(deps).onTextMessageReceived(addressed ? customMention(text) : makeMessage(text));
+    expect(deps.createReminder.execute).toHaveBeenCalledWith(expect.objectContaining({
+      description: "check the smoke reminder", targetId: sender, triggerAt, conversationId: convId,
+    }));
+    expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  }
+});
+
+it.each([
+  ["`cancel REM-0001`", "cancelReminder"],
+  ["`snooze REM-0001 1 hour`", "snoozeReminder"],
+  ["`show reminders`", "listMyReminders"],
+  ["`decision: use Postgres`", "logDecision"],
+  ["`decision: use Postgres 16 supersedes DEC-0001`", "supersedeDecision"],
+  ["`revoke DEC-0001 wrong call`", "revokeDecision"],
+  ["`action: review the checklist`", "createActionFromExplicit"],
+  ["`my actions`", "listMyActions"],
+] as const)("keeps pasted supported commands on their existing route: %s", async (text, useCase) => {
+  const deps = makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(text));
+  expect(deps[useCase].execute).toHaveBeenCalledOnce();
+  expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+});
+
+it.each(["pause", "secure mode"])("keeps pasted %s and resume subject to real-mention controls", async state => {
+  const deps = makeDeps();
+  const router = new WireEventRouter(deps);
+  await router.onTextMessageReceived(customMention(`\`${state}\``));
+  expect(deps.channelConfig.setState).toHaveBeenLastCalledWith("conv-1@wire.com", state === "pause" ? "paused" : "secure", sender.id, expect.any(Date));
+  await router.onTextMessageReceived(makeMessage("`resume`"));
+  expect(deps.channelConfig.setState).toHaveBeenCalledTimes(1);
+  await router.onTextMessageReceived(customMention("`resume`"));
+  expect(deps.channelConfig.setState).toHaveBeenLastCalledWith("conv-1@wire.com", "active", sender.id, expect.any(Date));
+});
+
+it.each(["Example: `remind me in 2 minutes to check`", "```remind me in 2 minutes to check```", "`remind me in 2 minutes\nto check`"])("does not turn quoted prose, fences or multiline code into reminders: %s", async text => {
+  const deps = makeDeps();
+  vi.mocked(deps.dateTimeService.parse).mockReturnValue({ value: new Date() } as never);
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(text));
+  expect(deps.createReminder.execute).not.toHaveBeenCalled();
+});
+
+it.each([
   "ACT-0002 reassign to @Adam (Test)",
   "`ACT-0002 reassign to` @Adam (Test)",
   "`ACT-0002` reassign to @Adam (Test)",

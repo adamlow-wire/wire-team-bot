@@ -194,8 +194,10 @@ Replace sample references with the IDs returned by your bot.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
-Use text commands for corrections. Action commands also accept a leading inline-code span
-around the record ID, command prefix or whole command when pasted from an example. Person
+Use text commands for corrections. Supported text commands also accept a leading single-line inline-code span
+around the command prefix or whole command when pasted from an example. This includes
+reminders, decisions, actions and addressed privacy controls; code blocks and prose examples
+are not treated as direct commands. Person
 mentions can be used as assignee names; use an unambiguous full name or handle.
 Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
 
