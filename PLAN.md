@@ -463,6 +463,15 @@ Cancellation, snooze, restart and downtime recovery still need Wire acceptance.
 Rollback, retaining volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-format-backup-xy3x0138/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
+Pending-reminder restart check (2026-09-17 11:36 UTC): the operator created `REM-0002`
+using a code-formatted command, confirming the inline-code creation fix on Wire. Scoped DB
+inspection found it pending for @adamlow_wire, due `2026-09-17T11:45:29.304Z`, version 1.
+The same pinned container was restarted at `11:36:25.509Z`, preserving database and crypto
+volumes. Fresh startup logs confirm one pending reminder rehydrated, one conversation hydrated
+and the Wire client listening, with zero SDK errors. The only pending reminder in the test
+conversation remains `REM-0002` with its original due time and version. **Restoration passes;
+post-restart delivery remains pending**, as does a reminder becoming overdue during downtime.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -516,6 +525,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Reminder inline-code routing gap | Screenshot shows the pasted reminder command falling into Q&A; scoped DB query confirms no matching reminder exists. Earlier normalization covered ACT commands only. Twelve new routing/control cases fail before the fix; normalization now handles a leading single-line inline-code span before existing command matching, with prose/fence/multiline exclusions and real-mention privacy controls preserved. Build/type-check/lint and 248 tests pass; targeted real-model reminder create/list/snooze/cancel passes. | Inspect stored reminder/audits, run immutable-image full regression, update staging and repeat Wire creation/delivery |
 | 2026-09-17 | Reminder formatting fix validated and staged | `f3b2eed`: 248 tests and build/type-check/lint pass; targeted stored reminder/audit inspection passes; immutable-image e2e 56/58 with the same two recorded discrepancies. Staging updated with readable backups and existing volumes; connected without SDK errors. | Repeat reminder creation and delivery on Wire; then cancellation, snooze and restart/downtime checks |
 | 2026-09-17 | Wire reminder creation and delivery passed | Screenshot confirms REM-0001 delivered two minutes after creation on `f3b2eed`. Scoped DB verifies @adamhuman target, fired status, version 2, trigger 10:09:50.637 UTC and two audit entries; fired state saved at 10:09:50.755 UTC. Retry was plain text, so inline-code-specific Wire evidence is not claimed. | Test pending reminder recovery across restart, cancellation, snooze and overdue recovery |
+| 2026-09-17 | Wire pending-reminder restart | Code-formatted creation of REM-0002 succeeds. Scoped DB shows pending, target @adamlow_wire, due 11:45:29.304 UTC. Same image restarted at 11:36:25.509 UTC with preserved volumes; startup rehydrated one reminder and reconnected without SDK errors. Record/due time unchanged after restart. | Confirm delivery and durable fired state after due time; overdue-during-downtime recovery remains separate |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

@@ -227,7 +227,7 @@
       "repairCommit": "f3b2eed",
       "automated": "248 tests and build/type-check/lint passed; targeted real-model create/list/snooze/cancel and stored reminder/audit inspection passed",
       "report": "formatted-reminder-report.json",
-      "wireRetest": "Plain reminder retry successfully created and delivered REM-0001; screenshot does not establish inline-code variant, which remains covered by automated tests"
+      "wireRetest": "passed for creation: operator screenshot shows code-formatted command creating REM-0002 on f3b2eed; scoped DB verifies the pending reminder and correct target/due time"
     },
     "reminderCreationAndDelivery": {
       "date": "2026-09-17",
@@ -243,6 +243,31 @@
       "version": 2,
       "auditEntries": 2,
       "boundary": "Basic delivery only; cancellation, snooze, restart, downtime and real transport failure recovery remain pending. Confirmation displays UTC while screenshot timestamps use UK local time."
+    },
+    "reminderRestart": {
+      "date": "2026-09-17",
+      "runtimeCommit": "f3b2eed",
+      "record": "REM-0002",
+      "targetId": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io",
+      "triggerAt": "2026-09-17T11:45:29.304Z",
+      "beforeRestart": {
+        "status": "pending",
+        "version": 1
+      },
+      "restartedAt": "2026-09-17T11:36:25.509013152Z",
+      "sameImageAndVolumes": true,
+      "rehydratedReminders": 1,
+      "hydratedConversations": 1,
+      "sdkErrorsSinceRestart": 0,
+      "connected": true,
+      "afterRestart": {
+        "status": "pending",
+        "version": 1,
+        "triggerUnchanged": true
+      },
+      "restoration": "passed",
+      "delivery": "pending due time and operator receipt",
+      "overdueDowntimeRecovery": "not covered by this check"
     }
   },
   "previousImageSmoke": {
