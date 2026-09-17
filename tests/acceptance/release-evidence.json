@@ -276,6 +276,36 @@
         "auditEntries": 2,
         "firingAuditEntries": 1
       }
+    },
+    "reminderCancellationAndSnooze": {
+      "date": "2026-09-17",
+      "runtimeCommit": "f3b2eed",
+      "status": "pending operator mutations",
+      "preparedRecords": [
+        {
+          "record": "REM-0003",
+          "purpose": "cancellation",
+          "status": "pending",
+          "version": 1,
+          "triggerAt": "2026-09-17T14:38:57.346Z"
+        },
+        {
+          "record": "REM-0004",
+          "purpose": "snoozing",
+          "status": "pending",
+          "version": 1,
+          "triggerAt": "2026-09-17T14:39:27.709Z"
+        }
+      ],
+      "targetId": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io",
+      "evidence": "Operator screenshot of separate commands and scoped DB inspection at 14:30 UTC"
+    },
+    "combinedCommands": {
+      "date": "2026-09-17",
+      "runtimeCommit": "f3b2eed",
+      "result": "failed: two explicit reminder lines entered Q&A and received misleading question guidance",
+      "evidence": "Operator screenshot and inspection of single-command routing",
+      "nextAction": "Prioritise active cancellation/snooze tests per user; then address with a bounded routing/guidance fix"
     }
   },
   "previousImageSmoke": {

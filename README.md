@@ -175,7 +175,8 @@ configuration keys; provider-specific examples are not a guarantee of model avai
 ## Pilot command reference
 
 These examples describe existing command paths; current acceptance status is in [PLAN.md](PLAN.md).
-Replace sample references with the IDs returned by your bot.
+Replace sample references with the IDs returned by your bot. Send one command per message;
+multiple requests in one message are not currently supported.
 
 | Task | Example |
 |---|---|

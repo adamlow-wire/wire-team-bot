@@ -476,6 +476,13 @@ version 2, unchanged trigger and exactly one firing audit entry (two entries inc
 Fired state was saved at `11:45:29.433Z`, 129 ms after the trigger. **Restoration and delivery
 after restart pass.** A reminder becoming overdue during downtime remains a separate pending check.
 
+The operator also reproduced two explicit reminder requests in one message falling into Q&A,
+which misleadingly described the message as a question. Current routing expects one command
+per message. This combined-command failure is recorded for a bounded routing/guidance fix
+after the active cancellation/snooze checks; no batch executor is implied. Separate messages
+created `REM-0003` (cancellation) and `REM-0004` (snoozing), both pending for @adamlow_wire
+at the scoped DB check on September 17, 14:30 UTC. Cancellation and snooze are not yet passed.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -531,6 +538,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Wire reminder creation and delivery passed | Screenshot confirms REM-0001 delivered two minutes after creation on `f3b2eed`. Scoped DB verifies @adamhuman target, fired status, version 2, trigger 10:09:50.637 UTC and two audit entries; fired state saved at 10:09:50.755 UTC. Retry was plain text, so inline-code-specific Wire evidence is not claimed. | Test pending reminder recovery across restart, cancellation, snooze and overdue recovery |
 | 2026-09-17 | Wire pending-reminder restart | Code-formatted creation of REM-0002 succeeds. Scoped DB shows pending, target @adamlow_wire, due 11:45:29.304 UTC. Same image restarted at 11:36:25.509 UTC with preserved volumes; startup rehydrated one reminder and reconnected without SDK errors. Record/due time unchanged after restart. | Confirm delivery and durable fired state after due time; overdue-during-downtime recovery remains separate |
 | 2026-09-17 | Wire reminder delivery after restart passed | Operator screenshot confirms REM-0002 arrived at 12:45 UK time after the recorded restart. Scoped DB confirms fired status, version 2, original trigger, and two audit events including exactly one firing update; fired state saved 129 ms after due time. | Test cancellation, snooze and overdue-during-downtime recovery |
+| 2026-09-17 | Cancellation/snooze prepared; combined-message gap observed | User screenshot shows two requests in one message falling into Q&A with misleading question guidance. Separate messages created REM-0003 and REM-0004; scoped DB confirms both pending, version 1, target @adamlow_wire, due 14:38:57.346 and 14:39:27.709 UTC. | Prioritise cancel/snooze as requested; return to bounded combined-command routing/guidance fix afterward |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
