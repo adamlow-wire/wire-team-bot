@@ -109,7 +109,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: core action journey and basic reminder creation/delivery passed; remaining Wire recovery/privacy/correction and human acceptance pending",
+  "wireSmoke": "in progress: core action journey, reminder creation/delivery and pending-reminder restart recovery passed; cancellation/snooze/overdue recovery, privacy/corrections and human acceptance remain pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -242,7 +242,7 @@
       "status": "fired",
       "version": 2,
       "auditEntries": 2,
-      "boundary": "Basic delivery only; cancellation, snooze, restart, downtime and real transport failure recovery remain pending. Confirmation displays UTC while screenshot timestamps use UK local time."
+      "boundary": "Basic delivery check; pending-reminder restart recovery is covered separately. Cancellation, snooze, overdue downtime and real transport failure recovery remain pending. Confirmation displays UTC while screenshot timestamps use UK local time."
     },
     "reminderRestart": {
       "date": "2026-09-17",
@@ -266,8 +266,16 @@
         "triggerUnchanged": true
       },
       "restoration": "passed",
-      "delivery": "pending due time and operator receipt",
-      "overdueDowntimeRecovery": "not covered by this check"
+      "delivery": "passed: operator screenshot and scoped DB/audit inspection confirm delivery after restart at original due time",
+      "overdueDowntimeRecovery": "not covered by this check",
+      "deliveredRecord": {
+        "status": "fired",
+        "version": 2,
+        "triggerAt": "2026-09-17T11:45:29.304Z",
+        "firedStateSavedAt": "2026-09-17T11:45:29.433Z",
+        "auditEntries": 2,
+        "firingAuditEntries": 1
+      }
     }
   },
   "previousImageSmoke": {
