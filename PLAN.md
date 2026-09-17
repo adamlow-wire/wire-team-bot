@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-16. Release runtime: `a51a7af` (baseline `e35428b`).
+Updated: 2026-09-17. Release runtime: `a51a7af` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -429,7 +429,12 @@ startup connected and hydrated one conversation with zero SDK errors. `ACT-0002`
 unchanged before the update. The operator’s next screenshot confirms reassignment to Adam (Human).
 Scoped DB inspection verifies the qualified @adamhuman owner, version 2, open status, unchanged
 Friday deadline and exactly one reassignment audit event attributed to Adam Low. Pasted-command
-reassignment and the post-restart round trip pass; deadline/completion checks remain pending.
+reassignment and the post-restart round trip pass. On September 17 the operator screenshot
+confirms deadline change and completion. Scoped DB inspection verifies owner @adamhuman,
+deadline `2026-09-18T09:45:44.790Z`, status `done`, version 4 and four audit entries
+(creation, reassignment, deadline, completion). The deadline and completion updates are
+attributed to Adam Low. The core action journey now passes on Wire; unknown/ambiguous-owner
+refusal and the remaining reminder/privacy/correction journeys still need Wire acceptance.
 Rollback, retaining volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-caller-backup-tbxaea25/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
@@ -482,6 +487,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-16 | Pasted reassignment formatting failure | Operator screenshot shows inline-code action prefix followed by a person mention and a misleading model explanation. Scoped DB inspection confirms ACT-0002 remains open, owned by Adam Low, version 1. Three formatted variants reproduce missed routing; plain text with person mention passes. Router now unwraps a leading single-line inline-code ACT command prefix; seven contract cases cover formatting and non-command boundaries. The new CLI journey also reproduced action-status questions being intercepted as channel status; channel status now requires an explicit command. The judge receives evaluation time for relative-date assertions; assertions are unchanged. | Real-model command journey and full release-image regression, then repeat Wire reassignment |
 | 2026-09-16 | Formatted-action fix validated and staged | `a51a7af`: 233 tests, build/type-check/lint pass; real-model action journey and stored owner/deadline/status/audits pass. Immutable-image full regression 55/57: ambiguous-owner discrepancy and caller judge false negative; caller isolated rerun passes unchanged. Staging connected with preserved volumes and readable backups. | Repeat only ACT-0002 reassignment, inspect stored result, then continue deadline/completion and remaining Wire gates |
 | 2026-09-16 | Wire formatted reassignment passed | Operator screenshot confirms ACT-0002 reassigned to Adam (Human) on `a51a7af`. Scoped DB inspection confirms qualified @adamhuman owner, version 2, open status, unchanged Friday deadline, and one reassignment audit event by Adam Low (two total events including creation). | Test deadline change and completion, then continue remaining Wire gates |
+| 2026-09-17 | Wire deadline and completion passed | Operator screenshot confirms ACT-0002 deadline update and done acknowledgement. Scoped DB inspection verifies September 18 09:45:44.790 UTC, done status, version 4, retained @adamhuman owner and four audit events; both latest updates attributed to Adam Low. Core capture/list/reassign/deadline/complete action journey passes. Automated results above remain September 16 runs. | Test reminder creation and delivery next; unknown/ambiguous names and remaining Wire/human gates stay pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

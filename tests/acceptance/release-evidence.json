@@ -110,7 +110,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: stored assignment, caller-specific list/Q&A and formatted reassignment passed; remaining Wire journeys pending",
+  "wireSmoke": "in progress: core action capture/list/reassign/deadline/completion journey passed; reminder, privacy, corrections and other remaining Wire acceptance pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -202,6 +202,25 @@
         "reassignmentAuditEntries": 1,
         "reassignmentActor": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io"
       }
+    },
+    "actionDeadlineAndCompletion": {
+      "date": "2026-09-17",
+      "runtimeCommit": "a51a7af",
+      "result": "passed",
+      "evidence": "Operator screenshot and scoped read-only database/audit inspection after processing; no fresh automated run",
+      "record": "ACT-0002",
+      "ownerId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab@staging.zinfra.io",
+      "deadline": "2026-09-18T09:45:44.790Z",
+      "status": "done",
+      "version": 4,
+      "auditEntries": 4,
+      "auditOperations": [
+        "create",
+        "reassign",
+        "deadline",
+        "complete"
+      ],
+      "latestUpdateActor": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io"
     }
   },
   "previousImageSmoke": {
@@ -281,5 +300,6 @@
     "report": "formatted-action-report.json",
     "commit": "a51a7af",
     "result": "passed: post-process DB inspection confirms Bob owner, tomorrow deadline, done status, version 4 and four audit entries"
-  }
+  },
+  "latestEvidenceDate": "2026-09-17"
 }
