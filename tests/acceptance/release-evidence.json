@@ -1,6 +1,6 @@
 {
-  "date": "2026-09-16",
-  "runtimeCommit": "a51a7af",
+  "date": "2026-09-17",
+  "runtimeCommit": "f3b2eed",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,34 +49,33 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 233,
+      "passed": 248,
       "integrationTests": 6,
       "testFiles": 39,
-      "validationCommit": "a51a7af"
+      "validationCommit": "f3b2eed"
     },
     "realModelE2E": {
-      "passed": 55,
+      "passed": 56,
       "failed": 2,
       "report": "e2e-report.json",
-      "commit": "a51a7af",
+      "commit": "f3b2eed",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with plan",
         "TC-ID-06: correct current-caller answer rejected by model judge"
       ],
       "execution": "Immutable release image with read-only test harness and external ts-node tooling",
-      "harnessCommit": "a51a7af",
-      "judgeContext": "Evaluation UTC timestamp added; existing assertions unchanged; TC-ACT-07 now passes",
-      "targetedRecheck": "TC-ID-06 passes unchanged in isolated rerun; full-run 55/57 result retained"
+      "harnessCommit": "f3b2eed",
+      "judgeContext": "Evaluation UTC timestamp added; existing assertions unchanged; TC-ACT-07 now passes"
     }
   },
   "image": {
-    "tag": "wire-team-bot:v3-rc-a51a7af",
-    "id": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
-    "commit": "a51a7af",
+    "tag": "wire-team-bot:v3-rc-f3b2eed",
+    "id": "sha256:a1427d5d359c41a02d5db4574547dc4308c4b640da0f099e1030e0df418e4849",
+    "commit": "f3b2eed",
     "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
     "cliSmoke": [
-      "full 57-scenario real-model regression",
-      "formatted reassignment, deadline, completion and record-status recall"
+      "full 58-scenario real-model regression",
+      "formatted reminder create/list/snooze/cancel with post-process DB/audit inspection"
     ],
     "stagingStartup": "passed; member cache hydrated; no SDK errors observed during startup"
   },
@@ -110,7 +109,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: core action capture/list/reassign/deadline/completion journey passed; reminder, privacy, corrections and other remaining Wire acceptance pending",
+  "wireSmoke": "in progress: earlier core action journey passed; formatted reminder repair awaits Wire creation/delivery retest",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -133,18 +132,18 @@
     "displayNameAcceptance": "pending change to Wire Team Bot"
   },
   "stagingActivation": {
-    "startedAt": "2026-09-16T18:27:31.237187043Z",
-    "image": "wire-team-bot:v3-rc-a51a7af",
-    "imageId": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
-    "previousImageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
+    "startedAt": "2026-09-17T10:03:50.111384750Z",
+    "image": "wire-team-bot:v3-rc-f3b2eed",
+    "imageId": "sha256:a1427d5d359c41a02d5db4574547dc4308c4b640da0f099e1030e0df418e4849",
+    "previousImageId": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
     "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-format-backup-xy3x0138",
+    "backupDirectory": "/tmp/wire-v3-reminder-format-backup-gjeyvsyr",
     "backupReadChecks": "passed",
     "pendingRemindersBeforeSwitch": 0,
     "memberCacheHydratedConversations": 1,
     "sdkErrorDiagnostics": 0,
     "containerRestarts": 0,
-    "transportRoundTrip": "passed: operator screenshot confirms formatted reassignment and reply after restart on a51a7af"
+    "transportRoundTrip": "pending operator reminder retry on this image"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -221,6 +220,14 @@
         "complete"
       ],
       "latestUpdateActor": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io"
+    },
+    "formattedReminder": {
+      "observedRuntime": "a51a7af",
+      "wire": "failed: pasted reminder entered Q&A; scoped DB query found no matching reminder",
+      "repairCommit": "f3b2eed",
+      "automated": "248 tests and build/type-check/lint passed; targeted real-model create/list/snooze/cancel and stored reminder/audit inspection passed",
+      "report": "formatted-reminder-report.json",
+      "wireRetest": "pending operator creation/delivery retry; f3b2eed is active in staging"
     }
   },
   "previousImageSmoke": {
@@ -294,6 +301,20 @@
       "sdkErrorDiagnostics": 0,
       "containerRestarts": 0,
       "transportRoundTrip": "passed: operator screenshot on 2ba7a1f confirms mentioned action list and model-backed responsibility answer after restart"
+    },
+    {
+      "startedAt": "2026-09-16T18:27:31.237187043Z",
+      "image": "wire-team-bot:v3-rc-a51a7af",
+      "imageId": "sha256:a702f6045ac43eec4429b1bc6a6ab60e954afd57050a5335ea804e7219ae1601",
+      "previousImageId": "sha256:6058a016efc67b412ac09379067511d407633774ae5fe3f6fba92c02c74bdc28",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-format-backup-xy3x0138",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "memberCacheHydratedConversations": 1,
+      "sdkErrorDiagnostics": 0,
+      "containerRestarts": 0,
+      "transportRoundTrip": "passed: operator screenshot confirms formatted reassignment and reply after restart on a51a7af"
     }
   ],
   "formattedActionSmoke": {
@@ -301,5 +322,10 @@
     "commit": "a51a7af",
     "result": "passed: post-process DB inspection confirms Bob owner, tomorrow deadline, done status, version 4 and four audit entries"
   },
-  "latestEvidenceDate": "2026-09-17"
+  "latestEvidenceDate": "2026-09-17",
+  "formattedReminderSmoke": {
+    "report": "formatted-reminder-report.json",
+    "commit": "f3b2eed",
+    "result": "passed: one stored reminder for Alice, snoozed trigger matching audit, cancelled status, version 3, three audit entries; actual delivery remains pending"
+  }
 }

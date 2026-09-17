@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-17",
+  "runtimeCommit": "f3b2eed",
+  "execution": "Working-build CLI with approved real model and isolated Postgres; scoped stored rows inspected after all steps finished",
+  "scenario": {
+    "runId": "mu5cpy4s",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-REM-06",
+        "description": "Pasted reminder commands create, list, snooze and cancel",
+        "passed": true,
+        "elapsedMs": 6930,
+        "outputs": [
+          "Reminder **REM-0085** set for **Thursday, 17 Sept 2026, 09:54**: check the formatting smoke reminder",
+          "- **REM-0085** \u2014 check the formatting smoke reminder _(Thursday, 17 Sept 2026, 09:54)_",
+          "**REM-0085** snoozed until **17 Sept 2026, 10:53**.",
+          "**REM-0085** cancelled."
+        ],
+        "failures": []
+      }
+    ]
+  },
+  "stored": {
+    "reminders": [
+      {
+        "id": "REM-0085",
+        "target": "alice",
+        "status": "cancelled",
+        "triggerAt": "2026-09-17T10:53:01.732",
+        "version": 3
+      }
+    ],
+    "audits": [
+      {
+        "action": "entity_created",
+        "entityId": "REM-0085",
+        "details": {
+          "triggerAt": "2026-09-17T09:54:57.932Z",
+          "description": "check the formatting smoke reminder"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "entityId": "REM-0085",
+        "details": {
+          "snoozedUntil": "2026-09-17T10:53:01.732Z"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "entityId": "REM-0085",
+        "details": {
+          "status": "cancelled"
+        }
+      }
+    ]
+  },
+  "checks": {
+    "storedReminders": 1,
+    "target": "alice",
+    "status": "cancelled",
+    "version": 3,
+    "auditEntries": 3,
+    "snoozedTriggerMatchesRecord": true
+  },
+  "boundary": "Validates create/list/snooze/cancel persistence; actual Wire delivery and recovery remain pending"
+}
