@@ -35,6 +35,7 @@ import type { SlidingWindowBuffer } from "../buffer/SlidingWindowBuffer";
 import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
 import { toChannelId } from "../../domain/ids/channelId";
+import { parseAddressedAction } from "./parseAddressedAction";
 
 const CONTEXT_WINDOW = 10;
 const NAME_TTL_MS = 24 * 60 * 60 * 1000; // re-fetch display names after 24 h to catch renames
@@ -573,6 +574,16 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.wireOutbound.sendPlainText(convId,
         "I'm afraid knowledge entries are no longer managed that way. The knowledge system is being rebuilt — do ask me questions directly in the meantime.",
         { replyToMessageId: wireMessage.id });
+      return;
+    }
+
+    const addressedAction = isBotAddressed ? parseAddressedAction(commandText) : null;
+    if (addressedAction) {
+      await this.deps.createActionFromExplicit.execute({
+        ...addressedAction,
+        conversationId: convId, creatorId: sender, authorName: senderDisplayName ?? "",
+        rawMessageId: wireMessage.id,
+      });
       return;
     }
 

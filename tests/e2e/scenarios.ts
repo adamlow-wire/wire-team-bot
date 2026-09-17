@@ -348,6 +348,14 @@ export const scenarios: Scenario[] = [
     ],
   },
   {
+    id: "TC-ACT-10",
+    description: "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+    steps: [
+      { input: "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday.", captureAs: "ACT", assert: "An action was actually created for Bob to prepare the slide deck, due this Friday. It must not just offer command syntax, assign it to Alice, or use Monday as this action's deadline." },
+      { input: "@Wire Team Bot team actions", assert: "Exactly one action is listed: {{ACT}}, the slide deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice." },
+    ],
+  },
+  {
     id: "TC-ACT-07",
     description: "Action with owner and due date — both present in response",
     steps: [

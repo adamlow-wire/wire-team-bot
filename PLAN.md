@@ -481,7 +481,9 @@ which misleadingly described the message as a question. Current routing expects 
 per message. This combined-command failure is recorded for a bounded routing/guidance fix
 after the active cancellation/snooze checks; no batch executor is implied. Separate messages
 created `REM-0003` (cancellation) and `REM-0004` (snoozing), both pending for @adamlow_wire
-at the scoped DB check on September 17, 14:30 UTC. Cancellation and snooze are not yet passed.
+at the scoped DB check on September 17, 14:30 UTC. The operator missed the mutation window;
+a later scoped check found both fired at their original deadlines, version 2. Cancellation and
+snooze remain untested and require fresh reminders.
 
 Remaining entry checks, in order:
 
@@ -539,6 +541,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Wire pending-reminder restart | Code-formatted creation of REM-0002 succeeds. Scoped DB shows pending, target @adamlow_wire, due 11:45:29.304 UTC. Same image restarted at 11:36:25.509 UTC with preserved volumes; startup rehydrated one reminder and reconnected without SDK errors. Record/due time unchanged after restart. | Confirm delivery and durable fired state after due time; overdue-during-downtime recovery remains separate |
 | 2026-09-17 | Wire reminder delivery after restart passed | Operator screenshot confirms REM-0002 arrived at 12:45 UK time after the recorded restart. Scoped DB confirms fired status, version 2, original trigger, and two audit events including exactly one firing update; fired state saved 129 ms after due time. | Test cancellation, snooze and overdue-during-downtime recovery |
 | 2026-09-17 | Cancellation/snooze prepared; combined-message gap observed | User screenshot shows two requests in one message falling into Q&A with misleading question guidance. Separate messages created REM-0003 and REM-0004; scoped DB confirms both pending, version 1, target @adamlow_wire, due 14:38:57.346 and 14:39:27.709 UTC. | Prioritise cancel/snooze as requested; return to bounded combined-command routing/guidance fix afterward |
+| 2026-09-17 | Addressed assignment demo gap | Screenshot shows a named slide-deck assignment being treated as read-only Q&A; scoped DB confirms no slide/presentation action. Two routing cases reproduce the failure. A bounded @member-needs-to variant now calls the existing audited action use case, keeps the assignment deadline separate from preceding project context, and refuses questions/negation/hypotheticals/multiple assignments. Build/type-check/lint and 260 tests pass. REM-0003/4 had already fired; cancellation/snooze remain untested. | Validate stored assignment and full image regression, then retry the demo; keep combined-command and remaining Wire gates pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

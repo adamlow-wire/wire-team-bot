@@ -27,6 +27,47 @@ function customMention(command: string) {
 }
 
 it.each([
+  "@Adam (Test) needs to prepare the slide deck by this Friday.",
+  "we really need to get this presentation done by Monday, @Adam (Test) needs to prepare the slide deck by this Friday.",
+])("records a clear addressed assignment with its own deadline: %s", async text => {
+  const enqueue = vi.fn();
+  const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
+  const message = customMention(text);
+  message.mentions.push({ userId: { id: "target", domain: "wire.com" }, offset: message.text.indexOf("@Adam"), length: "@Adam (Test)".length });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledOnce();
+  expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({
+    description: "prepare the slide deck", assigneeReference: "@Adam (Test)", deadlineText: "this Friday",
+    creatorId: sender, conversationId: convId, rawMessageId: "msg-1",
+  }));
+  expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+  expect(enqueue).not.toHaveBeenCalled();
+});
+
+it.each([
+  "Does @Adam (Test) need to prepare the slide deck by Friday?",
+  "@Adam (Test) needs to prepare the slide deck by Friday?",
+  "If we proceed, @Adam (Test) needs to prepare the slide deck by Friday.",
+  "@Adam (Test) does not need to prepare the slide deck by Friday.",
+  "@Adam (Test) no longer needs to prepare the slide deck by Friday.",
+  "Example: @Adam (Test) needs to prepare the slide deck by Friday.",
+  "@Adam (Test) needs to prepare slides and @Bob needs to review them by Friday.",
+  "we really need to get this presentation done by Monday.",
+])("does not turn questions, uncertainty or ambiguous assignments into writes: %s", async text => {
+  const deps = makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(text));
+  expect(deps.createActionFromExplicit.execute).not.toHaveBeenCalled();
+});
+
+it.each(["pause", "secure mode"])("does not create addressed natural assignments while %s", async state => {
+  const deps = makeDeps();
+  const router = new WireEventRouter(deps);
+  await router.onTextMessageReceived(customMention(state));
+  await router.onTextMessageReceived(customMention("@Adam (Test) needs to prepare the slide deck by Friday."));
+  expect(deps.createActionFromExplicit.execute).not.toHaveBeenCalled();
+});
+
+it.each([
   "`remind me in 2 minutes to check the smoke reminder`",
   "`remind me` in 2 minutes to check the smoke reminder",
 ])("routes a pasted reminder to creation without Q&A: %s", async text => {

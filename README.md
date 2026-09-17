@@ -184,6 +184,7 @@ multiple requests in one message are not currently supported.
 | Find/list decisions | `decisions about auth`, `list decisions` |
 | Correct a decision | `revoke DEC-0001 wrong call`, `decision: use REST supersedes DEC-0001` |
 | Record/assign an action | `action: review the contract for Bob` |
+| Assign a named task | `@Wire Team Bot @Bob needs to review the checklist by Friday` |
 | List work | `my actions`, `team actions`, `overdue actions` |
 | Update an action | `ACT-0001 done`, `ACT-0001 reassign to Bob`, `ACT-0001 due Friday` |
 | Set a reminder | `remind me in 2 minutes to check the deployment` |
