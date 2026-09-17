@@ -109,7 +109,7 @@
     "modelDegradation": "Two query-analysis malformed-JSON fallbacks; answers retained for human review",
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending."
   },
-  "wireSmoke": "in progress: earlier core action journey passed; formatted reminder repair awaits Wire creation/delivery retest",
+  "wireSmoke": "in progress: core action journey and basic reminder creation/delivery passed; remaining Wire recovery/privacy/correction and human acceptance pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "3e1544f",
@@ -143,7 +143,7 @@
     "memberCacheHydratedConversations": 1,
     "sdkErrorDiagnostics": 0,
     "containerRestarts": 0,
-    "transportRoundTrip": "pending operator reminder retry on this image"
+    "transportRoundTrip": "passed: operator screenshot of reminder creation and subsequent delivery on f3b2eed"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -227,7 +227,22 @@
       "repairCommit": "f3b2eed",
       "automated": "248 tests and build/type-check/lint passed; targeted real-model create/list/snooze/cancel and stored reminder/audit inspection passed",
       "report": "formatted-reminder-report.json",
-      "wireRetest": "pending operator creation/delivery retry; f3b2eed is active in staging"
+      "wireRetest": "Plain reminder retry successfully created and delivered REM-0001; screenshot does not establish inline-code variant, which remains covered by automated tests"
+    },
+    "reminderCreationAndDelivery": {
+      "date": "2026-09-17",
+      "runtimeCommit": "f3b2eed",
+      "result": "passed",
+      "evidence": "Operator screenshot and qualified-conversation DB/audit inspection after delivery",
+      "record": "REM-0001",
+      "authorAndTarget": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab@staging.zinfra.io",
+      "createdAt": "2026-09-17T10:07:50.663Z",
+      "triggerAt": "2026-09-17T10:09:50.637Z",
+      "firedStateSavedAt": "2026-09-17T10:09:50.755Z",
+      "status": "fired",
+      "version": 2,
+      "auditEntries": 2,
+      "boundary": "Basic delivery only; cancellation, snooze, restart, downtime and real transport failure recovery remain pending. Confirmation displays UTC while screenshot timestamps use UK local time."
     }
   },
   "previousImageSmoke": {
