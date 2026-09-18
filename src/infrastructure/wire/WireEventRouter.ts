@@ -36,6 +36,7 @@ import type { InMemoryProcessingQueue } from "../queue/InMemoryProcessingQueue";
 import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipeline";
 import { toChannelId } from "../../domain/ids/channelId";
 import { bindUserMentions } from "./bindUserMentions";
+import { hasMultipleCommands } from "./hasMultipleCommands";
 import { parseAddressedAction } from "./parseAddressedAction";
 import type { WireReplyContext } from "./WireReplyContext";
 
@@ -303,6 +304,14 @@ export class WireEventRouter extends WireEventsHandler {
         return;
       }
       log.debug("Secure mode active — message discarded");
+      return;
+    }
+
+    // Reject a command bundle before any write, buffering or model work.
+    if (hasMultipleCommands(text, wireMessage.mentions ?? [], this.deps.botUserId)) {
+      await this.deps.wireOutbound.sendPlainText(convId,
+        "Please send one command per message. I have not run any commands from this message.",
+        { replyToMessageId: wireMessage.id });
       return;
     }
 

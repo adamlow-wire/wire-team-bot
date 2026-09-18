@@ -263,8 +263,45 @@ Final manual QA packet, prepared after QA-1 through QA-6:
    inventing writes/owners; judge latency and noise from the supplied measurements.
 
 Only after this single final acceptance stage passes does the five-day P3 pilot begin.
-Current state: QA-0 documentation/repository reconciliation is complete; QA-1/QA-2 remain open. The most recent unchanged real-model
-suite is 57/60, so the automated acceptance gate is not yet closed.
+Current state: QA-0 is complete. The authorised first implementation step covers QA-1 and QA-2;
+both fixes now pass focused checks below. Stop for Adam's confirmation before the next step,
+QA-3 evaluator corrections. Existing e2e scenarios, judge and scoring code remain unchanged.
+The full regression is running; the last completed suite remains 57/60. Staging still runs the
+previous image, and final Wire/human acceptance is pending.
+
+#### First automated implementation step — 2026-09-18
+
+- Both structured and semantic decision retrieval expose the recorder separately. They never
+  fall back from missing `decidedBy` to the author. The answer prompt names makers only from an
+  explicit decider field or unambiguous named makers in the stored summary; unknown makers stay
+  unknown. Existing records and IDs are preserved.
+- ACTIVE routing rejects recognised combined explicit commands before buffering, model calls,
+  state changes or domain writes, with a native reply asking for one command per message. The
+  guard understands structured qualified mentions and inline-code commands. It preserves the
+  existing PAUSED/SECURE handling, single commands, multiline prose and fenced examples. This
+  is bounded explicit-command recognition, not general natural-language batch execution.
+- Red baseline: 14 new attribution/router cases failed; 107 existing router cases passed.
+  After the fixes: build, `tsc --noEmit`, lint and **332 tests in 41 files passed**, including
+  six real DB integration tests. Environment: Node 22.23.2 / Debian trixie container,
+  isolated Postgres 16 + pgvector on port 55439, `INTEGRATION_TESTS=1`; no shared DB reset.
+- The unchanged TC-DEC-07 now answers **Recorded by Alice; Decided by Carol and Dave**:
+  [focused e2e output](tests/acceptance/step1-dec07-report.json). The
+  [focused fixture](tests/acceptance/step1-fixture.json) and
+  [real-model report](tests/acceptance/step1-report.json) also show an unknown decision maker
+  explicitly distinguished from recorder Alice. Answers inspected directly, not accepted solely
+  from the model judge. One malformed query-analysis output used the existing safe fallback;
+  answer and stored-record checks still passed. Embeddings were off; semantic formatting was
+  covered by mocked tests. Model slots/fallbacks are recorded without endpoints or credentials.
+- [Post-drain storage inspection](tests/acceptance/step1-storage-check.json): 2 expected/2 stored
+  decisions matched by fact and source, no actions, exactly 2 reminders from the separate source
+  events, no combined-message writes, 4 matching creation audits. Recorder is `alice@cli.local`,
+  both explicit decider arrays are empty, and decision context arrays are empty. This small
+  regression sample is not the pilot's 20-event quality sample or human approval.
+
+Repeat the focused check with the existing acceptance runner in the isolated test container:
+`EVALUATION_FIXTURE=tests/acceptance/step1-fixture.json EVALUATION_REPORT=/tmp/step1-report.json npm run test:acceptance`.
+Inspect all stored sources after drain and the two attribution answers; then rerun the unchanged
+full e2e suite. No evaluator expectation has been relaxed for this step.
 
 Repository inventory (2026-09-18): `main` is the only active branch; PRs #8 and #9 are closed.
 Issue #7 described obsolete composite-button confirmation UI, which the current text-command

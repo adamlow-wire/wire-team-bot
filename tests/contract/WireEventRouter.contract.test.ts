@@ -838,3 +838,34 @@ it("quotes router error responses and clears their source metadata", async () =>
   expect(sendMessage.mock.calls[0][0]).toMatchObject({ text: "Something went wrong. Please try again.", quotedMessageId: "failed-command" });
   expect(context.get(convId, "failed-command")).toBeUndefined();
 });
+
+function combinedMentions(first: string, second: string) {
+  const a = customMention(first);
+  const b = customMention(second);
+  return { ...a, text: `${a.text}\n${b.text}`, mentions: [
+    ...a.mentions, ...b.mentions.map(m => ({ ...m, offset: m.offset + a.text.length + 1 })),
+  ] };
+}
+
+it.each([
+  makeMessage("remind me in 10 minutes to test cancellation\nremind me in 10 minutes to test snoozing"),
+  combinedMentions("`remind me in 10 minutes to test cancellation`", "`remind me in 10 minutes to test snoozing`"),
+  combinedMentions("decision: use Postgres", "action: review the checklist for Bob"),
+  customMention("ACT-0001 done; remind me in 10 minutes to review the checklist"),
+  customMention("remind me in 10 minutes to review notes and then remind me in 20 minutes to review slides"),
+  combinedMentions("pause", "remind me in 10 minutes to review notes"),
+])("rejects multiple commands before writes, buffering or model work: $text", async message => {
+  const enqueue = vi.fn();
+  const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
+  await new WireEventRouter(deps).onTextMessageReceived(message);
+  expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(convId,
+    "Please send one command per message. I have not run any commands from this message.",
+    { replyToMessageId: message.id });
+  for (const value of Object.values(deps)) {
+    if (value && typeof value === "object" && "execute" in value) expect(value.execute).not.toHaveBeenCalled();
+  }
+  expect(deps.channelConfig.setState).not.toHaveBeenCalled();
+  expect(enqueue).not.toHaveBeenCalled();
+  expect(deps.messageBuffer.push).not.toHaveBeenCalled();
+  expect(deps.slidingWindow.push).not.toHaveBeenCalled();
+});

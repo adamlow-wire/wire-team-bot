@@ -65,7 +65,7 @@ export class SemanticRetrievalPath {
         if (hit.sourceType === "decision") {
           const d = await this.decisionRepo.findById(hit.sourceId);
           if (!d || d.deleted || toChannelId(d.conversationId) !== scope.channelId) continue;
-          const decidedBy = d.decidedBy?.join(", ") || d.authorName || "unknown";
+          const decidedBy = d.decidedBy?.join(", ");
           const date = d.decidedAt ?? d.timestamp;
           results.push({
             id: d.id,
@@ -73,7 +73,8 @@ export class SemanticRetrievalPath {
             content: [
               `ID: ${d.id}`,
               `Decision: ${d.summary}`,
-              `Decided by: ${decidedBy}`,
+              `Recorded by: ${d.authorName || "unknown"}`,
+              decidedBy ? `Decided by: ${decidedBy}` : "",
               `Date: ${date.toISOString().slice(0, 10)}`,
               d.rationale ? `Rationale: ${d.rationale}` : "",
             ]

@@ -155,7 +155,8 @@ Set its endpoint and model using the keys in the template.
 
 These examples describe existing command paths; current acceptance status is in [PLAN.md](PLAN.md).
 Replace sample references with the IDs returned by your bot. Send one command per message;
-multiple requests in one message are not currently supported.
+multiple requests in one message are not currently supported. Recognised combinations of
+explicit commands receive a request to split the message before any command is run.
 
 | Task | Example |
 |---|---|

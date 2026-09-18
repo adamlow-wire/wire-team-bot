@@ -1,0 +1,14 @@
+{
+  "reviewStatus": "Focused recorder/decider and combined-command regression. Inspect answers and all stored sources after drain; not aggregate capture-quality approval.",
+  "events": [
+    {"eventId":"named-deciders","text":"decision: Carol and Dave agreed we will use Terraform for infrastructure provisioning","expected":{"type":"decision","terms":["Carol","Dave","Terraform"]}},
+    {"eventId":"unknown-decider","text":"decision: use Postgres for the step one ledger because transactions are required","expected":{"type":"decision","terms":["Postgres","step one ledger"]}},
+    {"eventId":"combined-reminders","text":"@Wire Team Bot `remind me in 10 minutes to test cancellation`\n@Wire Team Bot `remind me in 10 minutes to test snoozing`"},
+    {"eventId":"single-cancel-reminder","text":"@Wire Team Bot `remind me in 10 minutes to test cancellation`"},
+    {"eventId":"single-snooze-reminder","text":"@Wire Team Bot `remind me in 10 minutes to test snoozing`"}
+  ],
+  "questions": [
+    {"eventId":"ask-deciders","text":"@Wire Team Bot Who made the Terraform decision, and who recorded it?"},
+    {"eventId":"ask-unknown-decider","text":"@Wire Team Bot Who made the Postgres step one ledger decision, and who recorded it? Distinguish those roles."}
+  ]
+}

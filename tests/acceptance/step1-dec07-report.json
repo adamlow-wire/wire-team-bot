@@ -1,0 +1,18 @@
+{
+  "runId": "mu70nmz2",
+  "passed": 1,
+  "failed": 0,
+  "scenarios": [
+    {
+      "id": "TC-DEC-07",
+      "description": "Retrieved decision \u2014 who decided is included in the response",
+      "passed": true,
+      "elapsedMs": 9520,
+      "outputs": [
+        "Decision **DEC-0346** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+        "\u2022 **[DEC-0346] Carol and Dave agreed we will use Terraform for infrastructure provisioning**\n  **Recorded by:** Alice (you) | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale or tags were stored with it. To retract it, use `revoke DEC-0346 <reason>`."
+      ],
+      "failures": []
+    }
+  ]
+}

@@ -113,12 +113,13 @@ function matchesTimeRange(date: Date, plan: QueryPlan): boolean {
 }
 
 function decisionToResult(d: Decision, channelId: string): RetrievalResult {
-  const decidedBy = d.decidedBy?.join(", ") || d.authorName || "unknown";
+  const decidedBy = d.decidedBy?.join(", ");
   const date = d.decidedAt ?? d.timestamp;
   const content = [
     `ID: ${d.id}`,
     `Decision: ${d.summary}`,
-    `Decided by: ${decidedBy}`,
+    `Recorded by: ${d.authorName || "unknown"}`,
+    decidedBy ? `Decided by: ${decidedBy}` : "",
     `Date: ${date.toISOString().slice(0, 10)}`,
     d.rationale ? `Rationale: ${d.rationale}` : "",
     d.tags.length > 0 ? `Tags: ${d.tags.join(", ")}` : "",

@@ -1,0 +1,64 @@
+{
+  "channel": "evaluation-95ae2e9a-60e1-49b1-8b4d-1d9c112578ff",
+  "database": "isolated Postgres 16 + pgvector, port 55439",
+  "inspection": "After framed CLI completion and queue drain; all records in this qualified synthetic conversation inspected. Facts and sources determine matches, not generated IDs.",
+  "checks": {
+    "expectedDecisions": 2,
+    "storedDecisions": 2,
+    "unexpectedActions": 0,
+    "separateReminderSources": 2,
+    "combinedMessageWrites": 0,
+    "creationAudits": 4,
+    "recorderIdentity": "alice@cli.local",
+    "explicitDeciderFields": "empty, as expected for explicit records; named makers retained in source summary",
+    "answerReview": "Carol/Dave identified as Terraform makers and Alice as recorder; Postgres maker explicitly unknown. Agent review, not human acceptance."
+  },
+  "decisions": [
+    {
+      "id": "DEC-0347",
+      "source": "named-deciders",
+      "summary": "Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+      "authorId": "alice",
+      "authorDom": "cli.local",
+      "authorName": "Alice",
+      "decidedBy": [],
+      "context": []
+    },
+    {
+      "id": "DEC-0348",
+      "source": "unknown-decider",
+      "summary": "use Postgres for the step one ledger because transactions are required",
+      "authorId": "alice",
+      "authorDom": "cli.local",
+      "authorName": "Alice",
+      "decidedBy": [],
+      "context": []
+    }
+  ],
+  "audits": [
+    {
+      "action": "entity_created",
+      "entityType": "Decision",
+      "entityId": "DEC-0347",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Decision",
+      "entityId": "DEC-0348",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Reminder",
+      "entityId": "REM-0141",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Reminder",
+      "entityId": "REM-0142",
+      "actorId": "alice"
+    }
+  ]
+}
