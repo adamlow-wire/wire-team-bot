@@ -1,0 +1,531 @@
+{
+  "runId": "mu70wa2r",
+  "commit": "1ef4bf2d36d18cd230752a4001f90358374f2f19",
+  "image": "wire-team-bot:v3-rc-1ef4bf2",
+  "database": "isolated Postgres 16 + pgvector, port 55439",
+  "inspection": "All stored decisions/actions/reminders read after suite completion. Inventory only, not a reply-ID capture score or a human-approved quality sample.",
+  "checks": {
+    "TC-PIPE-06": "Confirmed no stored action for ambiguous ownerless wording. Existing positive dedup expectation conflicts with conservative ownership rule.",
+    "TC-ID-03": "Confirmed Alice is stored recorder; no explicit decider. Answer declines to identify the maker; existing assertion conflates roles.",
+    "TC-DEC-07": "Confirmed Alice recorder; Carol and Dave explicitly named in stored Terraform summary. Answer labels roles correctly.",
+    "TC-ACT-11": {
+      "ownerAndFact": "Confirmed exactly one deck action for bob@cli.local",
+      "judge": "PASS",
+      "persistedDeadline": "2026-09-25T12:00:00Z",
+      "sameFridayCheck": "FAILED: expected 2026-09-18T12:00:00Z; actual 2026-09-25T12:00:00Z",
+      "disposition": "Unresolved relative-date semantics after the default noon deadline; investigate scenario time/timezone and parser contract in QA-3. Do not accept judge PASS as date validation."
+    }
+  },
+  "counts": {
+    "Decision": 15,
+    "Action": 23,
+    "Reminder": 8
+  },
+  "records": {
+    "Decision": [
+      {
+        "conversationId": "e2e-TC-DEC-01-mu70wa2r",
+        "rawMessageId": "7cddb307-c6d7-4d94-89c0-14c4c4b01bcb",
+        "summary": "we will use PostgreSQL as our primary database",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-02-mu70wa2r",
+        "rawMessageId": "7231d42b-26f7-4181-9073-d9dc768b9c55",
+        "summary": "the team will move to two-week sprints",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-03-mu70wa2r",
+        "rawMessageId": "10c281a1-917d-4663-aa14-f21f4463097a",
+        "summary": "we will standardise on kebab-case for all URL slugs",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-04-mu70wa2r",
+        "rawMessageId": "1ceacb89-4efa-410e-9198-ae3f7d47b05a",
+        "summary": "we will deploy on Fridays",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "superseded"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-04-mu70wa2r",
+        "rawMessageId": "87946935-2766-4313-9a77-4be5ac4cb47b",
+        "summary": "we will never deploy on Fridays",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-05-mu70wa2r",
+        "rawMessageId": "7543383b-329e-4c72-876e-2e532812702a",
+        "summary": "all standups at 9am",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "revoked"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-06-mu70wa2r",
+        "rawMessageId": "80637921-60d4-47e6-bd0d-9ac20c01e647",
+        "summary": "Alice and Bob agreed we will adopt a monorepo structure for all services",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-DEC-07-mu70wa2r",
+        "rawMessageId": "78b1facb-e4a5-4679-97f0-7195fc02e1ef",
+        "summary": "Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-ID-03-mu70wa2r",
+        "rawMessageId": "dbedd290-dbe6-4f8d-b5b7-4f0ad008f693",
+        "summary": "we will enforce semantic versioning for all internal packages",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-PERSONA-01-mu70wa2r",
+        "rawMessageId": "7135ebaa-85cc-4d3b-92dc-3f6ad36bf119",
+        "summary": "we will adopt agile methodology",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-01-mu70wa2r",
+        "rawMessageId": "cfffc461-cad9-4212-9cc6-000a85dd85f1",
+        "summary": "Adopt TypeScript strict mode across the entire codebase",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [
+          "Alice"
+        ],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-04-mu70wa2r",
+        "rawMessageId": "25d2b1e6-2a08-4817-bb4e-abd744ec6d3e",
+        "summary": "Adopt a managed Postgres service rather than self-hosting the database",
+        "authorId": "carol",
+        "authorDom": "cli.local",
+        "authorName": "Carol",
+        "decidedBy": [
+          "Carol"
+        ],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-07-mu70wa2r",
+        "rawMessageId": "960d92bc-0ce6-4299-afc6-2386a5161df2",
+        "summary": "Team will send the client a non-disclosure agreement before progressing further with the engagement.",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [
+          "Alice",
+          "Bob"
+        ],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-QA-01-mu70wa2r",
+        "rawMessageId": "0c70854e-d8fb-40cb-bb3e-46ca0d0aaca6",
+        "summary": "Team will use Redis as the session cache solution.",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [
+          "Alice"
+        ],
+        "context": [],
+        "status": "active"
+      },
+      {
+        "conversationId": "e2e-TC-QA-02-mu70wa2r",
+        "rawMessageId": "dacea5da-c286-4fd8-8711-3063ea287017",
+        "summary": "all API responses must use JSON:API format",
+        "authorId": "alice",
+        "authorDom": "cli.local",
+        "authorName": "Alice",
+        "decidedBy": [],
+        "context": [],
+        "status": "active"
+      }
+    ],
+    "Action": [
+      {
+        "conversationId": "e2e-TC-ACT-01-mu70wa2r",
+        "rawMessageId": "38f3ead3-e753-4dc6-9a52-0505ca746bea",
+        "description": "write the database migration scripts",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-02-mu70wa2r",
+        "rawMessageId": "57de22c5-0471-445a-a1b6-bc9a6df08492",
+        "description": "review the open PR",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-03-mu70wa2r",
+        "rawMessageId": "59e1467b-6910-4049-bd3f-44d0266022bc",
+        "description": "update the runbook",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-04-mu70wa2r",
+        "rawMessageId": "e20f0b44-0dee-4baa-af6f-b68c0365d7ab",
+        "description": "review the infrastructure cost report",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-05-mu70wa2r",
+        "rawMessageId": "90d89cb1-fa1b-49da-9c67-ee143e4eecbe",
+        "description": "deploy the staging environment",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "done"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-06-mu70wa2r",
+        "rawMessageId": "4d3be6b2-5f74-4794-b2db-6dd92e9ed964",
+        "description": "write the release notes",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-07-mu70wa2r",
+        "rawMessageId": "0c82fadb-5aba-4464-acff-a5ee1795b641",
+        "description": "write the API documentation",
+        "creatorId": "alice",
+        "assigneeId": "carol",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Carol",
+        "deadline": "2026-09-30T23:59:59",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-08-mu70wa2r",
+        "rawMessageId": "a8702a0f-940c-499a-9e38-4aa75131bcb9",
+        "description": "complete the security audit",
+        "creatorId": "alice",
+        "assigneeId": "dave",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Dave",
+        "deadline": "2027-04-03T12:00:00",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-09-mu70wa2r",
+        "rawMessageId": "b8e8c6b7-d854-460c-b08b-e4c262134303",
+        "description": "review the formatting smoke checklist",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "@Bob",
+        "deadline": "2026-09-19T14:00:50.244",
+        "status": "done"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-10-mu70wa2r",
+        "rawMessageId": "c66dae63-e6e9-4940-b148-e63be0743f27",
+        "description": "prepare the slide deck",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "@Bob",
+        "deadline": "2026-09-25T12:00:00",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ACT-11-mu70wa2r",
+        "rawMessageId": "72d61f8d-6943-47e9-97a6-4f527b8f7669",
+        "description": "prepare the deck",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "@Bob",
+        "deadline": "2026-09-25T12:00:00",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-01-mu70wa2r",
+        "rawMessageId": "39dd9f10-2bee-40ff-a828-73ff3dfaed5c",
+        "description": "update the security documentation",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-01-mu70wa2r",
+        "rawMessageId": "afaf444d-2cf1-41e2-be3a-ffef3911395a",
+        "description": "refactor the payment module",
+        "creatorId": "bob",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-02-mu70wa2r",
+        "rawMessageId": "3130e53b-fd72-4e15-a6f7-591bfe8559a1",
+        "description": "deploy the hotfix to staging",
+        "creatorId": "bob",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-02-mu70wa2r",
+        "rawMessageId": "ebb9a8fc-7084-4b3b-856f-0b8b4f0691cd",
+        "description": "prepare the sprint retrospective slides",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-05-mu70wa2r",
+        "rawMessageId": "02f1874a-3e7d-4013-9d9d-4d7bb573a75b",
+        "description": "set up the CI pipeline",
+        "creatorId": "bob",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-05-mu70wa2r",
+        "rawMessageId": "3b5eb46b-dccd-4f73-ac4d-e1140646a8bc",
+        "description": "write the API specification",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-06-mu70wa2r",
+        "rawMessageId": "6b2a2f92-7647-4843-86f3-b00976ccd3ec",
+        "description": "review the launch checklist",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": "2026-09-25T12:00:00",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-ID-06-mu70wa2r",
+        "rawMessageId": "c878dbdd-e900-480f-a112-c88c3e867624",
+        "description": "prepare the retrospective slides",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-02-mu70wa2r",
+        "rawMessageId": "596cf3f7-f9a8-4693-9b3a-e426e27df503",
+        "description": "Bob to update the deployment runbook ahead of the next release",
+        "creatorId": "alice",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-03-mu70wa2r",
+        "rawMessageId": "d3932aa6-2823-45bf-b707-b91ccccbbef1",
+        "description": "Send the contract template over to the new supplier",
+        "creatorId": "bob",
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Bob",
+        "deadline": "2026-09-18T13:58:54.678",
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-05-mu70wa2r",
+        "rawMessageId": "9f50291b-b86c-42ba-a1db-2df04e984fdf",
+        "description": "Lead the GDPR data-retention audit",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": null,
+        "status": "open"
+      },
+      {
+        "conversationId": "e2e-TC-PIPE-07-mu70wa2r",
+        "rawMessageId": "960d92bc-0ce6-4299-afc6-2386a5161df2",
+        "description": "Email the NDA to the client.",
+        "creatorId": "alice",
+        "assigneeId": "alice",
+        "assigneeDom": "cli.local",
+        "assigneeName": "Alice",
+        "deadline": "2026-09-18T14:00:17.493",
+        "status": "done"
+      }
+    ],
+    "Reminder": [
+      {
+        "conversationId": "e2e-TC-ID-04-mu70wa2r",
+        "rawMessageId": "3212d851-a108-4ebe-8d1b-faf3cc5a6bde",
+        "description": "send the weekly report",
+        "targetId": "bob",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-25T12:00:00",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-ID-04-mu70wa2r",
+        "rawMessageId": "57a585af-3226-45b4-8edd-28808cd3c73d",
+        "description": "chase the vendor invoice",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-24T12:00:00",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-REM-01-mu70wa2r",
+        "rawMessageId": "4a1f546a-b7ec-4aa4-8c97-fb3c97a9a509",
+        "description": "review the deployment checklist",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-19T14:01:47.661",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-REM-02-mu70wa2r",
+        "rawMessageId": "27160111-83ff-4770-b831-49da663883b5",
+        "description": "send the weekly status report",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-22T12:00:00",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-REM-03-mu70wa2r",
+        "rawMessageId": "b10a199c-7165-4b8c-876b-b0dbc00db29f",
+        "description": "update the docs",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-20T14:01:50.681",
+        "status": "cancelled"
+      },
+      {
+        "conversationId": "e2e-TC-REM-04-mu70wa2r",
+        "rawMessageId": "c7b8c7b8-e0e2-40e5-8b0d-977a7e2c562f",
+        "description": "submit the quarterly report",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2027-04-05T12:00:00",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-REM-05-mu70wa2r",
+        "rawMessageId": "7e8c76dc-5d2a-4534-b0d5-5c9462202465",
+        "description": "prepare the sprint review slides",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-21T09:00:00",
+        "status": "pending"
+      },
+      {
+        "conversationId": "e2e-TC-REM-06-mu70wa2r",
+        "rawMessageId": "53963c92-7729-4588-8ac0-b416debc94b2",
+        "description": "check the formatting smoke reminder",
+        "targetId": "alice",
+        "targetDom": "cli.local",
+        "triggerAt": "2026-09-18T15:01:45.094",
+        "status": "cancelled"
+      }
+    ]
+  }
+}

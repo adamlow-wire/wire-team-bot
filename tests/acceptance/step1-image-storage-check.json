@@ -1,0 +1,65 @@
+{
+  "commit": "1ef4bf2d36d18cd230752a4001f90358374f2f19",
+  "image": "wire-team-bot:v3-rc-1ef4bf2",
+  "imageId": "sha256:2788bfad05b9d2bc6af5dfff32853037561a9054a78ded248ba3aa78b06ba3d2",
+  "channel": "evaluation-a3f723b2-a68f-4af5-bbed-39cc1440967c",
+  "database": "isolated Postgres 16 + pgvector, port 55439",
+  "inspection": "After framed CLI completion and queue drain. All stored captures matched by facts and source events; generated IDs used only to associate audits.",
+  "checks": {
+    "expectedDecisions": 2,
+    "storedDecisions": 2,
+    "unexpectedActions": 0,
+    "separateReminderSources": 2,
+    "combinedMessageWrites": 0,
+    "creationAudits": 4,
+    "answerReview": "Carol/Dave identified as Terraform makers and Alice as recorder; Postgres maker explicitly unknown. Agent review, not human acceptance."
+  },
+  "decisions": [
+    {
+      "id": "DEC-0364",
+      "source": "named-deciders",
+      "summary": "Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+      "authorId": "alice",
+      "authorDom": "cli.local",
+      "authorName": "Alice",
+      "decidedBy": [],
+      "context": []
+    },
+    {
+      "id": "DEC-0365",
+      "source": "unknown-decider",
+      "summary": "use Postgres for the step one ledger because transactions are required",
+      "authorId": "alice",
+      "authorDom": "cli.local",
+      "authorName": "Alice",
+      "decidedBy": [],
+      "context": []
+    }
+  ],
+  "audits": [
+    {
+      "action": "entity_created",
+      "entityType": "Decision",
+      "entityId": "DEC-0364",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Decision",
+      "entityId": "DEC-0365",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Reminder",
+      "entityId": "REM-0145",
+      "actorId": "alice"
+    },
+    {
+      "action": "entity_created",
+      "entityType": "Reminder",
+      "entityId": "REM-0146",
+      "actorId": "alice"
+    }
+  ]
+}

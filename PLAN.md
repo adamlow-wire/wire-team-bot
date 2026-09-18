@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Release runtime: `4bc7e1f` (baseline `e35428b`).
+Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `1ef4bf2`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -266,8 +266,9 @@ Only after this single final acceptance stage passes does the five-day P3 pilot 
 Current state: QA-0 is complete. The authorised first implementation step covers QA-1 and QA-2;
 both fixes now pass focused checks below. Stop for Adam's confirmation before the next step,
 QA-3 evaluator corrections. Existing e2e scenarios, judge and scoring code remain unchanged.
-The full regression is running; the last completed suite remains 57/60. Staging still runs the
-previous image, and final Wire/human acceptance is pending.
+The unchanged full image regression is **58/60**, with a further date discrepancy found by DB
+inspection despite a judge PASS. The original 57/60 report remains intact. Staging still runs
+the previous image; automated release acceptance and final Wire/human acceptance remain pending.
 
 #### First automated implementation step — 2026-09-18
 
@@ -298,6 +299,38 @@ previous image, and final Wire/human acceptance is pending.
   events, no combined-message writes, 4 matching creation audits. Recorder is `alice@cli.local`,
   both explicit decider arrays are empty, and decision context arrays are empty. This small
   regression sample is not the pilot's 20-event quality sample or human approval.
+
+Final step-one runtime is `1ef4bf2d36d18cd230752a4001f90358374f2f19`, built as
+`wire-team-bot:v3-rc-1ef4bf2`; image ID
+`sha256:2788bfad05b9d2bc6af5dfff32853037561a9054a78ded248ba3aa78b06ba3d2`.
+The [immutable-image focused report](tests/acceptance/step1-image-report.json) and
+[post-drain image storage checks](tests/acceptance/step1-image-storage-check.json) repeat all
+focused checks successfully on that compiled runtime. The initial report above records the
+pre-commit working tree; its runtime was committed as `caa4dd1`, followed by the inline-ID guard
+fix in `1ef4bf2`. No image was deployed, and no historical record was rewritten.
+
+Full unchanged e2e run `mu70wa2r` against that image: **58/60**
+([raw results](tests/acceptance/step1-e2e-report.json)).
+[Post-run inventory](tests/acceptance/step1-e2e-storage-check.json) includes all 15 decisions,
+23 actions and 8 reminders, including silent captures. These counts are an inventory, not an
+extraction-quality score. Direct storage/answer review confirms:
+
+- TC-DEC-07 correctly separates Alice as recorder from Carol/Dave as named makers.
+- TC-PIPE-06 fails its existing positive dedup expectation: the ownerless statements produced
+  no action. It needs an explicit-owner positive case plus the retained negative case in QA-3.
+- TC-ID-03 fails the judge's conflated maker/recorder expectation. Alice is the stored recorder,
+  with no explicit makers; the answer correctly says maker unknown.
+- TC-ACT-11 passed the model judge, but the same-Friday storage check **failed**: the deck action
+  belongs to Bob and is due **2026-09-25T12:00:00Z**, not **2026-09-18T12:00:00Z**. This run occurred
+  after noon on Friday 18 September, unlike the earlier morning run. Relative-date semantics,
+  scenario clock/timezone and parser behaviour must be reconciled in QA-3; do not count this as
+  validated date correctness just because the judge passed. TC-ACT-10 also passed the judge.
+
+The first partial full run was stopped after the inline-ID formatting edge case was found;
+only the completed immutable-image run above is counted. Existing e2e scenarios, judge,
+acceptance evaluator and scoring code were not changed. No full 20-event quality sample or
+simulation was rerun in this bounded step; classifier/extractor/pipeline code is unchanged.
+QA-3 and subsequent acceptance work await Adam's requested confirmation.
 
 Repeat the focused check with the existing acceptance runner in the isolated test container:
 `EVALUATION_FIXTURE=tests/acceptance/step1-fixture.json EVALUATION_REPORT=/tmp/step1-report.json npm run test:acceptance`.

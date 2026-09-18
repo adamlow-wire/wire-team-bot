@@ -282,8 +282,9 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The current local image is `wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-18)
-for passing checks, the retained e2e failures and human/Wire acceptance still required.
+The latest local QA image is `wire-team-bot:v3-rc-1ef4bf2`; staging still runs
+`wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
+for the 58/60 unchanged e2e result, stored-date discrepancy and remaining acceptance work.
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.
@@ -386,7 +387,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-4bc7e1f \
+  --entrypoint node wire-team-bot:v3-rc-1ef4bf2 \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```
