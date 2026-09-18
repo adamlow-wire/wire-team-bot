@@ -66,7 +66,13 @@ CLI members are Alice (default), Bob, Carol and Dave. Prefix a line with `Bob: `
 sender. Stdout contains bot replies; logs go to stderr. `LOG_LEVEL=debug` enables diagnostics;
 use synthetic conversations and avoid committing output containing private information.
 
-Scenarios in `tests/e2e/scenarios.ts` use plain-English assertions evaluated by `judge.ts`.
+Scenarios in `tests/e2e/scenarios.ts` use plain-English assertions evaluated by `judge.ts`,
+exact `replyEquals` checks for configured deterministic responses, and post-exit `stored`
+expectations matched by source step, fact and qualified identity/date. Preserve zero-capture
+negative cases and reject extra/duplicate records. The report retains all inventories and judge
+verdicts, including malformed attempts; a model PASS cannot override a deterministic failure.
+Before acceptance, run `node node_modules/ts-node/dist/bin.js --transpile-only tests/e2e/calibrateJudge.ts`
+with the judge override in PLAN.md. Both positive and deliberately wrong answers must calibrate.
 `JEEVES_JUDGE_MODEL` falls back to `JEEVES_MODEL_CLASSIFY`. Scenarios use isolated conversation
 IDs (`e2e-<id>-<runId>`). `captureAs: "DEC" | "ACT" | "REM"` captures IDs for subsequent
 `{{DEC}}`, `{{ACT}}`, `{{REM}}` substitutions. Use the existing shared-process support for

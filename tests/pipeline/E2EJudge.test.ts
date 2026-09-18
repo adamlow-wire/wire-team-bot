@@ -28,3 +28,46 @@ it("uses the scenario clock and timezone even when the judge runs on another day
   expect(body.messages[1].content).toContain("Conversation timezone: Europe/London");
   expect(body.messages[1].content).toContain(`Assertion: ${assertion}`);
 });
+
+it("retries an explicit unsupported-temperature rejection without changing the assertion", async () => {
+  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  const fetch = vi.fn()
+    .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: { message: "temperature is not supported" } }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: { content: "FAIL: Wrong owner." } }] }) });
+  vi.stubGlobal("fetch", fetch);
+  expect((await judge("Alice owns it", "Bob must own it")).pass).toBe(false);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  const first = JSON.parse(fetch.mock.calls[0][1].body);
+  const second = JSON.parse(fetch.mock.calls[1][1].body);
+  expect(first.temperature).toBe(0);
+  expect(second.temperature).toBeUndefined();
+  expect(second.messages).toEqual(first.messages);
+});
+
+it("does not retry unrelated client errors or expose the provider body", async () => {
+  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  const fetch = vi.fn().mockResolvedValue({ ok: false, status: 400,
+    json: async () => ({ error: { message: "PRIVATE_PROVIDER_BODY: bad request" } }) });
+  vi.stubGlobal("fetch", fetch);
+  await expect(judge("answer", "assertion")).rejects.toThrow("Judge LLM request failed: HTTP 400");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("retries a conflicting multiline verdict once and preserves it", async () => {
+  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  const invalid = "PASS: Looks right.\nFAIL: Actually wrong owner.";
+  const fetch = vi.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: { content: invalid } }] }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: { content: "FAIL: Wrong owner." } }] }) });
+  vi.stubGlobal("fetch", fetch);
+  expect(await judge("Alice owns it", "Bob must own it")).toMatchObject({ pass: false, valid: true, invalidAttempts: [invalid] });
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it("fails closed when both verdicts are malformed", async () => {
+  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "Probably correct" } }] }) });
+  vi.stubGlobal("fetch", fetch);
+  expect(await judge("answer", "assertion")).toMatchObject({ pass: false, valid: false, invalidAttempts: ["Probably correct", "Probably correct"] });
+  expect(fetch).toHaveBeenCalledTimes(2);
+});

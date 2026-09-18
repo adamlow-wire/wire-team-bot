@@ -19,7 +19,7 @@ import { createInterface } from "node:readline";
 import { PrismaClient } from "@prisma/client";
 import { checkStoredRecords, type ExpectedRecord, type StoredRecord } from "./storedRecords";
 import { exactReplyMatches } from "./replyChecks";
-import type { EvaluationContext } from "./judge";
+import type { EvaluationContext, JudgeResult } from "./judge";
 import { spawn }   from "child_process";
 import fs          from "fs";
 import path        from "path";
@@ -98,6 +98,8 @@ function applyCaptures(input: string, captures: Record<string, string>): string 
 
 // ── Scenario runner ───────────────────────────────────────────────────────────
 
+interface Judgement { step: string; assertion: string; result: JudgeResult }
+
 interface StepFailure {
   step: string;
   assertion: string;
@@ -122,7 +124,7 @@ function scenarioEnv(scenarioId: string, context: EvaluationContext): Record<str
 
 async function runScenario(
   scenario: Scenario,
-): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[]; context: EvaluationContext; events: SourceEvent[]; records: StoredRecord[]; channelState: string | null; storedChecks: string[] | null }> {
+): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[]; context: EvaluationContext; events: SourceEvent[]; records: StoredRecord[]; channelState: string | null; storedChecks: string[] | null; judgements: Judgement[] }> {
   const normalised: Step[] = scenario.steps.map(s =>
     typeof s === "string" ? { input: s } : s,
   );
@@ -130,6 +132,7 @@ async function runScenario(
   const captures: Record<string, string> = {};
   const stepOutputs: string[] = [];
   const failures: StepFailure[] = [];
+  const judgements: Judgement[] = [];
   const context = { referenceTime: scenario.referenceTime ?? new Date().toISOString(), timezone: scenario.timezone ?? "UTC" };
   const env = scenarioEnv(scenario.id, context);
   const events: SourceEvent[] = [];
@@ -162,6 +165,7 @@ async function runScenario(
       if (step.assert) {
         const assertion = applyCaptures(step.assert, captures);
         const result = await judge(stepOut, assertion, context);
+        judgements.push({ step: pendingSharedInputs[i].text, assertion, result });
         if (!result.pass) {
           failures.push({ step: step.input.slice(0, 60), assertion, reason: result.reason, botOutput: stepOut });
         } else if (verbose) {
@@ -211,6 +215,7 @@ async function runScenario(
     if (step.assert) {
       const assertion = applyCaptures(step.assert, captures);
       const result = await judge(output, assertion, context);
+      judgements.push({ step: resolvedInput, assertion, result });
       if (!result.pass) {
         failures.push({
           step: resolvedInput.slice(0, 60),
@@ -231,6 +236,7 @@ async function runScenario(
   if (scenario.assert) {
     const combined = stepOutputs.join("\n");
     const result = await judge(combined, scenario.assert, context);
+    judgements.push({ step: "(overall)", assertion: scenario.assert, result });
     if (!result.pass) {
       failures.push({
         step: "(overall)",
@@ -265,7 +271,7 @@ async function runScenario(
   for (const reason of storedChecks ?? []) failures.push({ step: "(stored records)",
     assertion: "Post-drain inventory must match expected facts, source events, identities and dates exactly",
     reason, botOutput: "" });
-  return { passed: failures.length === 0, stepOutputs, failures, context, events, records, channelState, storedChecks };
+  return { passed: failures.length === 0, stepOutputs, failures, context, events, records, channelState, storedChecks, judgements };
 }
 
 // ── CLI process spawner ───────────────────────────────────────────────────────
@@ -332,6 +338,7 @@ interface ScenarioResult {
   records: StoredRecord[];
   channelState: string | null;
   storedChecks: string[] | null;
+  judgements: Judgement[];
   failures: Array<{ step: string; assertion: string; judgeReason: string; botOutput: string }>;
 }
 
@@ -411,7 +418,7 @@ async function main() {
     }
 
     if (jsonOut) {
-      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, context: result.context, events: result.events, records: result.records, channelState: result.channelState, storedChecks: result.storedChecks, failures });
+      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, context: result.context, events: result.events, records: result.records, channelState: result.channelState, storedChecks: result.storedChecks, judgements: result.judgements, failures });
     } else if (verbose && result.passed) {
       const lines = result.stepOutputs.join("\n").trim().split("\n").filter(Boolean);
       if (lines.length > 0) {
@@ -427,7 +434,7 @@ async function main() {
   }
 
   if (jsonOut) {
-    console.log(JSON.stringify({ runId: suiteRunId, passed, failed, scenarios: jsonResults }, null, 2));
+    console.log(JSON.stringify({ runId: suiteRunId, judgeModel: process.env.JEEVES_JUDGE_MODEL ?? process.env.JEEVES_MODEL_CLASSIFY, passed, failed, scenarios: jsonResults }, null, 2));
   } else {
     console.log(`\n${"─".repeat(70)}`);
     console.log(`  ${passed} passed, ${failed} failed\n`);

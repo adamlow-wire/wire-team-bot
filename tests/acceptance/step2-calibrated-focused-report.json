@@ -1,0 +1,189 @@
+[
+  {
+    "runId": "mu73pcyj",
+    "judgeModel": "claude-opus-5",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-QA-01",
+        "description": "Answer a question from recent conversation context",
+        "passed": true,
+        "elapsedMs": 20229,
+        "outputs": [
+          "",
+          "",
+          "Redis, per DEC-0432 recorded on 2026-09-18. The reason you gave earlier in this conversation was Redis's native TTL support.\n\n\u2022 **[DEC-0432] Redis selected as the session cache technology.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** Alice\n  *Tags: infrastructure, caching*\n\nThe rationale isn't captured on the record itself. If you'd like it stored, the command is:\n\n`decision: use Redis for the session cache \u2014 native TTL support`"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:16:05.472Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-QA-01-step-1",
+            "text": "we decided to use Redis for the session cache"
+          },
+          {
+            "eventId": "TC-QA-01-step-2",
+            "text": "the main reason was that Redis supports TTL natively"
+          },
+          {
+            "eventId": "TC-QA-01-step-3",
+            "text": "@jeeves what are we using for the session cache and why?"
+          }
+        ],
+        "records": [
+          {
+            "type": "decision",
+            "source": "TC-QA-01-step-1",
+            "content": "Redis selected as the session cache technology.",
+            "author": "alice@cli.local",
+            "decidedBy": [
+              "Alice"
+            ],
+            "status": "active"
+          }
+        ],
+        "channelState": "active",
+        "storedChecks": null,
+        "judgements": [
+          {
+            "step": "@jeeves what are we using for the session cache and why?",
+            "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+            "result": {
+              "pass": true,
+              "valid": true,
+              "reason": "States Redis for session cache and cites native TTL support as rationale.",
+              "raw": "PASS: States Redis for session cache and cites native TTL support as rationale."
+            }
+          }
+        ],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu73psvm",
+    "judgeModel": "claude-opus-5",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-QA-05",
+        "description": "Follow-up yes stays coherent and read-only",
+        "passed": true,
+        "elapsedMs": 22385,
+        "outputs": [
+          "That's yours to call \u2014 I can't set it from here, but the command is straightforward once you have a time in mind:\n\n```\nremind me in 2 hours to review the deployment checklist\n```\n\nOr with a fixed point: `remind me tomorrow at 9am to review the deployment checklist`.\n\nTell me when you want it and I'll give you the exact line to send.",
+          "Right \u2014 I just need the timing from you.\n\n- Relative: `remind me in 2 hours to review the deployment checklist`\n- Fixed: `remind me tomorrow at 9am to review the deployment checklist`\n\nSend whichever line matches when you want it, or tell me the time and I'll format it exactly."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:16:26.101Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-QA-05-step-1",
+            "text": "@jeeves shall I create a reminder to review the deployment checklist?"
+          },
+          {
+            "eventId": "TC-QA-05-step-2",
+            "text": "@jeeves yes"
+          }
+        ],
+        "records": [],
+        "channelState": "active",
+        "storedChecks": [],
+        "judgements": [
+          {
+            "step": "@jeeves yes",
+            "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
+            "result": {
+              "pass": true,
+              "valid": true,
+              "reason": "Asks for missing timing with example commands, no false scheduling claim.",
+              "raw": "PASS: Asks for missing timing with example commands, no false scheduling claim."
+            }
+          }
+        ],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu73qagj",
+    "judgeModel": "claude-opus-5",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ID-06",
+        "description": "Current caller remains Bob after Alice's questions in the same conversation",
+        "passed": true,
+        "elapsedMs": 19834,
+        "outputs": [
+          "Action **ACT-0517** created for **Bob**: review the launch checklist (due Friday: 18 Sept 2026, 12:00)",
+          "Action **ACT-0518** created for **Alice**: prepare the retrospective slides",
+          "You have one open action:\n\n\u2022 **[ACT-0518] prepare the retrospective slides**\n  **Owner:** Alice | **Status:** open\n\nThat is the only item assigned to you. ACT-0517 (review the launch checklist, due 18 September 2026) sits with @Bob.",
+          "You have one open action:\n\n\u2022 **[ACT-0517] review the launch checklist**\n  **Owner:** Bob | **Status:** open | **Due:** 18 September 2026\n\nThat is the only item assigned to you. ACT-0518 (prepare the retrospective slides) sits with @Alice.\n\nTo close yours once done, send `ACT-0517 done`."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ID-06-step-1",
+            "text": "Alice: action: review the launch checklist for Bob by Friday"
+          },
+          {
+            "eventId": "TC-ID-06-step-2",
+            "text": "Alice: action: prepare the retrospective slides"
+          },
+          {
+            "eventId": "TC-ID-06-step-3",
+            "text": "Alice: @Wire Team Bot What am I responsible for here?"
+          },
+          {
+            "eventId": "TC-ID-06-step-4",
+            "text": "Bob: @Wire Team Bot What am I responsible for here?"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-ID-06-step-1",
+            "content": "review the launch checklist",
+            "owner": "bob@cli.local",
+            "deadline": "2026-09-18T12:00:00.000Z",
+            "status": "open"
+          },
+          {
+            "type": "action",
+            "source": "TC-ID-06-step-2",
+            "content": "prepare the retrospective slides",
+            "owner": "alice@cli.local",
+            "deadline": null,
+            "status": "open"
+          }
+        ],
+        "channelState": "active",
+        "storedChecks": [],
+        "judgements": [
+          {
+            "step": "Bob: @Wire Team Bot What am I responsible for here?",
+            "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0517. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
+            "result": {
+              "pass": true,
+              "valid": true,
+              "reason": "Correctly attributes ACT-0517 to Bob and assigns ACT-0518 to Alice.",
+              "raw": "PASS: Correctly attributes ACT-0517 to Bob and assigns ACT-0518 to Alice."
+            }
+          }
+        ],
+        "failures": []
+      }
+    ]
+  }
+]

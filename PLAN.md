@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `1ef4bf2`.
+Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `957f2c8`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -284,7 +284,7 @@ The CLI can inject a parser reference instant and conversation timezone for synt
 runs only; the Wire composition still uses the real clock. Network timers, processing queues,
 and record creation timestamps remain real. The e2e report records each scenario's reference
 instant/timezone and actual source events. Every scenario inventories stored decisions/actions/
-reminders only after CLI exit and queue drain. Eleven scenarios have mandatory exact fact/source/
+reminders only after CLI exit and queue drain. Thirteen scenarios have mandatory exact fact/source/
 qualified identity/status/date checks (including durable secure state); other inventories remain available for review without
 being labelled checked. Generated IDs serve command substitutions, not stored-fact matching.
 
@@ -326,6 +326,35 @@ persisted facts/state. The final full regression is pending; the runtime image i
 The fixed capture sample also completed: [report](tests/acceptance/step2-capture-report.json),
 20 expected/20 stored/20 correct facts (10 decisions, 10 actions), zero duplicates and stored/log
 privacy markers. Human approval remains pending.
+
+Evaluator calibration follow-up:
+
+- The next full run was **60/63** ([uncalibrated rerun](tests/acceptance/step2-final-e2e-report.json)).
+  All eleven mandatory storage/state checks passed. Three correct natural answers were rejected:
+  Redis/TTL rationale, the read-only reminder follow-up, and Bob's requester identity.
+- A [12-case calibration fixture](tests/acceptance/judge-calibration-fixture.json) pairs six real
+  correct answers with six deliberately wrong ones (wrong date, wrong owner, wrong makers,
+  invented maker, missing rationale and fabricated reminder scheduling). The existing small
+  judge scored [10/12](tests/acceptance/step2-judge-small-report.json). The existing response model
+  scored [11/12 after strict protocol review](tests/acceptance/step2-judge-strong-initial-report.json):
+  one malformed verdict was rejected, not counted as a successful negative.
+- The judge now shares the runtime's bounded unsupported-temperature compatibility behaviour,
+  requires one valid verdict line, fails closed, and retries malformed output only once. Valid
+  FAILs are never retried to obtain a PASS. Every verdict and malformed attempt is retained in
+  the e2e report. Network/format errors remain failures.
+- With that protocol, the stronger configured model passes [12/12 calibration cases](tests/acceptance/step2-judge-strong-report.json),
+  including all six negative controls. Acceptance runs explicitly set
+  `JEEVES_JUDGE_MODEL=claude-opus-5`; application model slots and the default judge fallback remain
+  unchanged. This is evaluator calibration using an existing model, not an application provider
+  migration. Initial calibration encountered an explicit unsupported-temperature HTTP 400 before
+  the compatibility fix; provider bodies/credentials were not logged.
+- TC-QA-05's old assertion incorrectly allowed a read-only Q&A path to create a reminder. It now
+  requires coherent text guidance without claiming a write, and zero stored captures. TC-ID-06
+  now also checks both actual owners, source events and deadlines. No false ownership/write is
+  accepted to improve a score. These additions bring mandatory storage/state checks to thirteen.
+- Latest deterministic validation: **369 tests in 43 files**, six isolated DB tests, build,
+  production/harness strict type checks and lint pass. Calibrated focused and full image reruns
+  are in progress; earlier failing reports remain intact.
 
 #### First automated implementation step — 2026-09-18
 

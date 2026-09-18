@@ -212,7 +212,7 @@ npm test                      # run unit + contract tests (Vitest)
 npx tsc --noEmit              # type-check
 npm run lint                  # lint source and tests
 
-npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite
+npm run build && npm run test:e2e            # answer judging + exact stored-fact checks
 npm run test:e2e -- --filter TC-DEC         # run a subset of scenarios
 npm run test:acceptance                     # fixed 20-event stored-record sample + 10 known questions
 npm run build && npm run simulate           # multi-day replay — stored-record inventory
@@ -286,9 +286,9 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The latest local QA image is `wire-team-bot:v3-rc-1ef4bf2`; staging still runs
+The latest local QA image is `wire-team-bot:v3-rc-957f2c8`; staging still runs
 `wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
-for the 58/60 unchanged e2e result, stored-date discrepancy and remaining acceptance work.
+for the date fix, evaluator calibration, retained failing runs and remaining acceptance work.
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.
@@ -354,6 +354,20 @@ and build it. Run the evaluator with `EVALUATION_ROOT` pointing to that checkout
 `EVALUATION_COMMIT=<mapped-baseline-commit>` and a separate `EVALUATION_REPORT` output path.
 Use the same isolated DB and model slots listed in the baseline report.
 
+Before an acceptance run, use the calibrated judge model and environment override recorded in
+[PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance). The application model slots stay
+unchanged. Check the judge against both correct and deliberately wrong answers:
+
+```bash
+node node_modules/ts-node/dist/bin.js --transpile-only tests/e2e/calibrateJudge.ts
+```
+
+The e2e report retains source events, scenario time/timezone, all stored records after process
+exit, exact stored-fact failures and every model verdict. Fixed command responses use exact text
+assertions where configured. Generated IDs support follow-up commands; stored-fact checks match
+content, source events, qualified identities, status and dates. An unconfigured stored check is
+reported as unreviewed, not passed. A model PASS cannot override a failing deterministic check.
+
 The fixed sample is [capture-fixture.json](tests/acceptance/capture-fixture.json). Compare
 [baseline-report.json](tests/acceptance/baseline-report.json) and
 [candidate-report.json](tests/acceptance/candidate-report.json), including every record and
@@ -391,7 +405,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-1ef4bf2 \
+  --entrypoint node wire-team-bot:v3-rc-957f2c8 \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```

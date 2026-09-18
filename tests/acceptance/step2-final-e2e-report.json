@@ -1,0 +1,2284 @@
+{
+  "runId": "mu731b3b",
+  "passed": 60,
+  "failed": 3,
+  "scenarios": [
+    {
+      "id": "TC-DEC-01",
+      "description": "Log a decision \u2014 gets a DEC reference back",
+      "passed": true,
+      "elapsedMs": 1406,
+      "outputs": [
+        "Decision **DEC-0415** logged: we will use PostgreSQL as our primary database"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:23.306Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-01-step-1",
+          "text": "decision: we will use PostgreSQL as our primary database"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-01-step-1",
+          "content": "we will use PostgreSQL as our primary database",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-02",
+      "description": "Log then retrieve by topic",
+      "passed": true,
+      "elapsedMs": 10010,
+      "outputs": [
+        "Decision **DEC-0416** logged: the team will move to two-week sprints",
+        "**[DEC-0416] The team will move to two-week sprints**\n**Recorded by:** Alice | **Date:** 2026-09-18\n\nDecision makers aren't recorded on this one \u2014 only that you logged it."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:24.713Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-02-step-1",
+          "text": "decision: the team will move to two-week sprints"
+        },
+        {
+          "eventId": "TC-DEC-02-step-2",
+          "text": "@jeeves what have we decided about our sprint length?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-02-step-1",
+          "content": "the team will move to two-week sprints",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-03",
+      "description": "List decisions \u2014 includes the previously logged decision",
+      "passed": true,
+      "elapsedMs": 1808,
+      "outputs": [
+        "Decision **DEC-0417** logged: we will standardise on kebab-case for all URL slugs",
+        "- **DEC-0417** \u2014 we will standardise on kebab-case for all URL slugs _(2026-09-18)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:34.723Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-03-step-1",
+          "text": "decision: we will standardise on kebab-case for all URL slugs"
+        },
+        {
+          "eventId": "TC-DEC-03-step-2",
+          "text": "list decisions"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-03-step-1",
+          "content": "we will standardise on kebab-case for all URL slugs",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-04",
+      "description": "Supersede a decision \u2014 old marked, new logged",
+      "passed": true,
+      "elapsedMs": 1958,
+      "outputs": [
+        "Decision **DEC-0418** logged: we will deploy on Fridays",
+        "Decision **DEC-0419** logged _(supersedes DEC-0418)_: we will never deploy on Fridays"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:36.531Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-04-step-1",
+          "text": "decision: we will deploy on Fridays"
+        },
+        {
+          "eventId": "TC-DEC-04-step-2",
+          "text": "decision: we will never deploy on Fridays supersedes DEC-0418"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-04-step-2",
+          "content": "we will never deploy on Fridays",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        },
+        {
+          "type": "decision",
+          "source": "TC-DEC-04-step-1",
+          "content": "we will deploy on Fridays",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "superseded"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-05",
+      "description": "Revoke a decision \u2014 confirmed",
+      "passed": true,
+      "elapsedMs": 1766,
+      "outputs": [
+        "Decision **DEC-0420** logged: all standups at 9am",
+        "**DEC-0420** revoked."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:38.489Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-05-step-1",
+          "text": "decision: all standups at 9am"
+        },
+        {
+          "eventId": "TC-DEC-05-step-2",
+          "text": "revoke DEC-0420"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-05-step-1",
+          "content": "all standups at 9am",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "revoked"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-06",
+      "description": "Decision with named participants \u2014 response references who decided",
+      "passed": true,
+      "elapsedMs": 534,
+      "outputs": [
+        "Decision **DEC-0421** logged: Alice and Bob agreed we will adopt a monorepo structure for all services"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:40.255Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-06-step-1",
+          "text": "decision: Alice and Bob agreed we will adopt a monorepo structure for all services"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-06-step-1",
+          "content": "Alice and Bob agreed we will adopt a monorepo structure for all services",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-DEC-07",
+      "description": "Retrieved decision \u2014 recorder and named decision makers stay distinct",
+      "passed": true,
+      "elapsedMs": 9593,
+      "outputs": [
+        "Decision **DEC-0422** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+        "\u2022 **[DEC-0422] Use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale was captured with the record. To revoke it, use `revoke DEC-0422 <reason>`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:40.789Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-DEC-07-step-1",
+          "text": "decision: Carol and Dave agreed we will use Terraform for infrastructure provisioning"
+        },
+        {
+          "eventId": "TC-DEC-07-step-2",
+          "text": "@jeeves tell me about DEC-0422"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-DEC-07-step-1",
+          "content": "Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-01",
+      "description": "Pipeline extracts decision from natural conversation",
+      "passed": true,
+      "elapsedMs": 25242,
+      "outputs": [
+        "",
+        "",
+        "\u2022 **[DEC-0423] TypeScript strict mode will be enabled across the entire codebase.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** Alice\n  *Tags: typescript, code-quality, standards*\n\nNo follow-up actions have been logged against it. If you want one, the command would be e.g. `action: enable TypeScript strict mode for Bob`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:57:50.382Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-01-step-1",
+          "text": "we've agreed to use TypeScript strict mode across the whole codebase"
+        },
+        {
+          "eventId": "TC-PIPE-01-step-2",
+          "text": "that was the last open question on coding standards"
+        },
+        {
+          "eventId": "TC-PIPE-01-step-3",
+          "text": "@jeeves what did we agree about TypeScript?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-PIPE-01-step-1",
+          "content": "TypeScript strict mode will be enabled across the entire codebase.",
+          "author": "alice@cli.local",
+          "decidedBy": [
+            "Alice"
+          ],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-02",
+      "description": "Pipeline extracts action from natural statement",
+      "passed": true,
+      "elapsedMs": 21554,
+      "outputs": [
+        "",
+        "One action is currently outstanding:\n\n\u2022 **[ACT-0490] Update the deployment runbook ahead of the next release**\n  **Owner:** @Bob | **Status:** open\n  *Tags: documentation, deployment, release*"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:58:15.624Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-02-step-1",
+          "text": "Bob needs to update the deployment runbook before the next release"
+        },
+        {
+          "eventId": "TC-PIPE-02-step-2",
+          "text": "@jeeves what actions are outstanding?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-PIPE-02-step-1",
+          "content": "Update the deployment runbook ahead of the next release",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-03",
+      "description": "Verbal commitment \u2014 action attributed to the person who committed",
+      "passed": true,
+      "elapsedMs": 22248,
+      "outputs": [
+        "",
+        "",
+        "@Bob has one open action:\n\n\u2022 **[ACT-0491] Bob to send the contract template over to the new supplier**\n  **Owner:** Bob | **Status:** open | **Due:** 2026-09-18\n  *Tags: contract, supplier, documentation*\n\nThis is the item he picked up earlier in this conversation. Once it's sent, mark it with `ACT-0491 done`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:58:37.178Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-03-step-1",
+          "text": "Alice: we need to send our contract template to the new supplier before Friday"
+        },
+        {
+          "eventId": "TC-PIPE-03-step-2",
+          "text": "Bob: I'll take care of that, I'll get it sent over today"
+        },
+        {
+          "eventId": "TC-PIPE-03-step-3",
+          "text": "@jeeves what are Bob's open actions?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-PIPE-03-step-2",
+          "content": "Bob to send the contract template over to the new supplier",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T14:58:37.178Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-04",
+      "description": "Decision synthesised from a multi-turn debate",
+      "passed": true,
+      "elapsedMs": 17705,
+      "outputs": [
+        "",
+        "",
+        "",
+        "The team settled on a **managed Postgres service** rather than self-hosting.\n\n\u2022 **[DEC-0424] Team will use a managed Postgres service rather than self-hosting the database.**\n  **Recorded by:** @Carol | **Date:** 2026-09-18\n  **Decided by:** @Carol\n  **Rationale:** Given the small team size, the reduced ops burden and stronger SLA outweigh the higher monthly cost.\n  *Tags: infrastructure, database, postgres*\n\nThis matches the discussion earlier in this conversation, where @Dave noted the better SLA and ops savings offset the higher monthly cost."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:58:59.426Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-04-step-1",
+          "text": "Carol: we're still debating whether to go self-hosted or use a managed Postgres service"
+        },
+        {
+          "eventId": "TC-PIPE-04-step-2",
+          "text": "Dave: the managed service costs more per month but you save on ops time and the SLA is better"
+        },
+        {
+          "eventId": "TC-PIPE-04-step-3",
+          "text": "Carol: fair point \u2014 given our team size I think managed is the right call, let's go with that"
+        },
+        {
+          "eventId": "TC-PIPE-04-step-4",
+          "text": "@jeeves what did we decide about database hosting?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-PIPE-04-step-3",
+          "content": "Team will use a managed Postgres service rather than self-hosting the database.",
+          "author": "carol@cli.local",
+          "decidedBy": [
+            "Carol"
+          ],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-05",
+      "description": "Pronoun resolution \u2014 'she'll handle it' attributed via sliding window",
+      "passed": true,
+      "elapsedMs": 21903,
+      "outputs": [
+        "",
+        "",
+        "You're leading the GDPR data-retention audit, to be wrapped up before the end of the quarter as mentioned just now.\n\n\u2022 **[ACT-0492] Lead the GDPR data-retention audit**\n  **Owner:** @Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nNo due date is recorded against it. To set one: `ACT-0492 due end of quarter`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:59:17.131Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-05-step-1",
+          "text": "Alice is taking the lead on the GDPR data-retention audit"
+        },
+        {
+          "eventId": "TC-PIPE-05-step-2",
+          "text": "she'll need to have it wrapped up before the end of the quarter"
+        },
+        {
+          "eventId": "TC-PIPE-05-step-3",
+          "text": "@jeeves what is Alice responsible for?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-PIPE-05-step-1",
+          "content": "Lead the GDPR data-retention audit",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-06",
+      "description": "Action dedup \u2014 an explicit personal commitment restated produces one action",
+      "passed": true,
+      "elapsedMs": 22160,
+      "outputs": [
+        "",
+        "",
+        "You have one open action:\n\n\u2022 **[ACT-0493] Update the API documentation ahead of the next sprint review**\n  **Owner:** @Alice | **Status:** open\n  *Tags: documentation, api*\n\nRecorded 18 September 2026, with no deadline set. To close it, use `ACT-0493 done`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T14:59:39.034Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-06-step-1",
+          "text": "Alice: I will update the API documentation before the next sprint review"
+        },
+        {
+          "eventId": "TC-PIPE-06-step-2",
+          "text": "Alice: just a reminder that I will update the API documentation before the next sprint review"
+        },
+        {
+          "eventId": "TC-PIPE-06-step-3",
+          "text": "@jeeves what are Alice's open actions?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-PIPE-06-step-1",
+          "content": "Alice to update the API documentation ahead of the next sprint review",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-07",
+      "description": "NDA lifecycle \u2014 verbal commitment \u2192 confirmation \u2192 completion announcement does not duplicate",
+      "passed": true,
+      "elapsedMs": 21769,
+      "outputs": [
+        "",
+        "",
+        "You have one outstanding action:\n\n\u2022 **[ACT-0494] Email the NDA to the client**\n  **Owner:** @Alice | **Status:** open | **Due:** 2026-09-18\n  *Tags: nda, client, legal*\n\nThis matches what you committed to earlier in this conversation. Once it's sent, mark it off with `ACT-0494 done`.",
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:01.194Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-07-step-1",
+          "text": "Bob: we should send the client our NDA before we proceed any further"
+        },
+        {
+          "eventId": "TC-PIPE-07-step-2",
+          "text": "Alice: I'll handle it \u2014 I'll email it over to them today"
+        },
+        {
+          "eventId": "TC-PIPE-07-step-3",
+          "text": "@jeeves what are Alice's outstanding actions?"
+        },
+        {
+          "eventId": "TC-PIPE-07-step-4",
+          "text": "Alice: update everyone \u2014 I've sent the NDA to the client and they've signed and returned it"
+        },
+        {
+          "eventId": "TC-PIPE-07-step-5",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-PIPE-07-step-2",
+          "content": "Email the NDA to the client",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-18T15:00:01.194Z",
+          "status": "done"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PIPE-08",
+      "description": "Ownerless API documentation suggestions do not invent an Alice action",
+      "passed": true,
+      "elapsedMs": 20845,
+      "outputs": [
+        "",
+        "",
+        "No actions have been recorded in this channel yet, so you have nothing open.\n\nTo log one: `action: <description> for Alice` \u2014 optionally with a deadline, e.g. `action: review the contract for Alice by Friday`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:22.963Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PIPE-08-step-1",
+          "text": "Alice: we need to update the API documentation before the next sprint review"
+        },
+        {
+          "eventId": "TC-PIPE-08-step-2",
+          "text": "Alice: just a reminder that the API docs still need updating for the new endpoints"
+        },
+        {
+          "eventId": "TC-PIPE-08-step-3",
+          "text": "@Wire Team Bot what are Alice's open actions?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-01",
+      "description": "Log an action \u2014 gets an ACT reference back",
+      "passed": true,
+      "elapsedMs": 1688,
+      "outputs": [
+        "Action **ACT-0495** created for **Alice**: write the database migration scripts"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:43.808Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-01-step-1",
+          "text": "action: write the database migration scripts"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-01-step-1",
+          "content": "write the database migration scripts",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-02",
+      "description": "Assign action to a named member",
+      "passed": true,
+      "elapsedMs": 1708,
+      "outputs": [
+        "Action **ACT-0496** created for **Bob**: review the open PR"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:45.496Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-02-step-1",
+          "text": "action: review the open PR for Bob"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-02-step-1",
+          "content": "review the open PR",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-03",
+      "description": "List my actions \u2014 includes the previously logged action",
+      "passed": true,
+      "elapsedMs": 2237,
+      "outputs": [
+        "Action **ACT-0497** created for **Alice**: update the runbook",
+        "- **ACT-0497** `open` \u2014 update the runbook"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:47.204Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-03-step-1",
+          "text": "action: Alice to update the runbook"
+        },
+        {
+          "eventId": "TC-ACT-03-step-2",
+          "text": "what are my open actions?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-03-step-1",
+          "content": "update the runbook",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-04",
+      "description": "List team actions \u2014 includes the previously logged action",
+      "passed": true,
+      "elapsedMs": 2254,
+      "outputs": [
+        "Action **ACT-0498** created for **Alice**: review the infrastructure cost report",
+        "**Alice**\n- **ACT-0498** `open` \u2014 review the infrastructure cost report"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:49.441Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-04-step-1",
+          "text": "action: Alice to review the infrastructure cost report"
+        },
+        {
+          "eventId": "TC-ACT-04-step-2",
+          "text": "team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-04-step-1",
+          "content": "review the infrastructure cost report",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-05",
+      "description": "Mark action done \u2014 confirmed",
+      "passed": true,
+      "elapsedMs": 2136,
+      "outputs": [
+        "Action **ACT-0499** created for **Alice**: deploy the staging environment",
+        "**ACT-0499** marked as `done`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:51.695Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-05-step-1",
+          "text": "action: deploy the staging environment"
+        },
+        {
+          "eventId": "TC-ACT-05-step-2",
+          "text": "ACT-0499 done"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-05-step-1",
+          "content": "deploy the staging environment",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "done"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-06",
+      "description": "Reassign action to another member",
+      "passed": true,
+      "elapsedMs": 1710,
+      "outputs": [
+        "Action **ACT-0500** created for **Alice**: write the release notes",
+        "**ACT-0500** reassigned from **Alice** to **Bob**."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:53.831Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-06-step-1",
+          "text": "action: write the release notes"
+        },
+        {
+          "eventId": "TC-ACT-06-step-2",
+          "text": "ACT-0500 reassign to Bob"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-06-step-1",
+          "content": "write the release notes",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-09",
+      "description": "Pasted inline-code action commands reassign, change deadline and complete",
+      "passed": true,
+      "elapsedMs": 14582,
+      "outputs": [
+        "Action **ACT-0501** created for **Alice**: review the formatting smoke checklist",
+        "**ACT-0501** reassigned from **Alice** to **@Bob**.",
+        "**ACT-0501** deadline set to **19 Sept 2026, 15:00**.",
+        "**ACT-0501** marked as `done`.",
+        "\u2022 **[ACT-0501] review the formatting smoke checklist**\n  **Owner:** @Bob (you) | **Status:** done | **Due:** 2026-09-19"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-09-step-1",
+          "text": "action: review the formatting smoke checklist"
+        },
+        {
+          "eventId": "TC-ACT-09-step-2",
+          "text": "@Wire Team Bot `ACT-0501 reassign to` @Bob"
+        },
+        {
+          "eventId": "TC-ACT-09-step-3",
+          "text": "`ACT-0501 due tomorrow`"
+        },
+        {
+          "eventId": "TC-ACT-09-step-4",
+          "text": "`ACT-0501` done"
+        },
+        {
+          "eventId": "TC-ACT-09-step-5",
+          "text": "Bob: @Wire Team Bot What is the status and owner of ACT-0501?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-09-step-1",
+          "content": "review the formatting smoke checklist",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-19T15:00:00.000Z",
+          "status": "done"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-10",
+      "description": "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+      "passed": true,
+      "elapsedMs": 1256,
+      "outputs": [
+        "Action **ACT-0502** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
+        "**@Bob**\n- **ACT-0502** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T09:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-10-step-1",
+          "text": "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday."
+        },
+        {
+          "eventId": "TC-ACT-10-step-2",
+          "text": "@Wire Team Bot team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-10-step-1",
+          "content": "prepare the slide deck",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T12:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-11",
+      "description": "A structured member mention keeps today's Friday deadline after noon",
+      "passed": true,
+      "elapsedMs": 1218,
+      "outputs": [
+        "Action **ACT-0503** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+        "**@Bob**\n- **ACT-0503** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-11-step-1",
+          "text": "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday"
+        },
+        {
+          "eventId": "TC-ACT-11-step-2",
+          "text": "@Wire Team Bot team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-11-step-1",
+          "content": "prepare the deck",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T12:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-12",
+      "description": "Friday uses the conversation calendar when UTC is still Thursday",
+      "passed": true,
+      "elapsedMs": 3174,
+      "outputs": [
+        "Action **ACT-0504** created for **Bob**: review the timezone checklist (due this Friday: 18 Sept 2026, 11:00)"
+      ],
+      "context": {
+        "referenceTime": "2026-09-17T23:30:00.000Z",
+        "timezone": "Europe/London"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-12-step-1",
+          "text": "action: review the timezone checklist for Bob by this Friday"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-12-step-1",
+          "content": "review the timezone checklist",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T11:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-13",
+      "description": "Explicit next Friday remains next week in the conversation timezone",
+      "passed": true,
+      "elapsedMs": 3661,
+      "outputs": [
+        "Action **ACT-0505** created for **Bob**: review the next week checklist (due next Friday: 25 Sept 2026, 11:00)"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "Europe/London"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-13-step-1",
+          "text": "action: review the next week checklist for Bob by next Friday"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-13-step-1",
+          "content": "review the next week checklist",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-25T11:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-07",
+      "description": "Action with owner and due date \u2014 both present in response",
+      "passed": true,
+      "elapsedMs": 1415,
+      "outputs": [
+        "Action **ACT-0506** created for **Carol**: write the API documentation (due end of month: 30 Sept 2026, 23:59)"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:19.433Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-07-step-1",
+          "text": "action: Carol to write the API documentation by end of month"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-07-step-1",
+          "content": "write the API documentation",
+          "owner": "carol@cli.local",
+          "deadline": "2026-09-30T23:59:59.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ACT-08",
+      "description": "Action with specific date \u2014 deadline is correct in response",
+      "passed": true,
+      "elapsedMs": 1453,
+      "outputs": [
+        "Action **ACT-0507** created for **Dave**: complete the security audit (due April 3rd: 3 Apr 2027, 12:00)"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:20.847Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-08-step-1",
+          "text": "action: Dave to complete the security audit by April 3rd"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-08-step-1",
+          "content": "complete the security audit",
+          "owner": "dave@cli.local",
+          "deadline": "2027-04-03T12:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ID-01",
+      "description": "My actions returns caller's actions only \u2014 not other members'",
+      "passed": true,
+      "elapsedMs": 2446,
+      "outputs": [
+        "Action **ACT-0508** created for **Alice**: update the security documentation",
+        "Action **ACT-0509** created for **Bob**: refactor the payment module",
+        "- **ACT-0508** `open` \u2014 update the security documentation"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:22.300Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-01-step-1",
+          "text": "action: Alice to update the security documentation"
+        },
+        {
+          "eventId": "TC-ID-01-step-2",
+          "text": "Bob: action: Bob to refactor the payment module"
+        },
+        {
+          "eventId": "TC-ID-01-step-3",
+          "text": "@jeeves what are my open actions?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ID-01-step-1",
+          "content": "update the security documentation",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        },
+        {
+          "type": "action",
+          "source": "TC-ID-01-step-2",
+          "content": "refactor the payment module",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ID-02",
+      "description": "Actions for a named member returns that member's actions only",
+      "passed": true,
+      "elapsedMs": 9200,
+      "outputs": [
+        "Action **ACT-0510** created for **Alice**: prepare the sprint retrospective slides",
+        "Action **ACT-0511** created for **Bob**: deploy the hotfix to staging",
+        "@Bob has one open action:\n\n\u2022 **[ACT-0511] deploy the hotfix to staging**\n  **Owner:** @Bob | **Status:** open\n\nTo close it once done, use `ACT-0511 done`, or `ACT-0511 reassign to <name>` to hand it over."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:24.746Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-02-step-1",
+          "text": "action: Alice to prepare the sprint retrospective slides"
+        },
+        {
+          "eventId": "TC-ID-02-step-2",
+          "text": "Bob: action: Bob to deploy the hotfix to staging"
+        },
+        {
+          "eventId": "TC-ID-02-step-3",
+          "text": "@jeeves what actions does Bob have?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ID-02-step-2",
+          "content": "deploy the hotfix to staging",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        },
+        {
+          "type": "action",
+          "source": "TC-ID-02-step-1",
+          "content": "prepare the sprint retrospective slides",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ID-03",
+      "description": "Decision recorder identity is reported without inventing a decision maker",
+      "passed": true,
+      "elapsedMs": 20427,
+      "outputs": [
+        "Decision **DEC-0425** logged: we will enforce semantic versioning for all internal packages",
+        "@Alice recorded DEC-0425 on 18 September 2026 \u2014 the decision to enforce semantic versioning for all internal packages. The decision makers themselves aren't recorded on that entry.",
+        "DEC-0425 has no decision maker recorded, I'm afraid.\n\n\u2022 **[DEC-0425] We will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nYou recorded it, but that only tells us who logged it \u2014 not who made the call. The stored record doesn't identify the decision makers."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:33.946Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-03-step-1",
+          "text": "Alice: decision: we will enforce semantic versioning for all internal packages"
+        },
+        {
+          "eventId": "TC-ID-03-step-2",
+          "text": "@Wire Team Bot who recorded DEC-0425?"
+        },
+        {
+          "eventId": "TC-ID-03-step-3",
+          "text": "@Wire Team Bot who made DEC-0425?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-ID-03-step-1",
+          "content": "we will enforce semantic versioning for all internal packages",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-ID-04",
+      "description": "My reminders returns only the caller's reminders \u2014 not others'",
+      "passed": true,
+      "elapsedMs": 3410,
+      "outputs": [
+        "Reminder **REM-0169** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice",
+        "Reminder **REM-0170** set for **Friday, 18 Sept 2026, 12:00**: send the weekly report",
+        "- **REM-0169** \u2014 chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:54.374Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-04-step-1",
+          "text": "Alice: remind me on Thursday to chase the vendor invoice"
+        },
+        {
+          "eventId": "TC-ID-04-step-2",
+          "text": "Bob: remind me on Friday to send the weekly report"
+        },
+        {
+          "eventId": "TC-ID-04-step-3",
+          "text": "@jeeves what reminders do I have?"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-ID-04-step-1",
+          "content": "chase the vendor invoice",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-24T12:00:00.000Z",
+          "status": "pending"
+        },
+        {
+          "type": "reminder",
+          "source": "TC-ID-04-step-2",
+          "content": "send the weekly report",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T12:00:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ID-05",
+      "description": "Team actions lists all members' actions \u2014 not just the caller's",
+      "passed": true,
+      "elapsedMs": 2597,
+      "outputs": [
+        "Action **ACT-0512** created for **Alice**: write the API specification",
+        "Action **ACT-0513** created for **Bob**: set up the CI pipeline",
+        "**Bob**\n- **ACT-0513** `open` \u2014 set up the CI pipeline\n**Alice**\n- **ACT-0512** `open` \u2014 write the API specification"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:01:57.784Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-05-step-1",
+          "text": "action: Alice to write the API specification"
+        },
+        {
+          "eventId": "TC-ID-05-step-2",
+          "text": "Bob: action: Bob to set up the CI pipeline"
+        },
+        {
+          "eventId": "TC-ID-05-step-3",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ID-05-step-1",
+          "content": "write the API specification",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        },
+        {
+          "type": "action",
+          "source": "TC-ID-05-step-2",
+          "content": "set up the CI pipeline",
+          "owner": "bob@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-06",
+      "description": "Pasted reminder commands create, list, snooze and cancel",
+      "passed": true,
+      "elapsedMs": 7851,
+      "outputs": [
+        "Reminder **REM-0171** set for **Friday, 18 Sept 2026, 15:04**: check the formatting smoke reminder",
+        "- **REM-0171** \u2014 check the formatting smoke reminder _(Friday, 18 Sept 2026, 15:04)_",
+        "**REM-0171** snoozed until **18 Sept 2026, 16:02**.",
+        "**REM-0171** cancelled."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:00.381Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-06-step-1",
+          "text": "@Wire Team Bot `remind me in 2 minutes to check the formatting smoke reminder`"
+        },
+        {
+          "eventId": "TC-REM-06-step-2",
+          "text": "@Wire Team Bot `show reminders`"
+        },
+        {
+          "eventId": "TC-REM-06-step-3",
+          "text": "@Wire Team Bot `snooze REM-0171 1 hour`"
+        },
+        {
+          "eventId": "TC-REM-06-step-4",
+          "text": "@Wire Team Bot `cancel REM-0171`"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-06-step-1",
+          "content": "check the formatting smoke reminder",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-18T16:02:00.381Z",
+          "status": "cancelled"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-01",
+      "description": "Create a reminder \u2014 confirmed",
+      "passed": true,
+      "elapsedMs": 1325,
+      "outputs": [
+        "Reminder **REM-0172** set for **Saturday, 19 Sept 2026, 15:02**: review the deployment checklist"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:08.232Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-01-step-1",
+          "text": "remind me tomorrow to review the deployment checklist"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-01-step-1",
+          "content": "review the deployment checklist",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-19T15:02:08.232Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-02",
+      "description": "List reminders \u2014 includes the previously created reminder",
+      "passed": true,
+      "elapsedMs": 2344,
+      "outputs": [
+        "Reminder **REM-0173** set for **Tuesday, 22 Sept 2026, 12:00**: send the weekly status report",
+        "- **REM-0173** \u2014 send the weekly status report _(Tuesday, 22 Sept 2026, 12:00)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:09.557Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-02-step-1",
+          "text": "remind me next Tuesday to send the weekly status report"
+        },
+        {
+          "eventId": "TC-REM-02-step-2",
+          "text": "what reminders do I have?"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-02-step-1",
+          "content": "send the weekly status report",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-22T12:00:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-03",
+      "description": "Cancel a reminder \u2014 confirmed",
+      "passed": true,
+      "elapsedMs": 2320,
+      "outputs": [
+        "Reminder **REM-0174** set for **Sunday, 20 Sept 2026, 15:02**: update the docs",
+        "**REM-0174** cancelled."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:11.901Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-03-step-1",
+          "text": "remind me in 2 days to update the docs"
+        },
+        {
+          "eventId": "TC-REM-03-step-2",
+          "text": "cancel REM-0174"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-03-step-1",
+          "content": "update the docs",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-20T15:02:11.901Z",
+          "status": "cancelled"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-04",
+      "description": "Reminder with specific date \u2014 date is accurate in confirmation",
+      "passed": true,
+      "elapsedMs": 1547,
+      "outputs": [
+        "Reminder **REM-0175** set for **Monday, 5 Apr 2027, 12:00**: submit the quarterly report"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:14.221Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-04-step-1",
+          "text": "remind me on April 5th to submit the quarterly report"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-04-step-1",
+          "content": "submit the quarterly report",
+          "owner": "alice@cli.local",
+          "deadline": "2027-04-05T12:00:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-REM-05",
+      "description": "Reminder with day and time \u2014 both preserved in confirmation",
+      "passed": true,
+      "elapsedMs": 2298,
+      "outputs": [
+        "Reminder **REM-0176** set for **Monday, 21 Sept 2026, 09:00**: prepare the sprint review slides"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:15.768Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-REM-05-step-1",
+          "text": "remind me next Monday at 9am to prepare the sprint review slides"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-REM-05-step-1",
+          "content": "prepare the sprint review slides",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-21T09:00:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-QA-01",
+      "description": "Answer a question from recent conversation context",
+      "passed": false,
+      "elapsedMs": 19201,
+      "outputs": [
+        "",
+        "",
+        "Redis, for the session cache.\n\n\u2022 **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself \u2014 if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:18.066Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-QA-01-step-1",
+          "text": "we decided to use Redis for the session cache"
+        },
+        {
+          "eventId": "TC-QA-01-step-2",
+          "text": "the main reason was that Redis supports TTL natively"
+        },
+        {
+          "eventId": "TC-QA-01-step-3",
+          "text": "@jeeves what are we using for the session cache and why?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-QA-01-step-1",
+          "content": "Redis will be used for the session cache.",
+          "author": "alice@cli.local",
+          "decidedBy": [
+            "Alice"
+          ],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": [
+        {
+          "step": "@jeeves what are we using for the session cache and why?",
+          "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+          "judgeReason": "Response mentions TTL only as suggestion for future logging, not as current reason.",
+          "botOutput": "Redis, for the session cache.\n\n\u2022 **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself \u2014 if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`."
+        }
+      ]
+    },
+    {
+      "id": "TC-QA-02",
+      "description": "Answer from a logged decision",
+      "passed": true,
+      "elapsedMs": 10250,
+      "outputs": [
+        "Decision **DEC-0427** logged: all API responses must use JSON:API format",
+        "All API responses must use JSON:API format.\n\n\u2022 **[DEC-0427] All API responses must use JSON:API format**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThe record doesn't capture who made that call \u2014 only that you logged it."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:37.267Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-QA-02-step-1",
+          "text": "decision: all API responses must use JSON:API format"
+        },
+        {
+          "eventId": "TC-QA-02-step-2",
+          "text": "@jeeves what format should our API responses use?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-QA-02-step-1",
+          "content": "all API responses must use JSON:API format",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-QA-03",
+      "description": "General knowledge question \u2014 answered, not 'no record'",
+      "passed": true,
+      "elapsedMs": 11652,
+      "outputs": [
+        "Both are transport-layer protocols, but they trade off reliability against speed.\n\n**TCP** \u2014 connection-oriented\n- Establishes a connection via handshake before data flows\n- Guarantees delivery: retransmits lost packets, acknowledges receipt\n- Preserves ordering \u2014 data arrives in the sequence it was sent\n- Includes flow control and congestion control\n- Higher overhead and latency\n- Used for HTTP/HTTPS, SSH, email, file transfer\n\n**UDP** \u2014 connectionless\n- Fires packets off with no handshake or acknowledgement\n- No delivery guarantee; packets may be lost, duplicated, or arrive out of order\n- No flow or congestion control built in\n- Minimal overhead, much lower latency\n- Used for DNS, VoIP, video streaming, online gaming, QUIC\n\nThe practical rule: choose TCP when every byte must arrive correctly, and UDP when timeliness matters more than completeness \u2014 a dropped frame in a video call is preferable to a stalled one. Applications needing both, such as QUIC, build their own reliability layer on top of UDP."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:47.517Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-QA-03-step-1",
+          "text": "@jeeves what is the difference between TCP and UDP?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-QA-04",
+      "description": "Meta question \u2014 describes capabilities",
+      "passed": true,
+      "elapsedMs": 9958,
+      "outputs": [
+        "I track three things for this channel:\n\n- **Decisions** \u2014 what was agreed, who agreed it, and the reasoning behind it\n- **Actions** \u2014 tasks with an owner, status, and deadline where one is set\n- **Reminders** \u2014 time-based nudges\n\nI also draw on the channel's conversation history to answer questions about what's been discussed.\n\nNothing has been recorded here yet \u2014 the decision and action logs are both empty. To start, you can use commands such as:\n\n- `decision: use Postgres`\n- `action: review the contract for Bob`\n- `remind me in 2 hours to review the checklist`"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:02:59.169Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-QA-04-step-1",
+          "text": "@jeeves what kind of information do you keep track of?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-QA-05",
+      "description": "Follow-up 'yes' is coherent \u2014 not a no-record fallback",
+      "passed": false,
+      "elapsedMs": 19778,
+      "outputs": [
+        "Yes \u2014 worth having. I can't create it from here, so send the command yourself with a time attached:\n\n`remind me in 2 hours to review the deployment checklist`\n\nSubstitute whatever timing suits \u2014 `tomorrow at 9am`, `in 30 minutes`, and similar phrasings all work.",
+        "Here's the command \u2014 send it as a message yourself:\n\n`remind me in 2 hours to review the deployment checklist`\n\nAdjust the timing as needed (`tomorrow at 9am`, `in 30 minutes`, `on Friday at 14:00`)."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:09.127Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-QA-05-step-1",
+          "text": "@jeeves shall I create a reminder to review the deployment checklist?"
+        },
+        {
+          "eventId": "TC-QA-05-step-2",
+          "text": "@jeeves yes"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": [
+        {
+          "step": "@jeeves yes",
+          "assertion": "Jeeves responds coherently to the follow-up \u2014 either creates a reminder or continues the prior conversation \u2014 and does not say it has no record",
+          "judgeReason": "Bot provides command template instead of creating reminder or continuing conversation.",
+          "botOutput": "Here's the command \u2014 send it as a message yourself:\n\n`remind me in 2 hours to review the deployment checklist`\n\nAdjust the timing as needed (`tomorrow at 9am`, `in 30 minutes`, `on Friday at 14:00`)."
+        }
+      ]
+    },
+    {
+      "id": "TC-STATE-01",
+      "description": "Pause \u2014 bot acknowledges and steps out",
+      "passed": true,
+      "elapsedMs": 1800,
+      "outputs": [
+        "Understood. I shall step out. Do let me know when you require my attention again."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:28.905Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-STATE-01-step-1",
+          "text": "@jeeves pause"
+        }
+      ],
+      "records": [],
+      "channelState": "paused",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-STATE-02",
+      "description": "Pause then resume \u2014 bot confirms it is active again",
+      "passed": true,
+      "elapsedMs": 1709,
+      "outputs": [
+        "Understood. I shall step out. Do let me know when you require my attention again.",
+        "Listening has resumed. I am active again."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:30.705Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-STATE-02-step-1",
+          "text": "@jeeves pause"
+        },
+        {
+          "eventId": "TC-STATE-02-step-2",
+          "text": "@jeeves resume"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-STATE-03",
+      "description": "Secure mode \u2014 acknowledgement matches the persisted state",
+      "passed": true,
+      "elapsedMs": 511,
+      "outputs": [
+        "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:32.414Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-STATE-03-step-1",
+          "text": "@jeeves secure mode"
+        }
+      ],
+      "records": [],
+      "channelState": "secure",
+      "storedChecks": [],
+      "failures": []
+    },
+    {
+      "id": "TC-PERSONA-01",
+      "description": "No exclamation marks in any response",
+      "passed": true,
+      "elapsedMs": 9873,
+      "outputs": [
+        "Decision **DEC-0428** logged: we will adopt agile methodology",
+        "\u2022 **[DEC-0428] We will adopt agile methodology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThe individual decision makers aren't recorded against this one \u2014 only that you logged it."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:32.925Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PERSONA-01-step-1",
+          "text": "decision: we will adopt agile methodology"
+        },
+        {
+          "eventId": "TC-PERSONA-01-step-2",
+          "text": "@jeeves what did we decide about our methodology?"
+        }
+      ],
+      "records": [
+        {
+          "type": "decision",
+          "source": "TC-PERSONA-01-step-1",
+          "content": "we will adopt agile methodology",
+          "author": "alice@cli.local",
+          "decidedBy": [],
+          "status": "active"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PERSONA-02",
+      "description": "No hollow opener \u2014 no 'Certainly', 'Of course', 'Great question'",
+      "passed": true,
+      "elapsedMs": 13563,
+      "outputs": [
+        "Continuous integration (CI) is the practice of merging developers' work into a shared mainline frequently \u2014 typically several times a day \u2014 with each merge automatically verified by a build and test run.\n\nThe core mechanics:\n\n- **Frequent commits** to a shared branch, keeping branches short-lived\n- **Automated build** triggered on every push\n- **Automated tests** run against that build to catch regressions\n- **Fast feedback** so a broken build is identified and fixed quickly\n\nThe main benefit is avoiding \"integration hell\" \u2014 the painful, error-prone merge that results when developers work in isolation for weeks. Problems surface while the change is small and fresh in the author's mind.\n\nCI is usually paired with **continuous delivery** (CD), where every verified build is automatically made deployable, and sometimes **continuous deployment**, where it ships to production without manual intervention. Common tooling includes GitHub Actions, GitLab CI, Jenkins, and CircleCI."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:42.798Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PERSONA-02-step-1",
+          "text": "@jeeves what is continuous integration?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-PERSONA-03",
+      "description": "Error case uses 'I'm afraid' phrasing, not 'Sorry'",
+      "passed": true,
+      "elapsedMs": 10552,
+      "outputs": [
+        "I'm afraid I have no record of a board meeting last Tuesday, nor of any attendees. Nothing has been recorded in this channel yet.\n\nIf you'd like to capture it, you can log a decision or action with commands such as:\n\n- `decision: <summary>` \u2014 to record what was agreed\n- `action: <description> for <name>` \u2014 to record a follow-up task"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:03:56.361Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-PERSONA-03-step-1",
+          "text": "@jeeves who attended the board meeting last Tuesday?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-DEC-01",
+      "description": "Hypothetical discussion is not recorded as a decision",
+      "passed": true,
+      "elapsedMs": 12033,
+      "outputs": [
+        "",
+        "",
+        "No decisions have been recorded in this channel yet \u2014 on Kubernetes or anything else.\n\nIf you want to log one, use a command such as:\n\n`decision: adopt Kubernetes for production workloads`"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:06.913Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-DEC-01-step-1",
+          "text": "we're considering switching to Kubernetes at some point, but nothing is confirmed yet"
+        },
+        {
+          "eventId": "TC-NEG-DEC-01-step-2",
+          "text": "it's just an idea on the table for now"
+        },
+        {
+          "eventId": "TC-NEG-DEC-01-step-3",
+          "text": "@jeeves have we made any decisions about Kubernetes?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-DEC-02",
+      "description": "Open question is not logged as a decision",
+      "passed": true,
+      "elapsedMs": 11670,
+      "outputs": [
+        "",
+        "I'm afraid there's no decision recorded about TypeScript versus JavaScript \u2014 nothing has been logged in this channel yet.\n\nIf that call has been made, you can record it with:\n\n`decision: use TypeScript for the new service`"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:18.946Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-DEC-02-step-1",
+          "text": "should we use TypeScript or JavaScript for the new service? What does everyone think?"
+        },
+        {
+          "eventId": "TC-NEG-DEC-02-step-2",
+          "text": "@jeeves what did we decide about TypeScript versus JavaScript for the new service?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-DEC-03",
+      "description": "Status update is not logged as a decision",
+      "passed": true,
+      "elapsedMs": 7271,
+      "outputs": [
+        "",
+        "No recent decisions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:30.616Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-DEC-03-step-1",
+          "text": "we deployed to production successfully this morning, no issues reported"
+        },
+        {
+          "eventId": "TC-NEG-DEC-03-step-2",
+          "text": "@jeeves list decisions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-DEC-04",
+      "description": "Announcement of a fact is not logged as a decision",
+      "passed": true,
+      "elapsedMs": 2636,
+      "outputs": [
+        "",
+        "No recent decisions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:37.887Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-DEC-04-step-1",
+          "text": "the office will be closed on the 25th for a public holiday"
+        },
+        {
+          "eventId": "TC-NEG-DEC-04-step-2",
+          "text": "@jeeves list decisions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-01",
+      "description": "Completed past activity does not become an open action",
+      "passed": true,
+      "elapsedMs": 14659,
+      "outputs": [
+        "",
+        "No actions have been recorded in this channel yet, so there's nothing open against @Bob.\n\nTo log one, use: `action: <description> for Bob`"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:40.523Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-01-step-1",
+          "text": "Bob submitted the quarterly report last Tuesday, it's all done"
+        },
+        {
+          "eventId": "TC-NEG-ACT-01-step-2",
+          "text": "@jeeves what are Bob's open actions?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-02",
+      "description": "Vague ownerless suggestion is not logged as an action",
+      "passed": true,
+      "elapsedMs": 2865,
+      "outputs": [
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:55.182Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-02-step-1",
+          "text": "it would be nice if someone eventually updated the wiki, no rush"
+        },
+        {
+          "eventId": "TC-NEG-ACT-02-step-2",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-03",
+      "description": "Social greeting chat does not produce actions",
+      "passed": true,
+      "elapsedMs": 4457,
+      "outputs": [
+        "",
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:04:58.047Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-03-step-1",
+          "text": "morning everyone, hope you all had a good weekend!"
+        },
+        {
+          "eventId": "TC-NEG-ACT-03-step-2",
+          "text": "looking forward to the team lunch on Friday"
+        },
+        {
+          "eventId": "TC-NEG-ACT-03-step-3",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-04",
+      "description": "General status update about ongoing work is not an action",
+      "passed": true,
+      "elapsedMs": 6998,
+      "outputs": [
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:02.504Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-04-step-1",
+          "text": "I've been working on the auth refactor this week, making good progress"
+        },
+        {
+          "eventId": "TC-NEG-ACT-04-step-2",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-CHAT-01",
+      "description": "General chat thread produces no false decisions or actions",
+      "passed": true,
+      "elapsedMs": 5636,
+      "outputs": [
+        "",
+        "",
+        "",
+        "No recent decisions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:09.502Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-CHAT-01-step-1",
+          "text": "anyone seen the new Figma update? looks interesting"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-01-step-2",
+          "text": "yeah it's pretty nice, though I haven't had time to dig into it"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-01-step-3",
+          "text": "same here, maybe we can look at it next week"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-01-step-4",
+          "text": "@jeeves list decisions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-CHAT-02",
+      "description": "Meeting small-talk produces no false actions",
+      "passed": true,
+      "elapsedMs": 5679,
+      "outputs": [
+        "",
+        "",
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:15.138Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-CHAT-02-step-1",
+          "text": "shall we kick things off?"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-02-step-2",
+          "text": "sure, let's go"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-02-step-3",
+          "text": "great, first let's go round the room with updates"
+        },
+        {
+          "eventId": "TC-NEG-CHAT-02-step-4",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-05",
+      "description": "First-person completion announcement is not logged as an open action",
+      "passed": true,
+      "elapsedMs": 17672,
+      "outputs": [
+        "",
+        "I'm afraid there are no actions recorded in this channel yet \u2014 nothing open for you or anyone else.\n\nTo log one: `action: <description> for Alice`"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:20.817Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-05-step-1",
+          "text": "Alice: I've just finished writing the technical specifications, they're in the shared folder now"
+        },
+        {
+          "eventId": "TC-NEG-ACT-05-step-2",
+          "text": "@jeeves what are Alice's open actions?"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-NEG-ACT-06",
+      "description": "Team past-tense completion is not logged as an open action",
+      "passed": true,
+      "elapsedMs": 8459,
+      "outputs": [
+        "",
+        "No open actions in this conversation."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:38.489Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-NEG-ACT-06-step-1",
+          "text": "we signed the vendor contract yesterday, everything is all sorted"
+        },
+        {
+          "eventId": "TC-NEG-ACT-06-step-2",
+          "text": "@jeeves team actions"
+        }
+      ],
+      "records": [],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": []
+    },
+    {
+      "id": "TC-ID-06",
+      "description": "Current caller remains Bob after Alice's questions in the same conversation",
+      "passed": false,
+      "elapsedMs": 16889,
+      "outputs": [
+        "Action **ACT-0514** created for **Bob**: review the launch checklist (due Friday: 18 Sept 2026, 12:00)",
+        "Action **ACT-0515** created for **Alice**: prepare the retrospective slides",
+        "You have one open action:\n\n\u2022 **[ACT-0515] prepare the retrospective slides**\n  **Owner:** @Alice | **Status:** open\n\nNo deadline is recorded against it. To add one, use `ACT-0515 due Friday`.\n\nFor reference, the launch checklist review (ACT-0514) sits with @Bob, due 18 September 2026.",
+        "You have one open action:\n\n\u2022 **[ACT-0514] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0515) sit with @Alice, with no deadline recorded."
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:05:46.948Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-06-step-1",
+          "text": "Alice: action: review the launch checklist for Bob by Friday"
+        },
+        {
+          "eventId": "TC-ID-06-step-2",
+          "text": "Alice: action: prepare the retrospective slides"
+        },
+        {
+          "eventId": "TC-ID-06-step-3",
+          "text": "Alice: @Wire Team Bot What am I responsible for here?"
+        },
+        {
+          "eventId": "TC-ID-06-step-4",
+          "text": "Bob: @Wire Team Bot What am I responsible for here?"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ID-06-step-1",
+          "content": "review the launch checklist",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T12:00:00.000Z",
+          "status": "open"
+        },
+        {
+          "type": "action",
+          "source": "TC-ID-06-step-2",
+          "content": "prepare the retrospective slides",
+          "owner": "alice@cli.local",
+          "deadline": null,
+          "status": "open"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "failures": [
+        {
+          "step": "Bob: @Wire Team Bot What am I responsible for here?",
+          "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0514. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
+          "judgeReason": "Response correctly identifies Bob as owner of ACT-0514, but assertion requires identifying \"current requester\" as Bob, which bot doesn't establish.",
+          "botOutput": "You have one open action:\n\n\u2022 **[ACT-0514] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0515) sit with @Alice, with no deadline recorded."
+        }
+      ]
+    }
+  ]
+}

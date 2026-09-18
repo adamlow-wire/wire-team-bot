@@ -662,14 +662,15 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-QA-05",
-    description: "Follow-up 'yes' is coherent — not a no-record fallback",
+    description: "Follow-up yes stays coherent and read-only",
+    stored: [],
     steps: [
       // Both steps share one CLI process so conversation context persists
       { input: "@jeeves shall I create a reminder to review the deployment checklist?", shareProcess: true },
       {
         input: "@jeeves yes",
         shareProcess: true,
-        assert: "Jeeves responds coherently to the follow-up — either creates a reminder or continues the prior conversation — and does not say it has no record",
+        assert: "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
       },
     ],
   },
@@ -909,6 +910,11 @@ export const scenarios: Scenario[] = [
   {
     id: "TC-ID-06",
     description: "Current caller remains Bob after Alice's questions in the same conversation",
+    referenceTime: "2026-09-18T15:00:00.000Z", timezone: "UTC",
+    stored: [
+      { type: "action", sourceStep: 1, terms: ["launch", "checklist"], owner: "bob@cli.local", deadline: "2026-09-18T12:00:00.000Z", status: "open" },
+      { type: "action", sourceStep: 2, terms: ["retrospective", "slides"], owner: "alice@cli.local", deadline: null, status: "open" },
+    ],
     steps: [
       { input: "Alice: action: review the launch checklist for Bob by Friday", captureAs: "ACT", shareProcess: true },
       { input: "Alice: action: prepare the retrospective slides", shareProcess: true },

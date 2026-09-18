@@ -16,6 +16,8 @@ loadDotenv({ path: path.resolve(__dirname, "../../.env") });
 
 export interface JudgeResult {
   pass: boolean;
+  valid: boolean;
+  invalidAttempts?: string[];
   reason: string;
   raw: string;
 }
@@ -30,7 +32,7 @@ Keep reasons under 15 words. Be strict but fair.`.trim();
 
 export interface EvaluationContext { referenceTime: string; timezone: string }
 
-export async function judge(botResponse: string, assertion: string,
+async function judgeOnce(botResponse: string, assertion: string,
   context: EvaluationContext = { referenceTime: new Date().toISOString(), timezone: "UTC" },
 ): Promise<JudgeResult> {
   const baseUrl = process.env.JEEVES_LLM_BASE_URL;
@@ -53,7 +55,7 @@ export async function judge(botResponse: string, assertion: string,
       },
     ],
     max_tokens: 150,
-    temperature: 0,
+    temperature: 0 as number | undefined,
   };
 
   // Retry once on transient network/server errors
@@ -69,17 +71,25 @@ export async function judge(botResponse: string, assertion: string,
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(30_000),
       });
-      if (res.ok) break;
-      if (res.status < 500 || attempt === 1) {
-        throw new Error(`Judge LLM request failed: HTTP ${res.status}`);
-      }
-      // 5xx — wait briefly then retry
-      await new Promise(r => setTimeout(r, 1500));
     } catch (err) {
       if (attempt === 1) throw err;
       await new Promise(r => setTimeout(r, 1500));
       continue;
     }
+    if (res.ok) break;
+    // Match the runtime client's bounded compatibility path. Never log the
+    // provider body, which can echo inputs; never retry unrelated 400s.
+    if (res.status === 400 && attempt === 0) {
+      const error = await res.json().catch(() => null) as { error?: { message?: unknown } } | null;
+      const message = error?.error?.message;
+      if (typeof message === "string" && /temperature/i.test(message)
+        && /deprecated|unsupported|not supported/i.test(message)) {
+        body.temperature = undefined;
+        continue;
+      }
+    }
+    if (res.status < 500 || attempt === 1) throw new Error(`Judge LLM request failed: HTTP ${res.status}`);
+    await new Promise(r => setTimeout(r, 1500));
   }
 
   const json = await res!.json() as { choices: Array<{ message: { content: string } }> };
@@ -88,10 +98,17 @@ export async function judge(botResponse: string, assertion: string,
   // Strip <think>...</think> blocks (qwen3 thinking mode)
   const cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
-  // Match PASS/FAIL only when followed by punctuation or whitespace — avoids
-  // false positives if the model writes prose that opens with the word "PASS".
-  const pass = /^PASS[:\s–\-]/i.test(cleaned);
-  const reason = cleaned.replace(/^(PASS|FAIL)\s*[:–\-]?\s*/i, "").trim();
+  const verdict = /^(PASS|FAIL)\s*[:–-]\s*([^\r\n]+)$/i.exec(cleaned);
+  return { pass: verdict?.[1].toUpperCase() === "PASS", valid: verdict !== null,
+    reason: verdict ? verdict[2].trim() : "Invalid judge verdict format", raw: cleaned };
+}
 
-  return { pass, reason, raw: cleaned };
+/** Retry only malformed protocol, never a valid FAIL. Preserve the malformed output. */
+export async function judge(botResponse: string, assertion: string,
+  context: EvaluationContext = { referenceTime: new Date().toISOString(), timezone: "UTC" },
+): Promise<JudgeResult> {
+  const first = await judgeOnce(botResponse, assertion, context);
+  if (first.valid) return first;
+  const second = await judgeOnce(botResponse, assertion, context);
+  return { ...second, invalidAttempts: [first.raw, ...(second.valid ? [] : [second.raw])] };
 }

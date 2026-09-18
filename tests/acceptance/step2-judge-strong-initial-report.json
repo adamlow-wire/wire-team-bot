@@ -1,0 +1,213 @@
+{
+  "model": "claude-opus-5",
+  "passed": 11,
+  "total": 12,
+  "results": [
+    {
+      "id": "ttl-correct",
+      "reply": "Redis, for the session cache.\n\n\u2022 **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself \u2014 if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`.",
+      "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T15:02:18.066Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "States Redis for session cache and cites native TTL support.",
+        "raw": "PASS: States Redis for session cache and cites native TTL support."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "ttl-wrong",
+      "reply": "Redis, because it is cheaper. No other reason is known.",
+      "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T15:02:18.066Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "Response cites cost, not TTL, as the reason for Redis.",
+        "raw": "FAIL: Response cites cost, not TTL, as the reason for Redis."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "readonly-correct",
+      "reply": "Here's the command \u2014 send it as a message yourself:\n\n`remind me in 2 hours to review the deployment checklist`\n\nAdjust the timing as needed (`tomorrow at 9am`, `in 30 minutes`, `on Friday at 14:00`).",
+      "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T15:03:09.127Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "Supplies reminder command text without claiming a reminder was scheduled.",
+        "raw": "PASS: Supplies reminder command text without claiming a reminder was scheduled."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "readonly-wrong",
+      "reply": "Done. I have scheduled the reminder to review the deployment checklist in two hours.",
+      "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T15:03:09.127Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "Response falsely claims the reminder was scheduled, which the assertion prohibits.",
+        "raw": "FAIL: Response falsely claims the reminder was scheduled, which the assertion prohibits."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "requester-correct",
+      "reply": "You have one open action:\n\n\u2022 **[ACT-0514] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0515) sit with @Alice, with no deadline recorded.",
+      "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0514. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T15:05:46.948Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "Correctly assigns ACT-0514 to Bob and ACT-0515 to Alice.",
+        "raw": "PASS: Correctly assigns ACT-0514 to Bob and ACT-0515 to Alice."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "requester-wrong",
+      "reply": "You have no actions, Bob. Alice owns the launch checklist.",
+      "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0514. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T15:05:46.948Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "Response denies Bob has actions and assigns checklist to Alice.",
+        "raw": "FAIL: Response denies Bob has actions and assigns checklist to Alice."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "deciders-correct",
+      "reply": "\u2022 **[DEC-0422] Use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale was captured with the record. To revoke it, use `revoke DEC-0422 <reason>`.",
+      "assertion": "The answer names both Carol and Dave as the Terraform decision makers and Alice as recorder. It must not identify Alice as a decision maker.",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T14:57:40.789Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "Correctly lists Carol and Dave as deciders, Alice only as recorder.",
+        "raw": "PASS: Correctly lists Carol and Dave as deciders, Alice only as recorder."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "deciders-wrong",
+      "reply": "Alice recorded and made the Terraform decision. Carol and Dave were not involved.",
+      "assertion": "The answer names both Carol and Dave as the Terraform decision makers and Alice as recorder. It must not identify Alice as a decision maker.",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T14:57:40.789Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "... wait \u2014 the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely.",
+        "raw": "PASS... wait \u2014 the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely."
+      },
+      "correct": false,
+      "validVerdict": false
+    },
+    {
+      "id": "unknown-maker-correct",
+      "reply": "DEC-0425 has no decision maker recorded, I'm afraid.\n\n\u2022 **[DEC-0425] We will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nYou recorded it, but that only tells us who logged it \u2014 not who made the call. The stored record doesn't identify the decision makers.",
+      "assertion": "Decision makers are not recorded or cannot be identified. Alice may be identified only as recorder, not as having made the decision.",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T15:01:33.946Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "States no decision maker recorded; Alice identified only as recorder.",
+        "raw": "PASS: States no decision maker recorded; Alice identified only as recorder."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "unknown-maker-wrong",
+      "reply": "Alice made the semantic versioning decision.",
+      "assertion": "Decision makers are not recorded or cannot be identified. Alice may be identified only as recorder, not as having made the decision.",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T15:01:33.946Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "Response claims Alice made the decision, contradicting recorder-only constraint.",
+        "raw": "FAIL: Response claims Alice made the decision, contradicting recorder-only constraint."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "friday-correct",
+      "reply": "Action **ACT-0503** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+      "assertion": "The action is created for Bob to prepare the deck due Friday 18 September 2026. A due date of 25 September is incorrect.",
+      "expectedPass": true,
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": true,
+        "reason": "Action created for Bob with correct due date 18 Sept 2026.",
+        "raw": "PASS: Action created for Bob with correct due date 18 Sept 2026."
+      },
+      "correct": true,
+      "validVerdict": true
+    },
+    {
+      "id": "friday-wrong",
+      "reply": "Action **ACT-0503** created for **@Bob**: prepare the deck (due this Friday: 25 Sept 2026, 12:00)",
+      "assertion": "The action is created for Bob to prepare the deck due Friday 18 September 2026. A due date of 25 September is incorrect.",
+      "expectedPass": false,
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "result": {
+        "pass": false,
+        "reason": "Due date set to 25 Sept instead of required 18 September 2026.",
+        "raw": "FAIL: Due date set to 25 Sept instead of required 18 September 2026."
+      },
+      "correct": true,
+      "validVerdict": true
+    }
+  ],
+  "beforeProtocolValidationPassed": 12,
+  "note": "Reassessed with strict protocol validation: malformed output does not count as a correct rejection."
+}
