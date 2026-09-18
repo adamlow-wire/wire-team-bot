@@ -372,11 +372,26 @@ scope-denial checks. Both were previously designated by Adam. Use actual Wire me
 bot and people, selected in the client; the text below a mention is the command. Use the IDs
 returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one command per
 message except the deliberately combined-command test. Case 1 has a correct quoted `status`
-reply but failed latency; its multiple-message reply targeting remains pending. Cases 2–8 are
-**pending on ae618ff**. The next case is decision attribution and corrections, as @adamhuman.
+reply but failed latency; its multiple-message reply targeting remains pending. Case 2 passes
+recording, attribution, supersession and revocation, with the final post-revocation Wire answer
+still pending. Cases 3–8 remain **pending on ae618ff**.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.
+
+**Case 2 evidence — 2026-09-18 18:35 UTC:** Adam supplied the quoted Wire replies through
+revocation. [Scoped stored-record and audit checks](tests/acceptance/staging-decision-qa.json)
+found exactly two matching synthetic facts: `DEC-0005` is superseded/version 2 and points to
+`DEC-0006`; `DEC-0006` is revoked/version 2 and supersedes `DEC-0005`. There are exactly four
+matching audit entries (two creations, supersession, revocation), with the qualified recorder
+and actor matching Adam (Human), and distinct original message IDs. Neither record is active.
+The explicit-command path stores the named maker and rationale in the summary; both `decidedBy`
+arrays remain empty. The observed answer correctly uses that stored wording to identify Adam
+Low as maker rather than treating the recorder as maker. No runtime changes or fresh automated
+suite are claimed. These records are in `462a6490-fc3e-4c76-9f20-154c6b661336@staging.zinfra.io`,
+not either previously designated room; the operator has been asked to confirm its display name.
+Verification was limited to the reported synthetic facts and their audits. The final Wire
+question after revocation is still needed; do not mark the entire case passed yet.
 
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check

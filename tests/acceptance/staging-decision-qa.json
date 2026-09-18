@@ -1,0 +1,112 @@
+{
+  "checkedAt": "2026-09-18T18:35:43.756370+00:00",
+  "conversationId": "462a6490-fc3e-4c76-9f20-154c6b661336",
+  "conversationDomain": "staging.zinfra.io",
+  "decisions": [
+    {
+      "id": "DEC-0005",
+      "summary": "use SQLite for the RC final ledger because setup is simple",
+      "status": "superseded",
+      "version": 2,
+      "authorName": "Adam (Human)",
+      "authorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "authorDom": "staging.zinfra.io",
+      "decidedBy": [],
+      "rationale": null,
+      "supersedes": null,
+      "supersededBy": "DEC-0006",
+      "rawMessageId": "a3d0179c-15a3-4ed3-9723-36e5d4c0bc47",
+      "sourceRef": null,
+      "timestamp": "2026-09-18T18:28:17.285",
+      "updatedAt": "2026-09-18T18:31:24.114"
+    },
+    {
+      "id": "DEC-0006",
+      "summary": "Adam Low agreed to use Postgres for the RC final ledger because transactions are required",
+      "status": "revoked",
+      "version": 2,
+      "authorName": "Adam (Human)",
+      "authorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "authorDom": "staging.zinfra.io",
+      "decidedBy": [],
+      "rationale": null,
+      "supersedes": "DEC-0005",
+      "supersededBy": null,
+      "rawMessageId": "26e633d6-0169-4834-9372-f9c9dacba1e4",
+      "sourceRef": null,
+      "timestamp": "2026-09-18T18:31:24.114",
+      "updatedAt": "2026-09-18T18:32:57.524"
+    }
+  ],
+  "audits": [
+    {
+      "entityId": "DEC-0005",
+      "action": "entity_created",
+      "actorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "actorDom": "staging.zinfra.io",
+      "timestamp": "2026-09-18T18:28:17.285",
+      "status": null,
+      "reason": null,
+      "detailKeys": [
+        "summary"
+      ]
+    },
+    {
+      "entityId": "DEC-0006",
+      "action": "entity_created",
+      "actorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "actorDom": "staging.zinfra.io",
+      "timestamp": "2026-09-18T18:31:24.114",
+      "status": null,
+      "reason": null,
+      "detailKeys": [
+        "supersedes"
+      ]
+    },
+    {
+      "entityId": "DEC-0005",
+      "action": "entity_updated",
+      "actorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "actorDom": "staging.zinfra.io",
+      "timestamp": "2026-09-18T18:31:24.114",
+      "status": null,
+      "reason": null,
+      "detailKeys": [
+        "supersededBy"
+      ]
+    },
+    {
+      "entityId": "DEC-0006",
+      "action": "entity_updated",
+      "actorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "actorDom": "staging.zinfra.io",
+      "timestamp": "2026-09-18T18:32:57.526",
+      "status": "revoked",
+      "reason": "RC final check finished",
+      "detailKeys": [
+        "reason",
+        "status"
+      ]
+    }
+  ],
+  "runtimeCommit": "ae618ff3c7b5cda642e603ed8a755076bdf1655d",
+  "candidateImage": "wire-team-bot:v3-rc-ae618ff",
+  "conversationName": "awaiting operator confirmation; differs from the two previously designated conversation IDs",
+  "evidenceType": "operator-provided synthetic Wire replies plus scoped read-only database inspection",
+  "checks": {
+    "matchingDecisionCount": 2,
+    "auditCount": 4,
+    "distinctSourceMessages": true,
+    "qualifiedRecorderAndAuditActorMatch": true,
+    "supersessionLinksCorrect": true,
+    "revokedReplacementDoesNotReactivateOriginal": true,
+    "recorderMakerAnswerMatchesStoredFact": true
+  },
+  "attributionStorage": "Both decidedBy arrays are empty; the replacement summary explicitly names Adam Low as maker and contains the rationale. Author fields identify Adam (Human) as recorder. sourceRef is null; rawMessageId retains the original source message ID.",
+  "pending": [
+    "Wire answer to the current-decision question after revocation",
+    "Latency acceptance remains unresolved",
+    "Conversation display-name confirmation"
+  ],
+  "validation": "Evidence-only update; no runtime changes or repeated automated suite."
+}
