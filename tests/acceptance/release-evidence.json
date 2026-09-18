@@ -1,6 +1,6 @@
 {
   "date": "2026-09-18",
-  "runtimeCommit": "7384b39",
+  "runtimeCommit": "4bc7e1f",
   "environment": {
     "imageBase": "node:22-trixie-slim",
     "node": "22.23.2",
@@ -49,35 +49,37 @@
     "lint": "passed",
     "unitContractAndIntegration": {
       "command": "INTEGRATION_TESTS=1 npm test",
-      "passed": 296,
+      "passed": 304,
       "integrationTests": 6,
       "testFiles": 39,
-      "validationCommit": "7384b39"
+      "validationCommit": "4bc7e1f"
     },
     "realModelE2E": {
       "passed": 57,
       "failed": 3,
       "report": "e2e-report.json",
-      "commit": "7384b39",
-      "harnessCommit": "7384b39",
+      "commit": "4bc7e1f",
+      "harnessCommit": "4bc7e1f",
       "execution": "Immutable runtime and production dependencies with read-only test harness, isolated Postgres and real models",
       "pendingAdjudications": [
         "TC-PIPE-06: ambiguous ownership conflicts with no-guessed-owner rule",
-        "TC-ACT-10/11: judge rejects Friday September 18; stored owner/date and actual calendar verified, unchanged rechecks fail"
+        "TC-ACT-11: judge rejects today as this Friday; stored owner/date and actual Friday calendar verified",
+        "TC-ID-03: judge rejects recorded as made despite correct Alice author; unchanged targeted rerun passes"
       ],
-      "rawOutputReview": "TC-DEC-07 judge passed despite recorder/decider error still present; that bug remains open",
-      "assertions": "unchanged"
+      "rawOutputReview": "TC-DEC-07 judge passed despite recorder/decider error still present; that bug remains open; TC-ACT-10 passes this run",
+      "assertions": "unchanged",
+      "targetedRecheck": "TC-ID-03 passed unchanged; original full-suite score remains 57/60"
     }
   },
   "image": {
-    "tag": "wire-team-bot:v3-rc-7384b39",
-    "id": "sha256:04e9aaa3cffd009cbb7b8d7a6e4f917f61d23a10d7d9fbeed83fc085075f46cf",
-    "commit": "7384b39",
+    "tag": "wire-team-bot:v3-rc-4bc7e1f",
+    "id": "sha256:06e3fcd51e35a94a6e3f81c840bdf0234fa776778d992ea58e7144dd8ec54d7b",
+    "commit": "4bc7e1f",
     "sdkNativeLoad": "passed through immutable-image CLI regression and staging startup",
     "cliSmoke": [
-      "full real-model suite 57/60",
-      "reaction lifecycle with post-process stored records/audits verified",
-      "fresh fixed sample 20/20/20; five passive capture reactions; human review pending"
+      "Full unchanged real-model suite 57/60 on the immutable image; known ownership/date/attribution discrepancies retained",
+      "TC-ID-03 unchanged targeted recheck passes; stored facts inspected after processing",
+      "Quality and reaction evaluations remain attributed to 7384b39; transport-only runtime change"
     ],
     "stagingStartup": "passed: two conversations hydrated, connected, zero SDK errors"
   },
@@ -112,7 +114,7 @@
     "answerInspection": "Assistant inspection: 10/10 match expected facts; unknown correctly reports no record. Human correctness/usefulness approval pending.",
     "reactionAcknowledgements": 5
   },
-  "wireSmoke": "in progress: earlier action/reminder/restart journeys passed; new named-assignment route awaits Wire retry; cancellation/snooze were missed and remain untested; combined commands, other Wire gates and human review remain pending",
+  "wireSmoke": "in progress: native reply display, structured-mention assignment, corrections and passive capture/completion reactions confirmed by operator; reminder cancellation/snooze/overdue recovery verified in storage, final UI confirmation pending; privacy/isolation and human review gates remain pending",
   "productionDeployment": "not performed",
   "simulation": {
     "commit": "7384b39",
@@ -149,17 +151,18 @@
     }
   },
   "stagingActivation": {
-    "startedAt": "2026-09-18T08:57:46.91743621Z",
-    "image": "wire-team-bot:v3-rc-7384b39",
-    "imageId": "sha256:04e9aaa3cffd009cbb7b8d7a6e4f917f61d23a10d7d9fbeed83fc085075f46cf",
-    "previousImageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476",
+    "startedAt": "2026-09-18T09:15:08.035104023Z",
+    "image": "wire-team-bot:v3-rc-4bc7e1f",
+    "imageId": "sha256:06e3fcd51e35a94a6e3f81c840bdf0234fa776778d992ea58e7144dd8ec54d7b",
+    "previousImageId": "sha256:04e9aaa3cffd009cbb7b8d7a6e4f917f61d23a10d7d9fbeed83fc085075f46cf",
     "existingDatabaseAndCryptoPreserved": true,
-    "backupDirectory": "/tmp/wire-v3-reactions-backup-i3egzaxn",
+    "backupDirectory": "/tmp/wire-v3-replies-backup-_bfgw1o8",
     "backupReadChecks": "passed",
     "pendingRemindersBeforeSwitch": 0,
     "memberCacheHydratedConversations": 2,
     "sdkErrorDiagnostics": 0,
-    "transportRoundTrip": "passed: operator confirms capture/completion reactions on 7384b39; scoped DB confirms checklist done/version 2"
+    "containerRestarts": 0,
+    "transportRoundTrip": "passed: operator screenshot shows native quote of the correct my-actions question and correctly scoped response"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -618,6 +621,11 @@
       "automated": "296 tests; stored-record lifecycle; full model e2e 57/60; simulation and 20-event fixed sample complete",
       "semantics": "\ud83d\udcdd after passive action plus audit saved; \u2705 after passive completion plus audit saved; one reaction set can contain both",
       "limits": "best-effort reaction delivery; no durable retries/backfill; no changes to explicit text confirmations or passive decision feedback"
+    },
+    "nativeReplies": {
+      "runtimeCommit": "4bc7e1f",
+      "result": "passed for actual native reply UI; live multiple-message correlation pending",
+      "evidence": "passed: operator screenshot shows the native quote of Adam Low\u2019s my actions please? message with correct original text/author; answer lists ACT-0005 and ACT-0004, omitting completed emoji-checklist ACT-0006"
     }
   },
   "previousImageSmoke": {
@@ -745,6 +753,19 @@
       "memberCacheHydratedConversations": 2,
       "sdkErrorDiagnostics": 0,
       "transportRoundTrip": "passed: live passive capture and decision correction screenshots plus scoped DB checks on ad01b3a"
+    },
+    {
+      "startedAt": "2026-09-18T08:57:46.91743621Z",
+      "image": "wire-team-bot:v3-rc-7384b39",
+      "imageId": "sha256:04e9aaa3cffd009cbb7b8d7a6e4f917f61d23a10d7d9fbeed83fc085075f46cf",
+      "previousImageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476",
+      "existingDatabaseAndCryptoPreserved": true,
+      "backupDirectory": "/tmp/wire-v3-reactions-backup-i3egzaxn",
+      "backupReadChecks": "passed",
+      "pendingRemindersBeforeSwitch": 0,
+      "memberCacheHydratedConversations": 2,
+      "sdkErrorDiagnostics": 0,
+      "transportRoundTrip": "passed: operator confirms capture/completion reactions on 7384b39; scoped DB confirms checklist done/version 2"
     }
   ],
   "formattedActionSmoke": {
@@ -814,7 +835,22 @@
       "status": "done",
       "version": 2,
       "sourceId": "550e5ccf-e384-4535-8f2d-6a7a364474d9",
-      "updatedAt": "2026-09-18T09:01:45.912Z"
+      "updatedAt": "2026-09-18T09:01:45.912Z",
+      "audits": {
+        "createdAt": "2026-09-18T09:01:26.427Z",
+        "completedAt": "2026-09-18T09:01:45.924Z",
+        "count": 2,
+        "actor": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io"
+      }
     }
+  },
+  "nativeReplySmoke": {
+    "commit": "4bc7e1f",
+    "automated": "304 tests passed including six isolated DB tests; build/type-check/lint passed",
+    "coverage": "SDK quote IDs/hashes and mentions; overlapping channels and queued commands; qualified scope; error cleanup; self-deleting and missing-source fallback; scheduled notifications stay standalone",
+    "wireDisplay": "passed: operator screenshot shows the native quote of Adam Low\u2019s my actions please? message with correct original text/author; answer lists ACT-0005 and ACT-0004, omitting completed emoji-checklist ACT-0006",
+    "retention": "Only IDs and integrity hashes held during the incoming handler; no source text added to storage",
+    "wireConcurrency": "pending operator two-message check; overlapping channels/queued commands covered by automated contracts",
+    "fullRegression": "57/60; same ownership/date/attribution issue classes; native reply itself validated by SDK contracts and operator Wire screenshot"
   }
 }

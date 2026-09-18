@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Release runtime: `7384b39` (baseline `e35428b`).
+Updated: 2026-09-18. Release runtime: `4bc7e1f` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -182,7 +182,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Reaction feedback implemented; real-model regression 57/60, decision-attribution fix and acceptance checks pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Reactions and native replies implemented and Wire-confirmed; real-model regression 57/60, decision-attribution fix and acceptance checks pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -297,23 +297,25 @@ Provisional thresholds for this small pilot (not production SLAs):
 
 ### Candidate disposition — 2026-09-18
 
-**Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `7384b39` is available
-as `wire-team-bot:v3-rc-7384b39` and active in staging. No production deployment was performed. The recorder/decider
+**Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `4bc7e1f` is available
+as `wire-team-bot:v3-rc-4bc7e1f` and active in staging. No production deployment was performed. The recorder/decider
 attribution bug, combined-command guidance, human review and remaining Wire gates are still open.
 [Release evidence](tests/acceptance/release-evidence.json) records configuration and boundaries.
 
-- Fresh build, type-check and lint pass. **296 tests pass** in 39 files, including six isolated
-  Postgres/pgvector tests and SDK reaction mapping for 📝, ✅ and their combined set.
+- Fresh build, type-check and lint pass. **304 tests pass** in 39 files, including six isolated
+  Postgres/pgvector tests, reaction mapping and native-reply concurrency/scope/lifecycle contracts.
 - Immutable-image real-model e2e: **57/60**, original assertions unchanged. Full outputs and
   targeted rechecks are in [e2e-report.json](tests/acceptance/e2e-report.json).
-  `TC-PIPE-06` still expects ownership inferred from “we need”. `TC-ACT-10/11` store the correct
-  Bob owner and Friday September 18 12:00 UTC deadline; the judge rejects today as “this Friday”.
-  Calendar/DB inspection confirms Friday, and unchanged reruns repeat the judge failures.
-  Preserve these failures for adjudication; no assertions or correct dates were changed.
+  On `4bc7e1f`, `TC-PIPE-06` still expects ownership inferred from “we need”. `TC-ACT-11` stores
+  the correct Bob owner and Friday September 18 12:00 UTC deadline; the judge insists “this Friday”
+  means September 25. Calendar/DB inspection confirms Friday. `TC-ID-03` correctly says Alice
+  recorded the decision, but the judge rejects “recorded” as “made”; stored author is Alice.
+  Its unchanged targeted rerun passes. `TC-ACT-10` passes this full run. Preserve the original
+  **57/60** score and failures for adjudication; no assertions, dates or full-run results replaced.
 - Raw output inspection is still required: `TC-DEC-07` now receives a passing judge verdict
   while continuing to label recorder Alice “Decided by” alongside the named Carol/Dave decision.
-  **The attribution bug remains open despite that verdict.** `TC-ID-03`, `TC-ID-06` and `TC-QA-05`
-  pass this run; their historical failures remain in Git.
+  **The attribution bug remains open despite that verdict.** `TC-ID-06` and `TC-QA-05` pass
+  this run; historical failures remain in Git.
 - Reaction lifecycle passes with real models and an isolated DB: 📝 on the capture source,
   ✅ on its completion source, no reaction for explicit creation or ordinary chat. All stored
   records were inspected after drain: two expected actions, Bob's passive one done/version 2,
@@ -578,6 +580,24 @@ override: `/tmp/wire-v3-reactions-backup-i3egzaxn/`. No reminders were pending b
 Rollback with current volumes:
 `docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-mention-backup-8fiicc11/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
+Native reply request (2026-09-18): direct responses carried source IDs through the use cases,
+but the outbound adapter ignored them. Runtime `4bc7e1f` uses the SDK's native quote ID and
+integrity hash for the exact incoming message and qualified conversation, including prompt
+text and error replies. Metadata exists only during the handler and contains no source body;
+it is removed on success/failure. Missing metadata and unsupported self-deleting sources use
+ordinary text. Scheduled reminders remain standalone. Eight regressions cover SDK hashes,
+mentions, overlapping channels/queued commands, scope, cleanup, errors and unsupported sources.
+Fresh build/type-check/lint and **304 tests**, including six isolated DB tests, pass. The pinned
+image is built; full unchanged real-model regression finished **57/60**, with details above. Staging started at 09:15:08.035 UTC,
+hydrated two conversations and connected with zero SDK errors. Existing volumes were retained,
+with readable backups/override in `/tmp/wire-v3-replies-backup-_bfgw1o8/`. The operator screenshot
+confirms the native quote of Adam Low’s “my actions please?” question, including correct source
+text/author. The answer shows ACT-0005/4 and omits completed emoji-checklist ACT-0006. Native
+reply display and open-list removal pass; live two-message correlation remains pending.
+Rollback with existing volumes:
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reactions-backup-i3egzaxn/candidate.override.yml up -d --no-deps --no-build jeeves`. No extractor/classifier/pipeline change; quality and simulation results
+above remain attributed to `7384b39`, not reported as fresh runs for this transport-only change.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -641,6 +661,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-18 | Wire decision correction lifecycle passed | Screenshot and qualified DB inspection verify supersede, current recall, revoke and no automatic revival; linked DEC-0003/4 states, versions and four audits match. Post-deadline reminder inspection also confirms cancelled REM-0005 has no firing audit and snoozed REM-0006 fired once at the revised time. | Continue passive capture/completion, channel isolation and privacy-state checks; confirm reminder UI receipt; retain separate attribution bug |
 | 2026-09-18 | Silent Wire commitment captured | Post-processing DB/audit checks verify ACT-0005, qualified Adam Low owner/author, Friday deadline, exactly one action from the source and one creation audit. No acknowledgement was required or used as the score. | Test unmentioned completion as Adam Low and verify stored done status plus open-list removal |
 | 2026-09-18 | Passive action reaction feedback implemented and staged | User-approved 📝/✅ post-write-and-audit reactions, combined outcomes, cancellation/dedup/failure tests and welcome explanation. `7384b39`: 296 tests/build/type-check/lint pass; real-model reaction lifecycle passes with stored-record/audit inspection. Fresh fixed sample 20/20/20, zero duplicates/markers, five capture reactions; simulation 57 events complete. Immutable-image e2e 57/60 with unchanged assertions; Friday judge discrepancies preserved, known attribution bug still visible despite passing verdict. Staging backed up and connected with zero SDK errors. | Verify 📝 and ✅ on new Wire messages; human review and other listed acceptance gates remain pending |
+| 2026-09-18 | Wire reactions accepted; native replies implemented | Operator confirms 📝/✅; stored emoji checklist is done/version 2 with two audits. `4bc7e1f` quotes the exact source through SDK metadata and scopes/cleans it per handler; 304 tests/build/type-check/lint pass, immutable image built. | Staged with readable backups and zero SDK errors; operator screenshot verifies native quote and completed-action list removal. Full immutable-image regression 57/60, unchanged targeted author recheck passes; live two-message check pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
