@@ -71,3 +71,16 @@ it("fails closed when both verdicts are malformed", async () => {
   expect(await judge("answer", "assertion")).toMatchObject({ pass: false, valid: false, invalidAttempts: ["Probably correct", "Probably correct"] });
   expect(fetch).toHaveBeenCalledTimes(2);
 });
+
+
+it("retains provider truncation metadata and bounds the verdict budget", async () => {
+  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+    choices: [{ message: { content: "" }, finish_reason: "length" }],
+  }) });
+  vi.stubGlobal("fetch", fetch);
+  expect(await judge("answer", "assertion")).toMatchObject({ pass: false, valid: false,
+    finishReason: "length", invalidAttempts: ["", ""] });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetch.mock.calls[0][1].body).max_tokens).toBe(512);
+});

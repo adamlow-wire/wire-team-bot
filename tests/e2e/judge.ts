@@ -18,6 +18,7 @@ export interface JudgeResult {
   pass: boolean;
   valid: boolean;
   invalidAttempts?: string[];
+  finishReason?: string;
   reason: string;
   raw: string;
 }
@@ -54,7 +55,8 @@ async function judgeOnce(botResponse: string, assertion: string,
         content: `Scenario reference time (UTC): ${context.referenceTime}\nConversation timezone: ${context.timezone}\nUse this scenario time and timezone, not the wall clock when this evaluation runs.\n\nBot response:\n${botResponse}\n\nAssertion: ${assertion}`,
       },
     ],
-    max_tokens: 150,
+    // Allow provider reasoning overhead as well as the short visible verdict.
+    max_tokens: 512,
     temperature: 0 as number | undefined,
   };
 
@@ -92,7 +94,7 @@ async function judgeOnce(botResponse: string, assertion: string,
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  const json = await res!.json() as { choices: Array<{ message: { content: string } }> };
+  const json = await res!.json() as { choices: Array<{ message: { content: string }; finish_reason?: string }> };
   const raw = json.choices[0]?.message?.content?.trim() ?? "";
 
   // Strip <think>...</think> blocks (qwen3 thinking mode)
@@ -100,7 +102,8 @@ async function judgeOnce(botResponse: string, assertion: string,
 
   const verdict = /^(PASS|FAIL)\s*[:–-]\s*([^\r\n]+)$/i.exec(cleaned);
   return { pass: verdict?.[1].toUpperCase() === "PASS", valid: verdict !== null,
-    reason: verdict ? verdict[2].trim() : "Invalid judge verdict format", raw: cleaned };
+    reason: verdict ? verdict[2].trim() : "Invalid judge verdict format", raw: cleaned,
+    finishReason: json.choices[0]?.finish_reason };
 }
 
 /** Retry only malformed protocol, never a valid FAIL. Preserve the malformed output. */

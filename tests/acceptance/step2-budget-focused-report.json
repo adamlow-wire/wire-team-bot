@@ -1,0 +1,82 @@
+{
+  "runId": "mu74ahyd",
+  "judgeModel": "claude-opus-5",
+  "passed": 1,
+  "failed": 0,
+  "scenarios": [
+    {
+      "id": "TC-ID-04",
+      "description": "My reminders returns only the caller's reminders \u2014 not others'",
+      "passed": true,
+      "elapsedMs": 10965,
+      "outputs": [
+        "Reminder **REM-0187** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice",
+        "Reminder **REM-0188** set for **Friday, 18 Sept 2026, 12:00**: send the weekly report",
+        "- **REM-0187** \u2014 chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:32:31.724Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ID-04-step-1",
+          "text": "Alice: remind me on Thursday to chase the vendor invoice"
+        },
+        {
+          "eventId": "TC-ID-04-step-2",
+          "text": "Bob: remind me on Friday to send the weekly report"
+        },
+        {
+          "eventId": "TC-ID-04-step-3",
+          "text": "@jeeves what reminders do I have?"
+        }
+      ],
+      "records": [
+        {
+          "type": "reminder",
+          "source": "TC-ID-04-step-1",
+          "content": "chase the vendor invoice",
+          "owner": "alice@cli.local",
+          "deadline": "2026-09-24T12:00:00.000Z",
+          "status": "pending"
+        },
+        {
+          "type": "reminder",
+          "source": "TC-ID-04-step-2",
+          "content": "send the weekly report",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-18T12:00:00.000Z",
+          "status": "pending"
+        }
+      ],
+      "channelState": "active",
+      "storedChecks": null,
+      "judgements": [
+        {
+          "step": "Alice: remind me on Thursday to chase the vendor invoice",
+          "assertion": "Jeeves confirms the reminder was set with a REM- reference for Thursday",
+          "result": {
+            "pass": true,
+            "valid": true,
+            "reason": "Confirms REM-0187 for Thursday, 24 Sept 2026, matching assertion.",
+            "raw": "PASS: Confirms REM-0187 for Thursday, 24 Sept 2026, matching assertion.",
+            "finishReason": "stop"
+          }
+        },
+        {
+          "step": "@jeeves what reminders do I have?",
+          "assertion": "Jeeves lists Alice's reminders including REM-0187 for Thursday and does NOT include Bob's Friday report reminder",
+          "result": {
+            "pass": true,
+            "valid": true,
+            "reason": "Lists REM-0187 for Thursday 24 Sept, excludes Bob's Friday reminder.",
+            "raw": "PASS: Lists REM-0187 for Thursday 24 Sept, excludes Bob's Friday reminder.",
+            "finishReason": "stop"
+          }
+        }
+      ],
+      "failures": []
+    }
+  ]
+}
