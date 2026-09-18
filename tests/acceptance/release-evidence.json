@@ -288,7 +288,7 @@
     "reminderCancellationAndSnooze": {
       "date": "2026-09-17",
       "runtimeCommit": "f3b2eed",
-      "status": "not tested: operator missed the mutation window and both reminders fired",
+      "status": "fresh cancellation and snooze mutations passed on 2026-09-18; original-deadline non-delivery and revised-time snooze delivery still pending",
       "preparedRecords": [
         {
           "record": "REM-0003",
@@ -315,6 +315,29 @@
         "status": "fired",
         "version": 2,
         "nextAction": "Use fresh reminders for cancellation and snooze; do not count ordinary firing as a pass"
+      },
+      "freshRetest": {
+        "date": "2026-09-18",
+        "runtimeCommit": "ad01b3a",
+        "conversation": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+        "cancellation": {
+          "record": "REM-0005",
+          "status": "cancelled",
+          "version": 2,
+          "auditEntries": 2,
+          "cancelledAt": "2026-09-18T06:21:15.063Z",
+          "originalTriggerAt": "2026-09-18T06:31:04.849Z",
+          "result": "mutation passed; original deadline has not elapsed at this inspection"
+        },
+        "snooze": {
+          "record": "REM-0006",
+          "status": "pending",
+          "version": 2,
+          "auditEntries": 2,
+          "originalTriggerAt": "2026-09-18T06:31:38.390Z",
+          "revisedTriggerAt": "2026-09-18T06:51:51.637Z",
+          "result": "reschedule passed; delivery at revised time still pending"
+        }
       }
     },
     "combinedCommands": {
@@ -331,11 +354,97 @@
       "repairCommit": "17b8e42",
       "automated": "260 tests and build/type-check/lint passed; targeted real-model journey and post-process DB/audit inspection passed",
       "report": "named-assignment-report.json",
-      "wireRetest": "pending operator retry; 17b8e42 is active in staging"
+      "wireRetest": "passed on ad01b3a per operator report and scoped ACT-0004 inspection on 2026-09-18"
     },
     "structuredMentionAssignment": {
-      "result": "pending replay on ad01b3a",
-      "beforeFix": "Operator screenshot: member lookup failed on @Adam Low really needs to; both qualified members present; zero stored demo actions"
+      "result": "passed: operator reports success and scoped DB verifies owner/deadline",
+      "beforeFix": "Operator screenshot: member lookup failed on @Adam Low really needs to; both qualified members present; zero stored demo actions",
+      "date": "2026-09-18",
+      "runtimeCommit": "ad01b3a",
+      "record": "ACT-0004",
+      "conversation": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+      "ownerId": "a558cea2-b054-485c-871c-bf9f90847d65@staging.zinfra.io",
+      "creatorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab@staging.zinfra.io",
+      "deadline": "2026-09-18T12:00:00.000Z",
+      "version": 1,
+      "actionsFromSource": 1,
+      "creationAudits": 1
+    },
+    "overdueDowntimeRecovery": {
+      "date": "2026-09-18",
+      "runtimeCommit": "ad01b3a",
+      "conversation": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+      "result": "passed for overdue restoration, successful outbound send and durable fired state; operator UI receipt confirmation pending",
+      "sameContainerDatabaseAndCrypto": true,
+      "observations": {
+        "beforeWait": {
+          "running": false,
+          "startedAt": "2026-09-18T06:20:05.289998687Z",
+          "finishedAt": "2026-09-18T06:23:12.610264001Z",
+          "imageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476"
+        },
+        "beforeReminder": {
+          "checkedAt": "2026-09-18T06:24:21.39682+00:00",
+          "id": "REM-0007",
+          "status": "pending",
+          "version": 1,
+          "triggerAt": "2026-09-18T06:27:40.003",
+          "updatedAt": "2026-09-18T06:22:40.003",
+          "firingAudits": 0
+        },
+        "plannedRestartAt": "2026-09-18T06:27:50+00:00",
+        "overdueWhileStopped": {
+          "running": false,
+          "startedAt": "2026-09-18T06:20:05.289998687Z",
+          "finishedAt": "2026-09-18T06:23:12.610264001Z",
+          "imageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476"
+        },
+        "overdueBeforeStart": {
+          "checkedAt": "2026-09-18T06:27:50.149723+00:00",
+          "id": "REM-0007",
+          "status": "pending",
+          "version": 1,
+          "triggerAt": "2026-09-18T06:27:40.003",
+          "updatedAt": "2026-09-18T06:22:40.003",
+          "firingAudits": 0
+        },
+        "afterStart": {
+          "running": true,
+          "startedAt": "2026-09-18T06:27:50.196942111Z",
+          "finishedAt": "2026-09-18T06:23:12.610264001Z",
+          "imageId": "sha256:d6bdda262c8e615640d8e10df8d95012fb3b0faac3a38f7c055f531723474476"
+        },
+        "afterReminder": {
+          "checkedAt": "2026-09-18T06:27:52.4765+00:00",
+          "id": "REM-0007",
+          "status": "fired",
+          "version": 2,
+          "triggerAt": "2026-09-18T06:27:40.003",
+          "updatedAt": "2026-09-18T06:27:51.812",
+          "firingAudits": 1
+        }
+      },
+      "startup": {
+        "startupEvents": [
+          {
+            "msg": "Rehydrated pending reminders from DB",
+            "time": "2026-09-18T06:27:51.711Z",
+            "count": 2
+          },
+          {
+            "msg": "Member cache hydrated from SDK store",
+            "time": "2026-09-18T06:27:51.792Z",
+            "conversations": 2
+          },
+          {
+            "msg": "Wire client connected, listening for events",
+            "time": "2026-09-18T06:27:51.792Z"
+          }
+        ],
+        "sdkSeverityCounts": {
+          "info": 23
+        }
+      }
     }
   },
   "previousImageSmoke": {
@@ -457,7 +566,7 @@
     "commit": "a51a7af",
     "result": "passed: post-process DB inspection confirms Bob owner, tomorrow deadline, done status, version 4 and four audit entries"
   },
-  "latestEvidenceDate": "2026-09-17",
+  "latestEvidenceDate": "2026-09-18",
   "formattedReminderSmoke": {
     "report": "formatted-reminder-report.json",
     "commit": "f3b2eed",
@@ -473,6 +582,6 @@
     "commit": "ad01b3a",
     "result": "passed: one stored Bob-owned action, Friday deadline, Alice creator, one audit; no project context or internal mention tokens stored",
     "unitContractAndIntegrationTests": 278,
-    "wireReplay": "pending"
+    "wireReplay": "passed: operator report and scoped ACT-0004 verification on 2026-09-18"
   }
 }

@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-17. Release runtime: `ad01b3a` (baseline `e35428b`).
+Updated: 2026-09-18. Release runtime: `ad01b3a` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -522,10 +522,28 @@ configured TC-ACT-11 run passes. Post-process DB inspection finds exactly one Bo
 Alice creator, Friday September 18 12:00 UTC deadline, version 1 and one creation audit. No
 project-context clause or internal mention token is retained. The immutable-image run is 56/60 as detailed above. Staging activation preserves the existing
 volumes; fresh backup/override: `/tmp/wire-v3-mention-backup-8fiicc11/`. Startup at 15:36:12 UTC
-hydrated two conversations and connected with zero SDK errors. Operator replay remains
-pending. Rollback using `/tmp/wire-v3-assignment-backup-vcoikohf/candidate.override.yml` with
+hydrated two conversations and connected with zero SDK errors. Operator replay passed on
+September 18, with stored-record verification below. Rollback using `/tmp/wire-v3-assignment-backup-vcoikohf/candidate.override.yml` with
 the README compose command. Detailed stored-record evidence is in the
 [structured-mention report](tests/acceptance/structured-mention-report.json).
+
+Wire smoke continuation (2026-09-18, same `ad01b3a` image): the operator reports tests 1–3
+completed and has created the overdue-recovery reminder for test 4, in **Demo for Anna**.
+Scoped DB inspection confirms `ACT-0004` is the deck action, owned by qualified @adamlow_wire,
+created by @adamhuman, due September 18 12:00 UTC, open/version 1. Structured mention assignment
+now has actual Wire evidence. `REM-0005` is cancelled/version 2 with creation/cancellation audit
+entries; its original deadline is 06:31:04.849 UTC. `REM-0006` is pending/version 2, rescheduled
+from 06:31:38.390 to 06:51:51.637 UTC with a matching snooze audit. Cancellation and snooze
+mutations pass; non-delivery at original deadlines and eventual snoozed delivery remain pending.
+`REM-0007` is pending/version 1, due 06:27:40.003 UTC. The staging bot was stopped cleanly at
+06:23:12.610 UTC with existing volumes/image retained. At 06:27:50.149 UTC it was still stopped,
+and the overdue reminder remained pending/version 1 with no firing audit. The same container
+restarted at 06:27:50.197 UTC. Outbound send succeeded; the reminder was saved fired/version 2
+at 06:27:51.812 UTC, with exactly one firing audit and its original trigger unchanged. Startup
+rehydrated two reminders and two conversations, connected, and reported zero SDK errors.
+**Overdue recovery, successful send and durable status pass; operator UI receipt confirmation
+remains pending.** The snoozed reminder is due later, at 06:51:51.637 UTC.
+No build or automated suite was rerun for this operational test.
 
 Remaining entry checks, in order:
 
@@ -586,6 +604,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Addressed assignment demo gap | Screenshot shows a named slide-deck assignment being treated as read-only Q&A; scoped DB confirms no slide/presentation action. Two routing cases reproduce the failure. A bounded @member-needs-to variant now calls the existing audited action use case, keeps the assignment deadline separate from preceding project context, and refuses questions/negation/hypotheticals/multiple assignments. Build/type-check/lint and 260 tests pass. REM-0003/4 had already fired; cancellation/snooze remain untested. | Validate stored assignment and full image regression, then retry the demo; keep combined-command and remaining Wire gates pending |
 | 2026-09-17 | Named-assignment fix validated and staged | `17b8e42`: 260 tests, build/type-check/lint pass; targeted post-process inventory confirms one correctly owned/dated/audited action. Immutable-image e2e 56/59, new scenario passes; TC-ID-03 wording failure passes unchanged on single rerun and remains in full-run totals. Staging connected with preserved volumes, readable backups and zero SDK errors. | Retry the demo sentence; use fresh cancellation/snooze tests; combined-command and remaining acceptance gaps stay open |
 | 2026-09-17 | Structured mention repair validated and staged | `ad01b3a`: 278 tests and build/type-check/lint pass. Immutable-image e2e 56/60; new demo and all action commands pass. Post-process DB confirms qualified owner, Friday deadline, one action/audit. Full run reveals a reproducible recorder/decider answer bug; preserved as an open gate. | Repeat the demo with the real person mention; fix attribution, review remaining failures and complete Wire/human gates |
+| 2026-09-18 | Live mention, reminder mutations and overdue recovery | Operator reports tests 1–3 complete. Scoped records verify one correctly owned deck action and audited cancellation/snooze. REM-0007 remained pending past its deadline with the bot stopped, then sent successfully and became fired/version 2 with one firing audit after restart. Same image/volumes; zero startup SDK errors. | Confirm overdue reminder in Wire; observe cancelled reminder non-delivery and snoozed delivery at revised time; continue tests 5–8 and remaining code/human gates |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
