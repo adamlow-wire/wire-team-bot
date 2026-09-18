@@ -558,6 +558,51 @@
       "recallBeforeRevocation": "Postgres current, transactions rationale, SQLite superseded",
       "recallAfterRevocation": "No active decision; SQLite does not reactivate",
       "boundary": "Does not close the separate recorder-versus-decider attribution failure; this test uses the same recorder and stated decision maker."
+    },
+    "passiveChecklistCapture": {
+      "date": "2026-09-18",
+      "runtimeCommit": "ad01b3a",
+      "result": "capture passed; completion and subsequent list check pending",
+      "evidence": "Operator screenshot of unmentioned commitment plus post-processing scoped DB/audit inspection; no bot acknowledgement required",
+      "inventory": {
+        "checkedAt": "2026-09-18T08:34:36.51572+00:00",
+        "actions": [
+          {
+            "id": "ACT-0005",
+            "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+            "conversationDom": "staging.zinfra.io",
+            "creatorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "creatorDom": "staging.zinfra.io",
+            "authorName": "Adam Low",
+            "assigneeId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "assigneeDom": "staging.zinfra.io",
+            "assigneeName": "Adam Low",
+            "description": "Send the pilot acceptance checklist",
+            "deadline": "2026-09-18T12:00:00",
+            "status": "open",
+            "version": 1,
+            "rawMessageId": "ecee227a-a870-4f2d-9435-eddbc1a7cd78",
+            "timestamp": "2026-09-18T08:27:57.732",
+            "updatedAt": "2026-09-18T08:28:04.687"
+          }
+        ]
+      },
+      "auditInspection": {
+        "sourceActionCount": 1,
+        "audits": [
+          {
+            "entityId": "ACT-0005",
+            "action": "entity_created",
+            "actorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "actorDom": "staging.zinfra.io",
+            "timestamp": "2026-09-18T08:28:04.74",
+            "details": {
+              "sourceMessageId": "ecee227a-a870-4f2d-9435-eddbc1a7cd78"
+            }
+          }
+        ]
+      },
+      "matchedExpectedFact": "Send the pilot acceptance checklist, owner Adam Low, deadline Friday September 18; exactly one record from the source event"
     }
   },
   "previousImageSmoke": {

@@ -556,6 +556,14 @@ SQLite. Qualified Demo for Anna DB inspection confirms `DEC-0003` superseded/ver
 arrays, and four create/update audit events attributed to Adam Low. **Test 5 passes.** This does
 not resolve the separate recorder/decider attribution bug; both roles coincide in this test.
 
+Passive Wire capture (2026-09-18, `ad01b3a`, Demo for Anna): the unmentioned checklist
+commitment was silently captured as `ACT-0005`. Post-processing DB inspection at 08:34 UTC
+finds one matching open/version 1 action owned and authored by qualified Adam Low, due Friday
+September 18 12:00 UTC. Its source event produced exactly one action and one creation audit;
+the audit retains only the source ID. The operator screenshot shows the unmentioned source,
+not a bot acknowledgement. **Capture passes; passive completion and subsequent list check
+remain pending.** This is one live smoke event, not a fresh aggregate quality evaluation.
+
 Remaining entry checks, in order:
 
 1. A named reviewer reviews the fixed sample’s stored records/source events, all ten answers
@@ -617,6 +625,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Structured mention repair validated and staged | `ad01b3a`: 278 tests and build/type-check/lint pass. Immutable-image e2e 56/60; new demo and all action commands pass. Post-process DB confirms qualified owner, Friday deadline, one action/audit. Full run reveals a reproducible recorder/decider answer bug; preserved as an open gate. | Repeat the demo with the real person mention; fix attribution, review remaining failures and complete Wire/human gates |
 | 2026-09-18 | Live mention, reminder mutations and overdue recovery | Operator reports tests 1–3 complete. Scoped records verify one correctly owned deck action and audited cancellation/snooze. REM-0007 remained pending past its deadline with the bot stopped, then sent successfully and became fired/version 2 with one firing audit after restart. Same image/volumes; zero startup SDK errors. | Confirm overdue reminder in Wire; observe cancelled reminder non-delivery and snoozed delivery at revised time; continue tests 5–8 and remaining code/human gates |
 | 2026-09-18 | Wire decision correction lifecycle passed | Screenshot and qualified DB inspection verify supersede, current recall, revoke and no automatic revival; linked DEC-0003/4 states, versions and four audits match. Post-deadline reminder inspection also confirms cancelled REM-0005 has no firing audit and snoozed REM-0006 fired once at the revised time. | Continue passive capture/completion, channel isolation and privacy-state checks; confirm reminder UI receipt; retain separate attribution bug |
+| 2026-09-18 | Silent Wire commitment captured | Post-processing DB/audit checks verify ACT-0005, qualified Adam Low owner/author, Friday deadline, exactly one action from the source and one creation audit. No acknowledgement was required or used as the score. | Test unmentioned completion as Adam Low and verify stored done status plus open-list removal |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.
