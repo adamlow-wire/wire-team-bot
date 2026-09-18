@@ -298,7 +298,7 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The current local image is `wire-team-bot:v3-rc-ad01b3a`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-17)
+The current local image is `wire-team-bot:v3-rc-7384b39`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-18)
 for passing checks, the retained e2e failures and human/Wire acceptance still required.
 
 Use synthetic data in a separate database. The development run used Postgres 16 + pgvector,
@@ -336,6 +336,22 @@ npm run simulate:review
 team database. The test harness uses isolated conversation IDs and only removes rows owned by
 its integration fixtures. No reset command is required. The e2e and simulation scripts use the
 already installed `ts-node`; they do not download an unpinned runner.
+
+To repeat the reaction lifecycle check in that isolated test container:
+
+```bash
+EVALUATION_COMMIT=7384b39 \
+EVALUATION_FIXTURE=tests/acceptance/reaction-fixture.json \
+EVALUATION_REPORT=tests/acceptance/reaction-report.json npm run test:acceptance
+```
+
+Check the report's separate `reactions` arrays against source events: 📝 for `reaction-create`,
+✅ for `reaction-complete`, and none for explicit creation or ordinary chat. Inspect stored
+records after drain: the checklist belongs to Bob and is done; the explicit report belongs to
+Carol and stays open. Verify the corresponding action audits as well. Reactions are not capture
+scores; the evaluator still matches every stored record against expected facts/source events.
+Actual Wire client display requires a new unmentioned commitment and completion in the test
+conversation; existing records do not receive retroactive reactions.
 
 The original `e35428b` baseline was built in a separate archived checkout with only
 [baseline-cli.patch](tests/acceptance/baseline-cli.patch) applied. That patch adds stable input IDs,
@@ -382,7 +398,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-ad01b3a \
+  --entrypoint node wire-team-bot:v3-rc-7384b39 \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```

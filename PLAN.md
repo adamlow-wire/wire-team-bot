@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Release runtime: `ad01b3a` (baseline `e35428b`).
+Updated: 2026-09-18. Release runtime: `7384b39` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The next version is a **real-world pilot of the existing bot**, with targeted
@@ -179,7 +179,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Mention repair implemented; real-model regression 56/60, decision-attribution fix and acceptance checks pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Reaction feedback implemented; real-model regression 57/60, decision-attribution fix and acceptance checks pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -292,53 +292,40 @@ Provisional thresholds for this small pilot (not production SLAs):
 - At pilot end, the team identifies concrete saved effort and chooses continued use. Otherwise
   fix the most material problem or stop expanding scope.
 
-### Candidate disposition — 2026-09-17
+### Candidate disposition — 2026-09-18
 
-**Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `ad01b3a` is available
-locally as `wire-team-bot:v3-rc-ad01b3a` and active on the designated staging backend.
-No production deployment was performed. A reproduced decision-attribution answer bug, human
-review and designated Wire acceptance prevent closing P0–P2.
-[Release evidence](tests/acceptance/release-evidence.json) records configuration and check boundaries.
+**Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `7384b39` is available
+as `wire-team-bot:v3-rc-7384b39` and active in staging. No production deployment was performed. The recorder/decider
+attribution bug, combined-command guidance, human review and remaining Wire gates are still open.
+[Release evidence](tests/acceptance/release-evidence.json) records configuration and boundaries.
 
-- Fresh build, `npx tsc --noEmit` and lint pass. **278 tests pass** in 39 files, including six
-  isolated Postgres/pgvector integration tests. Native SDK loading passes in the image
-  (Node 22.23.2, glibc 2.41, linux x86_64).
-- Full real-model e2e: **56/60**, with original assertions retained in
-  [e2e-report.json](tests/acceptance/e2e-report.json). The immutable `ad01b3a` runtime and production
-  dependencies were used with a read-only harness. Both named-assignment scenarios and previous
-  formatted-action/reminder journeys pass. Post-process inspection of all actions and audits
-  confirms one correctly owned/dated action for the structured-mention demo; no inferred
-  Monday action or raw project-context clause is stored. See the
-  [structured-mention report](tests/acceptance/structured-mention-report.json).
-- `TC-DEC-07` fails in the full run and unchanged isolated reproduction: the record says Carol
-  and Dave agreed, but recall labels recorder Alice as “Decided by”. This is a real attribution
-  answer bug, not a passing result or merely a judge discrepancy. A focused correction remains
-  required before acceptance; the mention fix does not change decision/Q&A behavior.
-- `TC-QA-05` was rejected for offering reminder syntax rather than continuing the conversation;
-  its output asks the user to choose timing and says no reminder was created. The unchanged
-  isolated reproduction passes. Both outputs are retained; full counts remain 56/60.
-- Stored-record quality evaluation at earlier image `2ba7a1f`: **20/20 correct unique captures out of
-  20 expected and 20 total stored** (10/10 decisions, 10/10 actions), zero duplicates: automated
-  precision/recall **100%/100%**, versus baseline 100%/50% (10/10/20). Half the expected events
-  are passive; scoring queries all persisted records after drain and matches facts/source/owner.
-  No marker in inspected DB records or diagnostics. See [candidate report](tests/acceptance/candidate-report.json)
-  and [baseline report](tests/acceptance/baseline-report.json). This is a small synthetic sample,
-  not human-approved extraction quality. It was not rerun for the routing fixes through `ad01b3a`, which affect
-  command routing rather than classification/extraction or answer prompts.
-- Assistant inspection finds all ten known answers match the expected facts and the unknown
-  budget question correctly reports no record. **Human correctness/usefulness review pending.**
-  Median reply-event completion: **6.389 s**; known-question median **7.557 s**; slowest **9.392 s**;
-  unsolicited messages **0**. Two malformed query-analysis responses fell back to the default
-  retrieval plan; answer outputs remain in the report. Timings include queue drain.
-- `TC-PIPE-06` expects an Alice-owned action from “we need to update the API documentation”.
-  The conservative extractor writes none. Resolve this expectation explicitly against the
-  no-guessed-owner rule; do not silently change either the assertion or ownership policy.
-- `TC-ACT-07` previously rejected the correct end-of-month answer; it now passes with dated
-  judge context and the same assertion. Its previous failures remain in Git history.
-- `TC-ID-06` passes this full run. Its earlier caller-wording judge failures remain in Git.
-- `TC-ID-03` again returns “You did” to Alice and the judge rejects the absence of literal Alice.
-  The previous image's isolated rerun passed unchanged; this full-run failure remains visible.
-  No assertion was weakened.
+- Fresh build, type-check and lint pass. **296 tests pass** in 39 files, including six isolated
+  Postgres/pgvector tests and SDK reaction mapping for 📝, ✅ and their combined set.
+- Immutable-image real-model e2e: **57/60**, original assertions unchanged. Full outputs and
+  targeted rechecks are in [e2e-report.json](tests/acceptance/e2e-report.json).
+  `TC-PIPE-06` still expects ownership inferred from “we need”. `TC-ACT-10/11` store the correct
+  Bob owner and Friday September 18 12:00 UTC deadline; the judge rejects today as “this Friday”.
+  Calendar/DB inspection confirms Friday, and unchanged reruns repeat the judge failures.
+  Preserve these failures for adjudication; no assertions or correct dates were changed.
+- Raw output inspection is still required: `TC-DEC-07` now receives a passing judge verdict
+  while continuing to label recorder Alice “Decided by” alongside the named Carol/Dave decision.
+  **The attribution bug remains open despite that verdict.** `TC-ID-03`, `TC-ID-06` and `TC-QA-05`
+  pass this run; their historical failures remain in Git.
+- Reaction lifecycle passes with real models and an isolated DB: 📝 on the capture source,
+  ✅ on its completion source, no reaction for explicit creation or ordinary chat. All stored
+  records were inspected after drain: two expected actions, Bob's passive one done/version 2,
+  Carol's explicit one open, and three action audits linked to the expected source events.
+  See [reaction-report.json](tests/acceptance/reaction-report.json). Wire client display is pending.
+- Fresh fixed sample at `7384b39`: **20 correct / 20 total / 20 expected**, 10 decisions and 10
+  actions, **100% precision / 100% recall**, zero duplicates or stored/log privacy markers.
+  Baseline remains 10/10/20 (100%/50%). Five passive actions received 📝; unsolicited text replies
+  remain zero. This is a small synthetic sample, **not human-approved quality**. All ten known
+  answers and the unknown-answer refusal match their expected facts on assistant inspection.
+  [reaction-quality-report.json](tests/acceptance/reaction-quality-report.json) preserves source
+  events, records, replies and separate reactions. Built-checkout runtime was used for this
+  sample; the full e2e above used the immutable image. Human correctness/usefulness review pending.
+- Reply-event median **7.308 s**, known-question median **8.388 s**, slowest **9.516 s**. No model
+  degradation observed in this sample; embeddings-off warning only. Times include queue drain.
 - Chat configuration: classify/judge `claude-haiku-4-5`; extract, summarise, query analysis,
   respond and complex synthesis `claude-opus-5`, with the same per-slot fallback models.
   Embeddings **off**, configured dimension 2560. DB vector behaviour was exercised with synthetic
@@ -348,10 +335,11 @@ review and designated Wire acceptance prevent closing P0–P2.
   one correctly owned/dated action, a closed secure range and no excluded marker. Earlier
   candidate smoke also exercised queued cancellation and model-backed recall. These are
   CLI/DB checks, not Wire transport evidence.
-- Simulation replay completed all 57 source events with actual fixture senders: six decisions,
-  seven actions and one reminder. Its stored-record inventory is local and unreviewed;
-  `golden.json` remains an instruction placeholder. **No measured simulation precision/recall
-  is claimed.**
+- Fresh simulation at `7384b39` completed all 57 source events: six decisions, seven actions,
+  one reminder, six 📝 reactions and one ✅ reaction. No privacy markers or model errors. The
+  existing unsolicited-message heuristic counts one reply, inspected as the confirmation of an
+  explicit reminder command. The stored inventory is local and unreviewed; `golden.json` is still
+  an instruction placeholder. **No simulation precision/recall claim.**
 
 Designated Wire test conversation: **Wire Team Bot Testing**,
 `3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io`. The user supplied the name;
@@ -577,7 +565,15 @@ contract/isolated-DB tests, build/type-check/lint pass. The four-event real-mode
 finds both expected actions, the passive one done/version 2, and all three source-linked action
 audits. Initial tests found a stopped isolated DB (restarted without reset) and new assertions
 that incorrectly counted signal audits as action audits (corrected to assert action audits).
-Full immutable-image e2e, simulation and real Wire display verification remain pending.
+Full immutable-image e2e is 57/60 and simulation is complete as detailed above. Real Wire
+reaction display remains pending; the next operator check must use a fresh unmentioned action
+and completion. Reactions are best effort, with no durable retry or backfill; failed delivery
+does not undo or repeat a persisted write. Both emojis share one reaction set for mixed outcomes.
+Staging started the pinned image at 08:57:46.917 UTC, preserved existing volumes, hydrated two
+conversations and connected with zero SDK errors. Fresh readable database/crypto backups and
+override: `/tmp/wire-v3-reactions-backup-i3egzaxn/`. No reminders were pending before the switch.
+Rollback with current volumes:
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-mention-backup-8fiicc11/candidate.override.yml up -d --no-deps --no-build jeeves`.
 
 Remaining entry checks, in order:
 
@@ -641,6 +637,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-18 | Live mention, reminder mutations and overdue recovery | Operator reports tests 1–3 complete. Scoped records verify one correctly owned deck action and audited cancellation/snooze. REM-0007 remained pending past its deadline with the bot stopped, then sent successfully and became fired/version 2 with one firing audit after restart. Same image/volumes; zero startup SDK errors. | Confirm overdue reminder in Wire; observe cancelled reminder non-delivery and snoozed delivery at revised time; continue tests 5–8 and remaining code/human gates |
 | 2026-09-18 | Wire decision correction lifecycle passed | Screenshot and qualified DB inspection verify supersede, current recall, revoke and no automatic revival; linked DEC-0003/4 states, versions and four audits match. Post-deadline reminder inspection also confirms cancelled REM-0005 has no firing audit and snoozed REM-0006 fired once at the revised time. | Continue passive capture/completion, channel isolation and privacy-state checks; confirm reminder UI receipt; retain separate attribution bug |
 | 2026-09-18 | Silent Wire commitment captured | Post-processing DB/audit checks verify ACT-0005, qualified Adam Low owner/author, Friday deadline, exactly one action from the source and one creation audit. No acknowledgement was required or used as the score. | Test unmentioned completion as Adam Low and verify stored done status plus open-list removal |
+| 2026-09-18 | Passive action reaction feedback implemented and staged | User-approved 📝/✅ post-write-and-audit reactions, combined outcomes, cancellation/dedup/failure tests and welcome explanation. `7384b39`: 296 tests/build/type-check/lint pass; real-model reaction lifecycle passes with stored-record/audit inspection. Fresh fixed sample 20/20/20, zero duplicates/markers, five capture reactions; simulation 57 events complete. Immutable-image e2e 57/60 with unchanged assertions; Friday judge discrepancies preserved, known attribution bug still visible despite passing verdict. Staging backed up and connected with zero SDK errors. | Verify 📝 and ✅ on new Wire messages; human review and other listed acceptance gates remain pending |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

@@ -1,0 +1,244 @@
+{
+  "runAt": "2026-09-18T08:44:46.753Z",
+  "commit": "7384b39",
+  "channel": "evaluation-9dcf91b9-f4ea-4d13-ba0c-0f0276bf5c7a",
+  "privacyMarkers": {
+    "storedOccurrences": 0,
+    "diagnosticOccurrences": 0
+  },
+  "configuration": {
+    "slots": {
+      "classify": {
+        "model": "claude-haiku-4-5",
+        "fallback": "claude-haiku-4-5"
+      },
+      "extract": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "embed": {
+        "model": "qwen3-embedding:4b",
+        "fallback": "qwen3-embedding:4b"
+      },
+      "summarise": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "queryAnalyse": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "respond": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "complexSynthesis": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      }
+    },
+    "embeddings": {
+      "enabled": false,
+      "dimensions": 2560
+    }
+  },
+  "reviewStatus": "Synthetic reaction lifecycle: verify reaction source IDs and committed actions/audits after processing; not aggregate extraction quality",
+  "reminders": [],
+  "overall": {
+    "correct": 2,
+    "captured": 2,
+    "expected": 2,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "missed": [],
+    "records": [
+      {
+        "type": "action",
+        "source": "reaction-create",
+        "content": "Bob to send out the reaction smoke checklist",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "done",
+        "deadline": "2026-09-19T08:44:42.219Z",
+        "matchedEvent": "reaction-create",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "reaction-explicit",
+        "content": "review the explicit smoke report",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "reaction-explicit",
+        "duplicate": false
+      }
+    ]
+  },
+  "decisions": {
+    "correct": 0,
+    "captured": 0,
+    "expected": 0,
+    "duplicates": 0,
+    "precision": null,
+    "recall": null,
+    "missed": [],
+    "records": []
+  },
+  "actions": {
+    "correct": 2,
+    "captured": 2,
+    "expected": 2,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "missed": [],
+    "records": [
+      {
+        "type": "action",
+        "source": "reaction-create",
+        "content": "Bob to send out the reaction smoke checklist",
+        "owner": "bob",
+        "ownerName": "Bob",
+        "status": "done",
+        "deadline": "2026-09-19T08:44:42.219Z",
+        "matchedEvent": "reaction-create",
+        "duplicate": false
+      },
+      {
+        "type": "action",
+        "source": "reaction-explicit",
+        "content": "review the explicit smoke report",
+        "owner": "carol",
+        "ownerName": "Carol",
+        "status": "open",
+        "deadline": null,
+        "matchedEvent": "reaction-explicit",
+        "duplicate": false
+      }
+    ]
+  },
+  "exchanges": [
+    {
+      "eventId": "reaction-create",
+      "text": "Bob: I will send the reaction smoke checklist by tomorrow.",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "reaction",
+          "checklist"
+        ],
+        "owner": "bob"
+      },
+      "replies": [],
+      "reactions": [
+        {
+          "messageId": "reaction-create",
+          "emojis": [
+            "\ud83d\udcdd"
+          ]
+        }
+      ],
+      "elapsedMs": 8772
+    },
+    {
+      "eventId": "reaction-complete",
+      "text": "Bob: I've sent the reaction smoke checklist. That task is finished.",
+      "replies": [],
+      "reactions": [
+        {
+          "messageId": "reaction-complete",
+          "emojis": [
+            "\u2705"
+          ]
+        }
+      ],
+      "elapsedMs": 3430
+    },
+    {
+      "eventId": "reaction-explicit",
+      "text": "action: review the explicit smoke report for Carol",
+      "expected": {
+        "type": "action",
+        "terms": [
+          "explicit",
+          "report"
+        ],
+        "owner": "carol"
+      },
+      "replies": [
+        "Action **ACT-0321** created for **Carol**: review the explicit smoke report"
+      ],
+      "reactions": [],
+      "elapsedMs": 10
+    },
+    {
+      "eventId": "reaction-noise",
+      "text": "Good morning everyone.",
+      "replies": [],
+      "reactions": [],
+      "elapsedMs": 905
+    }
+  ],
+  "failures": [
+    {
+      "level": "warn",
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+    }
+  ],
+  "replyTimesMs": [
+    10
+  ],
+  "unsolicitedMessages": 0,
+  "persistenceVerification": {
+    "actions": [
+      {
+        "id": "ACT-0320",
+        "rawMessageId": "reaction-create",
+        "status": "done",
+        "version": 2,
+        "assigneeId": "bob",
+        "assigneeDom": "cli.local"
+      },
+      {
+        "id": "ACT-0321",
+        "rawMessageId": "reaction-explicit",
+        "status": "open",
+        "version": 1,
+        "assigneeId": "carol",
+        "assigneeDom": "cli.local"
+      }
+    ],
+    "audits": [
+      {
+        "entityId": "ACT-0320",
+        "action": "entity_created",
+        "details": {
+          "sourceMessageId": "reaction-create"
+        }
+      },
+      {
+        "entityId": "ACT-0320",
+        "action": "entity_updated",
+        "details": {
+          "sourceMessageId": "reaction-complete"
+        }
+      },
+      {
+        "entityId": "ACT-0321",
+        "action": "entity_created",
+        "details": {
+          "assigneeId": {
+            "id": "carol",
+            "domain": "cli.local"
+          },
+          "description": "review the explicit smoke report"
+        }
+      }
+    ]
+  },
+  "reactionChecks": "passed: correct source messages, capture/completion reactions after corresponding persisted changes; no reaction for explicit command or noise",
+  "execution": "Built checkout runtime, real models, isolated Postgres; completed CLI events include separate reaction frames and post-exit inventory"
+}
