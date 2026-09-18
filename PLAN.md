@@ -358,9 +358,11 @@ existing volumes were retained. Fresh private DB/crypto backups and diagnostic e
 The reconnect cycle still occurs after restoration. No runtime regression suite was rerun
 for these temporary diagnostic operations and documentation-only changes.
 
-Resume final manual QA after the connection issue is corrected: observe sustained connectivity,
-then time several mentioned `status` requests at different offsets in the former 30-second
-cycle. Correct content and a native quote alone do not pass this latency gate.
+Adam requested continuing functional QA while the connection issue remains open. Proceed with
+the manual cases below, recording delivery delay separately and waiting for each confirmation
+before dependent commands. After correction, observe sustained connectivity and time several
+mentioned `status` requests at different offsets in the former 30-second cycle. Correct content
+and a native quote alone do not pass the latency gate or approve the pilot.
 
 #### Final manual QA on the pinned staging candidate
 
@@ -369,7 +371,9 @@ and **Wire Team Bot Testing** (`3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zin
 scope-denial checks. Both were previously designated by Adam. Use actual Wire mentions of the
 bot and people, selected in the client; the text below a mention is the command. Use the IDs
 returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one command per
-message except the deliberately combined-command test. All cases are **pending on ae618ff**.
+message except the deliberately combined-command test. Case 1 has a correct quoted `status`
+reply but failed latency; its multiple-message reply targeting remains pending. Cases 2–8 are
+**pending on ae618ff**. The next case is decision attribution and corrections, as @adamhuman.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.
