@@ -269,7 +269,9 @@ all fifteen mandatory stored-record/state checks, and the unchanged **20/20 stor
 Build/type-check/lint and **370 unit/contract/isolated DB tests** pass. All earlier failed runs and
 raw-review findings remain intact. QA-6 activation is complete: staging now runs that exact image,
 with verified backups, unchanged durable records, member/reminder hydration and no startup errors.
-Final Wire/human acceptance remains pending. This is code and automated QA completion, not pilot approval.
+Final Wire/human acceptance remains pending. The first candidate `status` smoke reply had the correct
+native quote but took approximately 25 seconds; the unresolved connection failure below blocks QA-7.
+This is code and automated QA completion, not pilot approval.
 
 #### Staging candidate activation — 2026-09-18
 
@@ -296,10 +298,10 @@ recreated; production and the staging database container were untouched.
   67 audit entries and 3 channel configurations among them. `REM-0008` remains pending,
   version 1, due **2026-09-21 06:00 UTC**, and was rehydrated. This verifies preservation and
   hydration; delivery after this restart has not yet occurred.
-- A real mentioned `status` request with the correct native quote is requested from Adam.
-  Receive/decrypt/reply on this exact candidate and remaining manual acceptance stay pending
-  until observed. Earlier screenshots and 370 tests/63 e2e cases remain their recorded runs;
-  no runtime suite was rerun for this operational activation.
+- Adam confirmed a real mentioned `status` request with the correct native quote on this
+  candidate. Receive/decrypt/reply works, but his approximately **25-second delay fails latency
+  acceptance**; see the investigation below. Earlier 370 tests/63 e2e cases remain their
+  recorded runs; no runtime suite was rerun for this operational activation.
 
 To reapply the candidate without rebuilding or changing volumes:
 
@@ -321,6 +323,44 @@ Do not restore the pre-upgrade crypto snapshot for an ordinary image rollback: t
 may have advanced. Database restoration is unnecessary because schema and migrations did not
 change. The protected backup is a recovery resource, not an instruction to overwrite live data.
 Keep this image pinned throughout manual QA; avoid a rebuilding `staging:up` during acceptance.
+
+#### Staging latency investigation — 2026-09-18
+
+**Unresolved release gate:** Adam's first `status` reply took approximately 25 seconds.
+[Content-free evidence](tests/acceptance/staging-latency-investigation.json) records the
+experiments, UTC timestamps and restoration checks. This command does not invoke a model.
+The channel-state log at **16:58:10.168 UTC** was followed by outbound send at **16:58:10.174**
+(6 ms for that section of the handler, not a measured end-to-end round trip).
+
+The SDK reconnects roughly every **31.15 seconds**; replies were processed during reconnect
+catch-up. Temporary protocol diagnostics confirmed a socket opens, receives a server ping at
+15 seconds and closes remotely with code **1000** at 30 seconds. The SDK's existing `ws`
+fallback behaved the same as Node's native WebSocket. Application pings every ten seconds
+also failed to keep it open: automatic control pongs were sent, but no application pong was
+received. Neither experiment is a fix. Both implementations passed a synthetic local
+ping/binary-frame control in the exact candidate image.
+
+The backend connection path needs investigation. In the inspected Wire server source, Cannon
+registers presence with Gundeck before starting its receive loop, so a stuck registration is
+one hypothesis consistent with these observations; **it is not an established root cause**.
+Ask a staging backend operator to inspect **Cannon/Gundeck/nginz logs for 17:06–17:09 UTC on
+2026-09-18**, correlate `/await`, `register-remote`/`registered`, `/i/presences` timeouts,
+`PongTimeout` and close reasons, and identify the deployed backend revision. Never include
+`access_token` query values in the handoff. Backend log access is not available in this
+workspace; the operator has been asked for access/help. SDK/client compatibility remains an
+alternative until the backend trace is available.
+
+At **17:09:20 UTC** the original `ae618ff` image/configuration was restored; temporary Node
+options and probe mount are absent. No runtime code/dependencies changed. Current database
+counts remain **4 decisions, 6 actions, 8 reminders, 67 audits, 3 channel configurations**;
+existing volumes were retained. Fresh private DB/crypto backups and diagnostic events are in
+`/home/sysop/wire/wire-team-bot-backups/latency-05q9np8o/`. No database was reset or restored.
+The reconnect cycle still occurs after restoration. No runtime regression suite was rerun
+for these temporary diagnostic operations and documentation-only changes.
+
+Resume final manual QA after the connection issue is corrected: observe sustained connectivity,
+then time several mentioned `status` requests at different offsets in the former 30-second
+cycle. Correct content and a native quote alone do not pass this latency gate.
 
 #### Final manual QA on the pinned staging candidate
 

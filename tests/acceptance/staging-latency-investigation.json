@@ -1,0 +1,248 @@
+{
+  "date": "2026-09-18",
+  "status": "unresolved; blocks final Wire acceptance",
+  "runtimeCommit": "ae618ff3c7b5cda642e603ed8a755076bdf1655d",
+  "operatorObservation": {
+    "command": "status",
+    "nativeReplyCorrect": true,
+    "approximateRoundTripSeconds": 25,
+    "timingSource": "operator report, not an instrumented round trip"
+  },
+  "applicationObservation": {
+    "channelStateLogAt": "2026-09-18T16:58:10.168Z",
+    "outboundSendStartAt": "2026-09-18T16:58:10.174Z",
+    "elapsedMilliseconds": 6,
+    "limitation": "Measures this section of the handler only; no inbound server-event timestamp captured",
+    "modelInvoked": false
+  },
+  "baseline": {
+    "reconnectCycleSecondsApprox": 31.15,
+    "websocketLifetimeSecondsApprox": 30,
+    "messageProcessingObservedDuringReconnectCatchup": true
+  },
+  "experiments": [
+    {
+      "configuration": "Node native WebSocket, unchanged candidate",
+      "result": "Repeated approximately 30-second connections, followed by SDK catch-up"
+    },
+    {
+      "configuration": "Existing SDK ws fallback via --no-experimental-websocket",
+      "startedAt": "2026-09-18T17:05:16.904018602Z",
+      "result": "No improvement; SDK warning at 17:05:49.053Z followed by reconnect"
+    },
+    {
+      "configuration": "Temporary content-free ws probe, no application heartbeat",
+      "result": "Opened 17:06:40.375Z, server ping 17:06:55.360Z, remote close code 1000 at 17:07:10.381Z"
+    },
+    {
+      "configuration": "Temporary ws probe with application ping every ten seconds",
+      "result": "No improvement; server ping received and automatic control pong sent; no application pong observed; remote close code 1000 after approximately 30 seconds"
+    }
+  ],
+  "syntheticControl": {
+    "environment": "exact candidate image, local ws server",
+    "native": {
+      "pongs": 1,
+      "binaryFrames": 1
+    },
+    "ws": {
+      "pongs": 1,
+      "binaryFrames": 1
+    }
+  },
+  "transportEvents": [
+    {
+      "time": "2026-09-18T17:06:40.375Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:06:55.360Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:07:10.381Z",
+      "component": "transport-probe",
+      "event": "close",
+      "code": 1000
+    },
+    {
+      "time": "2026-09-18T17:07:11.515Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:07:26.489Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:07:41.521Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:07:41.522Z",
+      "component": "transport-probe",
+      "event": "close",
+      "code": 1000
+    },
+    {
+      "time": "2026-09-18T17:07:42.658Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:07:50.380Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:08:00.386Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    },
+    {
+      "time": "2026-09-18T17:08:05.403Z",
+      "component": "transport-probe",
+      "event": "sent-control-pong"
+    },
+    {
+      "time": "2026-09-18T17:08:05.404Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:08:10.391Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    },
+    {
+      "time": "2026-09-18T17:08:20.388Z",
+      "component": "transport-probe",
+      "event": "close",
+      "code": 1000
+    },
+    {
+      "time": "2026-09-18T17:08:21.524Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:08:31.531Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    },
+    {
+      "time": "2026-09-18T17:08:36.543Z",
+      "component": "transport-probe",
+      "event": "sent-control-pong"
+    },
+    {
+      "time": "2026-09-18T17:08:36.544Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:08:41.536Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    },
+    {
+      "time": "2026-09-18T17:08:51.532Z",
+      "component": "transport-probe",
+      "event": "sent-control-pong"
+    },
+    {
+      "time": "2026-09-18T17:08:51.533Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:08:51.533Z",
+      "component": "transport-probe",
+      "event": "close",
+      "code": 1000
+    },
+    {
+      "time": "2026-09-18T17:08:52.680Z",
+      "component": "transport-probe",
+      "event": "open"
+    },
+    {
+      "time": "2026-09-18T17:09:02.688Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    },
+    {
+      "time": "2026-09-18T17:09:07.695Z",
+      "component": "transport-probe",
+      "event": "sent-control-pong"
+    },
+    {
+      "time": "2026-09-18T17:09:07.695Z",
+      "component": "transport-probe",
+      "event": "ping",
+      "bytes": 1
+    },
+    {
+      "time": "2026-09-18T17:09:12.693Z",
+      "component": "transport-probe",
+      "event": "sent-app-ping"
+    }
+  ],
+  "restoredState": {
+    "checkedAt": "2026-09-18T17:09:58.636352+00:00",
+    "image": "wire-team-bot:v3-rc-ae618ff",
+    "imageId": "sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0",
+    "startedAt": "2026-09-18T17:09:20.890280941Z",
+    "nodeOptionsPresent": false,
+    "probeMounted": false,
+    "durableCounts": {
+      "Decision": 4,
+      "Action": 6,
+      "Reminder": 8,
+      "AuditLog": 67,
+      "channel_config": 3
+    },
+    "sdkWarnings": [
+      "2026-09-18T17:09:53.131Z"
+    ],
+    "errorCount": 0
+  },
+  "backupDirectory": "/home/sysop/wire/wire-team-bot-backups/latency-05q9np8o",
+  "assessment": {
+    "established": "Connection closes are reproducible with both implementations and active heartbeats; direct status processing is fast once dispatched",
+    "inference": "Investigate backend /await connection handling, including Cannon presence registration with Gundeck before its receive loop; exact cause requires backend logs",
+    "notEstablished": "No confirmed backend root cause or latency fix; SDK/client compatibility remains possible"
+  },
+  "nextCheck": {
+    "backend": "staging.zinfra.io",
+    "endpoint": "/await (omit access_token from logs and handoff)",
+    "windowUtc": "2026-09-18 17:06\u201317:09",
+    "services": [
+      "Cannon",
+      "Gundeck",
+      "nginz"
+    ],
+    "request": "Correlate register-remote/registered, /i/presences failures/timeouts, PongTimeout and close reasons; confirm deployed backend revision before attributing cause",
+    "acceptance": "After correction, observe a sustained connection and repeat several mentioned status requests at different offsets in the former 30-second cycle; record actual round-trip time"
+  },
+  "safety": {
+    "runtimeCodeChanged": false,
+    "temporaryOptionsRemoved": true,
+    "temporaryProbeUnmounted": true,
+    "productionTouched": false,
+    "databaseResetOrRestored": false,
+    "newDependencies": false,
+    "messageContentsOrCredentialsRecorded": false
+  },
+  "validation": "Diagnostic operations and evidence-only documentation; runtime regression suites were not rerun. Earlier automated results remain historical."
+}
