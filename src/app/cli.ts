@@ -174,7 +174,14 @@ async function main() {
   const messageBuffer   = new ConversationMessageBuffer(config.app.messageBufferSize);
   const memberCache     = new InMemoryMemberCache();
   const userResolution  = new MemberCacheUserResolutionService(memberCache);
-  const dateTimeService = new SystemDateTimeService();
+  // Clock injection is confined to the synthetic CLI; the Wire app always uses
+  // the real clock. Timers/queue draining continue to use real elapsed time.
+  const referenceTime = evaluationMode && process.env.E2E_REFERENCE_TIME
+    ? new Date(process.env.E2E_REFERENCE_TIME) : undefined;
+  if (referenceTime && !Number.isFinite(referenceTime.getTime())) throw new Error("Invalid E2E_REFERENCE_TIME");
+  const timezone = evaluationMode ? process.env.E2E_TIMEZONE ?? "UTC" : "UTC";
+  new Intl.DateTimeFormat("en-GB", { timeZone: timezone });
+  const dateTimeService = new SystemDateTimeService(referenceTime ? () => new Date(referenceTime) : undefined);
   const scheduler       = new InProcessScheduler(logger);
   const llmFactory      = new LLMClientFactory(config.llm.jeeves, logger);
 
@@ -196,7 +203,7 @@ async function main() {
       tags: [],
       stakeholders: [],
       relatedChannels: [],
-      timezone: "UTC",
+      timezone,
       locale: "en",
       joinedAt: new Date(),
     });
