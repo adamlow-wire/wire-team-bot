@@ -532,18 +532,29 @@ completed and has created the overdue-recovery reminder for test 4, in **Demo fo
 Scoped DB inspection confirms `ACT-0004` is the deck action, owned by qualified @adamlow_wire,
 created by @adamhuman, due September 18 12:00 UTC, open/version 1. Structured mention assignment
 now has actual Wire evidence. `REM-0005` is cancelled/version 2 with creation/cancellation audit
-entries; its original deadline is 06:31:04.849 UTC. `REM-0006` is pending/version 2, rescheduled
+entries; its original deadline is 06:31:04.849 UTC. `REM-0006` was initially pending/version 2, rescheduled
 from 06:31:38.390 to 06:51:51.637 UTC with a matching snooze audit. Cancellation and snooze
-mutations pass; non-delivery at original deadlines and eventual snoozed delivery remain pending.
-`REM-0007` is pending/version 1, due 06:27:40.003 UTC. The staging bot was stopped cleanly at
+mutations pass. Later inspection after both deadlines finds `REM-0005` still cancelled with no
+firing audit; `REM-0006` sent at its revised deadline and was saved fired/version 3 at
+06:51:51.843 UTC, 206 ms after the trigger, with one firing audit. Final Wire UI confirmation
+of cancellation non-delivery and snoozed receipt remains pending.
+`REM-0007` was initially pending/version 1, due 06:27:40.003 UTC. The staging bot was stopped cleanly at
 06:23:12.610 UTC with existing volumes/image retained. At 06:27:50.149 UTC it was still stopped,
 and the overdue reminder remained pending/version 1 with no firing audit. The same container
 restarted at 06:27:50.197 UTC. Outbound send succeeded; the reminder was saved fired/version 2
 at 06:27:51.812 UTC, with exactly one firing audit and its original trigger unchanged. Startup
 rehydrated two reminders and two conversations, connected, and reported zero SDK errors.
 **Overdue recovery, successful send and durable status pass; operator UI receipt confirmation
-remains pending.** The snoozed reminder is due later, at 06:51:51.637 UTC.
+remains pending.**
 No build or automated suite was rerun for this operational test.
+
+Decision corrections on Wire (2026-09-18, `ad01b3a`): the operator screenshot confirms SQLite
+`DEC-0003` was superseded by Postgres `DEC-0004`, with correct current-decision/rationale recall,
+then `DEC-0004` was revoked. Follow-up correctly reports no active decision and does not revive
+SQLite. Qualified Demo for Anna DB inspection confirms `DEC-0003` superseded/version 2 with
+`supersededBy=DEC-0004`, `DEC-0004` revoked/version 2 with `supersedes=DEC-0003`, empty context
+arrays, and four create/update audit events attributed to Adam Low. **Test 5 passes.** This does
+not resolve the separate recorder/decider attribution bug; both roles coincide in this test.
 
 Remaining entry checks, in order:
 
@@ -605,6 +616,7 @@ reason; an implementation or historical passing count alone does not close a rel
 | 2026-09-17 | Named-assignment fix validated and staged | `17b8e42`: 260 tests, build/type-check/lint pass; targeted post-process inventory confirms one correctly owned/dated/audited action. Immutable-image e2e 56/59, new scenario passes; TC-ID-03 wording failure passes unchanged on single rerun and remains in full-run totals. Staging connected with preserved volumes, readable backups and zero SDK errors. | Retry the demo sentence; use fresh cancellation/snooze tests; combined-command and remaining acceptance gaps stay open |
 | 2026-09-17 | Structured mention repair validated and staged | `ad01b3a`: 278 tests and build/type-check/lint pass. Immutable-image e2e 56/60; new demo and all action commands pass. Post-process DB confirms qualified owner, Friday deadline, one action/audit. Full run reveals a reproducible recorder/decider answer bug; preserved as an open gate. | Repeat the demo with the real person mention; fix attribution, review remaining failures and complete Wire/human gates |
 | 2026-09-18 | Live mention, reminder mutations and overdue recovery | Operator reports tests 1–3 complete. Scoped records verify one correctly owned deck action and audited cancellation/snooze. REM-0007 remained pending past its deadline with the bot stopped, then sent successfully and became fired/version 2 with one firing audit after restart. Same image/volumes; zero startup SDK errors. | Confirm overdue reminder in Wire; observe cancelled reminder non-delivery and snoozed delivery at revised time; continue tests 5–8 and remaining code/human gates |
+| 2026-09-18 | Wire decision correction lifecycle passed | Screenshot and qualified DB inspection verify supersede, current recall, revoke and no automatic revival; linked DEC-0003/4 states, versions and four audits match. Post-deadline reminder inspection also confirms cancelled REM-0005 has no firing audit and snoozed REM-0006 fired once at the revised time. | Continue passive capture/completion, channel isolation and privacy-state checks; confirm reminder UI receipt; retain separate attribution bug |
 | — | P3 pilot decision | Not started | Record usefulness, noise, latency and up to three next fixes |
 
 The former v1/v2 plans, SDK migration plan and V3 gap list are superseded by this document.

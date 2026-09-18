@@ -288,7 +288,7 @@
     "reminderCancellationAndSnooze": {
       "date": "2026-09-17",
       "runtimeCommit": "f3b2eed",
-      "status": "fresh cancellation and snooze mutations passed on 2026-09-18; original-deadline non-delivery and revised-time snooze delivery still pending",
+      "status": "cancellation and snooze mutations passed; post-deadline DB verifies cancelled reminder never marked fired and snoozed reminder sent at revised deadline; operator final UI confirmation pending",
       "preparedRecords": [
         {
           "record": "REM-0003",
@@ -338,6 +338,37 @@
           "revisedTriggerAt": "2026-09-18T06:51:51.637Z",
           "result": "reschedule passed; delivery at revised time still pending"
         }
+      },
+      "postDeadlineInspection": {
+        "date": "2026-09-18",
+        "records": [
+          {
+            "id": "REM-0005",
+            "status": "cancelled",
+            "version": 2,
+            "triggerAt": "2026-09-18T06:31:04.849",
+            "updatedAt": "2026-09-18T06:21:15.063",
+            "firingAudits": 0
+          },
+          {
+            "id": "REM-0006",
+            "status": "fired",
+            "version": 3,
+            "triggerAt": "2026-09-18T06:51:51.637",
+            "updatedAt": "2026-09-18T06:51:51.843",
+            "firingAudits": 1
+          },
+          {
+            "id": "REM-0007",
+            "status": "fired",
+            "version": 2,
+            "triggerAt": "2026-09-18T06:27:40.003",
+            "updatedAt": "2026-09-18T06:27:51.812",
+            "firingAudits": 1
+          }
+        ],
+        "result": "REM-0005 remains cancelled with no firing audit; REM-0006 fired once at revised time, status saved 206ms after trigger; REM-0007 remains fired once",
+        "boundary": "Successful send precedes fired update; visible receipt/absence in Wire still needs operator confirmation"
       }
     },
     "combinedCommands": {
@@ -445,6 +476,88 @@
           "info": 23
         }
       }
+    },
+    "decisionCorrections": {
+      "date": "2026-09-18",
+      "runtimeCommit": "ad01b3a",
+      "result": "passed: operator screenshot plus scoped DB and audit inspection",
+      "conversation": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+      "stored": {
+        "decisions": [
+          {
+            "id": "DEC-0003",
+            "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+            "conversationDom": "staging.zinfra.io",
+            "authorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "authorDom": "staging.zinfra.io",
+            "summary": "use SQLite for the acceptance smoke ledger because setup is simple",
+            "status": "superseded",
+            "version": 2,
+            "supersedes": null,
+            "supersededBy": "DEC-0004",
+            "context": []
+          },
+          {
+            "id": "DEC-0004",
+            "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+            "conversationDom": "staging.zinfra.io",
+            "authorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "authorDom": "staging.zinfra.io",
+            "summary": "use Postgres for the acceptance smoke ledger because transactions are required",
+            "status": "revoked",
+            "version": 2,
+            "supersedes": "DEC-0003",
+            "supersededBy": null,
+            "context": []
+          }
+        ],
+        "audits": [
+          {
+            "entityId": "DEC-0003",
+            "action": "entity_created",
+            "actorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "actorDom": "staging.zinfra.io",
+            "timestamp": "2026-09-18T08:20:00.423",
+            "details": {
+              "summary": "use SQLite for the acceptance smoke ledger because setup is simple"
+            }
+          },
+          {
+            "entityId": "DEC-0004",
+            "action": "entity_created",
+            "actorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "actorDom": "staging.zinfra.io",
+            "timestamp": "2026-09-18T08:20:22.749",
+            "details": {
+              "supersedes": "DEC-0003"
+            }
+          },
+          {
+            "entityId": "DEC-0003",
+            "action": "entity_updated",
+            "actorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "actorDom": "staging.zinfra.io",
+            "timestamp": "2026-09-18T08:20:22.749",
+            "details": {
+              "supersededBy": "DEC-0004"
+            }
+          },
+          {
+            "entityId": "DEC-0004",
+            "action": "entity_updated",
+            "actorId": "a558cea2-b054-485c-871c-bf9f90847d65",
+            "actorDom": "staging.zinfra.io",
+            "timestamp": "2026-09-18T08:21:15.55",
+            "details": {
+              "reason": "`acceptance smoke test finished`",
+              "status": "revoked"
+            }
+          }
+        ]
+      },
+      "recallBeforeRevocation": "Postgres current, transactions rationale, SQLite superseded",
+      "recallAfterRevocation": "No active decision; SQLite does not reactivate",
+      "boundary": "Does not close the separate recorder-versus-decider attribution failure; this test uses the same recorder and stated decision maker."
     }
   },
   "previousImageSmoke": {
