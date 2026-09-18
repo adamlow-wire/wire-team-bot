@@ -3,7 +3,8 @@
 Updated: 2026-09-18. Release runtime: `4bc7e1f` (baseline `e35428b`).
 
 This is the single source of truth for the app, feature scope, architecture and delivery
-progress. The next version is a **real-world pilot of the existing bot**, with targeted
+progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
+QA acceptance of the existing bot, followed by a small real-world pilot with targeted
 reliability fixes. It is not a rewrite or a commitment to every former V3 proposal.
 
 [README.md](README.md) covers setup and operation. [AGENTS.md](AGENTS.md) covers contributor
@@ -222,6 +223,67 @@ approved provider configuration and human review; the developer prepares and fix
 These are operational inputs, not reasons to invent additional product features.
 
 Stop adding scope when P0–P2 pass. Record at most three evidence-backed follow-ups from P3.
+
+### Automated QA before final manual acceptance
+
+Agreed direction (2026-09-18): freeze feature scope and finish automated QA before asking Adam
+for one final manual acceptance session. The SDK proof of concept is the product framing;
+this is not a production release. Existing manual screenshots remain evidence, but repeated
+operator demos must not substitute for automated reproduction and stored-record inspection.
+
+| Step | Work the developer runs autonomously | Completion evidence |
+|---|---|---|
+| QA-0 | Reconcile README with the actual SDK/configuration, keep only `main` active, explain archived work, and normalize repository commit attribution as requested. | README has the PoC statement and no former product-name references; repository inventory and history verification below. |
+| QA-1 | Fix recorder-versus-decider attribution in retrieval/answers. Identify the recorder as such; report an actual decider only when the stored fact supports it. Reproduce TC-DEC-07 with Alice recording Carol/Dave's decision. | Mocked regression plus real-model answer and stored-source checks; no contradictory attribution even if the model judge says PASS. |
+| QA-2 | Give deterministic, truthful guidance for multiple commands in one message. Keep one command per message for this PoC; do not invent a batch executor. | Two reminder requests receive a split-message explanation and create no partial/accidental records; separate messages each create one reminder. Include structured mentions and formatted commands. |
+| QA-3 | Separate application failures from evaluator errors. Use explicit ownership for the positive dedup test and retain ambiguous ownerless wording as a negative case. Ground date checks in scenario time/timezone and actual persisted deadlines; check recorder identity against stored authors. | Preserve the original 57/60 report and explain each expectation change. Add positive and negative coverage rather than relaxing assertions; a judge PASS cannot override wrong stored facts. Dates and identities have deterministic assertions as well as answer review. |
+| QA-4 | Run build, type-check, lint, unit/contract and isolated Postgres/pgvector tests. Exercise paused/secure buffers, queued/in-flight cancellation, process restart, scoped ID reads/writes, failed sends, overdue recovery, malformed outputs and timeouts. | All deterministic checks pass. Unique excluded markers absent from stored records/diagnostics and captured mock model requests. No shared DB resets; test data stays in isolated conversations/databases. |
+| QA-5 | Run the full real-model e2e suite, the fixed 20-event/10-question sample, reaction lifecycle and simulation after extraction/pipeline changes. Inspect all stored records after drain, including silent captures. | Versioned inputs/outputs, fact/source/owner matches, precision and recall with counts, duplicates, latency, failures and unsolicited messages. Human quality approval remains pending; no unexplained runtime failures or hidden judge overrides. |
+| QA-6 | Build one immutable candidate from the tested commit and run the full suite against that image. Back up staging DB/crypto state, activate that exact image, verify hydration/decryption readiness and collect a concise QA packet. | Image digest, configuration without secrets, test results, rollback steps and exact manual cases in this plan. Do not silently replace the candidate during manual QA. |
+| QA-7 | Adam performs final Wire UI and usefulness acceptance using the prepared candidate. The developer handles coordinated restarts and post-process DB/audit inspection during the same session. | All manual cases below accepted; any defect returns to its automated reproduction/fix/regression step before a focused retest. |
+
+Use the existing [README validation commands](README.md#release-candidate-acceptance), fixtures,
+CLI and test runner; add bounded assertions or a small orchestration script only where an
+existing gate is not reproducible. No new framework, model-provider migration, queue service
+or feature subsystem. A provider outage is a recorded blocked check, never a silent pass.
+Autonomous work stops at a concrete candidate and QA packet ready for Adam; it does not claim
+manual acceptance, reset shared data or deploy to production.
+
+Final manual QA packet, prepared after QA-1 through QA-6:
+
+1. **Wire presentation:** real mentions, two quick requests with correct native reply targets,
+   passive capture/completion reactions, member names and registered app branding.
+2. **Core journeys:** decision correction/recall with correct recorder and decider, action
+   assignment/reassignment/deadline/completion, reminder creation/cancel/snooze/downtime recovery.
+3. **Privacy/access:** PAUSED and SECURE with unique markers before/after a coordinated restart,
+   then scoped read/mutation denials from the second designated test channel. Developer verifies
+   records/audits after processing; absence of a visible reply is not enough.
+4. **Quality/usefulness:** approve at least 20 expected captures and ten known answers, plus an
+   unknown-answer refusal and catch-up/open/overdue summaries. Apply §5 thresholds without
+   inventing writes/owners; judge latency and noise from the supplied measurements.
+
+Only after this single final acceptance stage passes does the five-day P3 pilot begin.
+Current state: QA-0 in progress; QA-1/QA-2 remain open. The most recent unchanged real-model
+suite is 57/60, so the automated acceptance gate is not yet closed.
+
+Repository inventory (2026-09-18): `main` is the only active branch; PRs #8 and #9 are closed.
+Issue #7 describes obsolete composite-button confirmation UI, which the current text-command
+PoC does not require; retain its history, close it as not planned, and do not treat it as an
+unimplemented release feature. The following tags are recovery snapshots, not merge queues:
+
+| Archive tag under `archive/2026-09-18/` | Preserved work | Why it is outside the active candidate |
+|---|---|---|
+| `docs-app-goals` | Separate goals document and earlier docs changes | Superseded by this single plan and current README. |
+| `configurable-bot-name` | General configurable-name implementation | Deferred in the scope table; fixed product branding is sufficient for QA. |
+| `v3.0` | Broader redesign including alternate model/queue stacks, seed loading and general intent execution | Conflicts with the current bounded PoC scope and dependency constraints. |
+
+Commit author/committer identity is normalized to Adam Low <adam.low@wire.com>, with unwanted
+assistant attribution/session links removed from messages. History rewrite changes commit IDs,
+not application source trees. [The commit mapping](tests/acceptance/history-map.json) maps
+original full IDs to their rewritten counterparts. Existing image tags and evidence reports
+retain original IDs/configuration so historical measurements are not misrepresented as new runs.
+A private pre-rewrite Git bundle is retained outside the repository. GitHub may cache contributor
+statistics or retain old closed-PR commit snapshots independently of current branch/tag history.
 
 ### Disposition of the former V3 gaps
 

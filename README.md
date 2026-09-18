@@ -1,7 +1,14 @@
 # Wire Team Bot
 
-Wire Team Bot helps a Wire team capture decisions and actions, recall its history, and follow up on
-commitments. The existing app is being prepared for a small real-world pilot.
+**This is a proof of concept to demonstrate the power of the Wire JS SDK.**
+Wire Team Bot uses the official `@wireapp/wire-apps-js-sdk` to receive encrypted Wire messages,
+resolve structured mentions, send native replies and reactions, and preserve its application
+identity across restarts. A team assistant demonstrates these capabilities through decisions,
+actions, reminders and channel-scoped questions.
+
+**Status: QA in progress; not a production-ready release.** Automated checks and a final manual
+acceptance session must finish before the small team pilot. The SDK provides the Wire transport;
+this application supplies persistence, model calls and workflow logic.
 
 **[PLAN.md](PLAN.md) defines the app, architecture, feature scope and delivery progress.**
 This README is the setup and operations guide. [AGENTS.md](AGENTS.md) contains contributor rules.
@@ -28,7 +35,7 @@ that must be closed before sensitive team use. Do not treat the current build as
 git clone <repo-url>
 cd wire-team-bot
 cp .env.example .env
-# Edit .env — set the Wire app token / app ID, generate WIRE_SDK_CRYPTO_KEY, set JEEVES_LLM_BASE_URL
+# Edit .env using the template: Wire credentials, crypto key, model endpoint and model slots
 openssl rand -hex 32   # paste as WIRE_SDK_CRYPTO_KEY
 ```
 
@@ -63,20 +70,21 @@ Everything below runs from a dev box with Docker. The image is built locally, so
    `WIRE_SDK_API_HOST`, `WIRE_SDK_APP_ID`, `WIRE_SDK_APP_DOMAIN`, `WIRE_SDK_API_TOKEN`, and a freshly generated
    `WIRE_SDK_CRYPTO_KEY`.
 
-2. **Add your LLM settings** (`JEEVES_LLM_BASE_URL`, `JEEVES_LLM_API_KEY`, model overrides) to `.env.staging`.
+2. **Add the model endpoint, API key, model slots and embedding mode** from [.env.example](.env.example) to `.env.staging`. Use the exact keys in the template and [config.ts](src/app/config.ts); copying different names will not configure the application.
 
 3. **Start the staging stack** (own container names, volumes, and Postgres port 5433, so it coexists with a production stack):
 
    ```bash
    npm run staging:up
-   npm run staging:logs        # expect: migrations, "CoreCrypto initialized", websocket connected
+   npm run staging:logs        # expect migrations, member-cache hydration and Wire client connected
    ```
 
 4. **Add the app to a conversation** as a team admin in the staging Wire client. Wire Team Bot greets and asks for the
    channel purpose. Then try `decision: ship it`, `@Wire Team Bot what did we decide?`, `remind me in 2 minutes to test`.
 
-5. **Restart test**: `docker restart jeeves-staging`, then send another message. It must still decrypt; the SDK's
-   persistent keystore is the point of this migration.
+5. **Restart test**: find the bot container with `docker compose -f docker-compose.staging.yml ps`,
+   then run `docker restart <bot-container-name>`. Send another message and verify decryption and
+   member names. Retain the existing crypto key and storage volume.
 
 6. **Token expired or revoked?** Mint a new one without creating a new identity, then restart:
 
@@ -87,8 +95,8 @@ Everything below runs from a dev box with Docker. The image is built locally, so
 
    Keep the existing `WIRE_SDK_CRYPTO_KEY` and volume; only `WIRE_SDK_API_TOKEN` changes.
 
-`npm run staging:down` stops the stack. Add `-v` manually (`docker compose -f docker-compose.staging.yml down -v`) only
-when you want to throw away the staging identity's crypto store and start over with a new `create`.
+`npm run staging:down` stops the stack while retaining its volumes. Do not remove the database
+or crypto volumes during QA or ordinary restarts.
 
 ## Environment variables
 
@@ -103,7 +111,7 @@ when you want to throw away the staging identity's crypto store and start over w
 | `WIRE_SDK_CRYPTO_KEY` | 32 random bytes, hex-encoded (64 chars), protecting the local CoreCrypto keystore. Generate with `openssl rand -hex 32`. Losing it means losing all E2EE state. |
 
 The SDK stores its SQLite database and keystore under `./storage` relative to the process working directory
-(`/app/storage` in the container, mounted as the `jeeves-crypto` volume).
+(`/app/storage` in the container, backed by the persistent volume declared in the Compose file).
 
 ### Database
 
@@ -111,56 +119,27 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 |---|---|---|
 | `DATABASE_URL` | `postgres://wirebot:wirebot@localhost:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string. The docker-compose stack overrides this to `postgres:5432` automatically. |
 
-### Wire Team Bot LLM
+### Model configuration
 
-| Variable | Default | Description |
-|---|---|---|
-| `JEEVES_LLM_BASE_URL` | `http://localhost:11434/v1` | Shared chat endpoint; embeddings default to it |
-| `JEEVES_LLM_API_KEY` | *(empty)* | Shared chat API key; embeddings default to it |
-| `JEEVES_LLM_TIMEOUT_MS` | `60000` | Per-call timeout in milliseconds |
-| `JEEVES_EMBED_BASE_URL` | *(= `JEEVES_LLM_BASE_URL`)* | Separate OpenAI-compatible `/embeddings` provider, for chat providers without one (Anthropic) |
-| `JEEVES_EMBED_API_KEY` | *(= `JEEVES_LLM_API_KEY`)* | API key for the embedding provider |
-| `JEEVES_EMBEDDINGS` | `auto` | `auto` disables embeddings when the embedding host is `api.anthropic.com`; `on` / `off` force it |
-| `JEEVES_MODEL_CLASSIFY` | `qwen3-next:80b` | Tier 1 classification model |
-| `JEEVES_MODEL_EXTRACT` | `qwen3-next:80b` | Tier 2 extraction model |
-| `JEEVES_MODEL_EMBED` | `qwen3-embedding:4b` | Embedding model |
-| `JEEVES_MODEL_SUMMARISE` | `qwen3-next:80b` | Summarisation model |
-| `JEEVES_MODEL_QUERY_ANALYSE` | `qwen3-next:80b` | Query analysis model |
-| `JEEVES_MODEL_RESPOND` | `qwen3-next:80b` | Response generation model |
-| `JEEVES_MODEL_COMPLEX` | `gpt-oss:120b` | Complex synthesis escalation model |
-| `JEEVES_FALLBACK_*` | *(see config.ts)* | Fallback for each slot on 503/timeout |
-| `JEEVES_EMBED_DIMS` | `2560` | Embedding vector dimensions — must match your model |
-| `JEEVES_COMPLEXITY_THRESHOLD` | `0.7` | Query complexity above which `respond` escalates to `complexSynthesis` |
-| `JEEVES_EXTRACT_CONFIDENCE_MIN` | `0.6` | Minimum extraction confidence to persist a result |
-| `JEEVES_CONTRADICTION_THRESHOLD` | `0.78` | Cosine similarity to trigger contradiction detection |
-| `JEEVES_ENTITY_DEDUP_THRESHOLD` | `0.92` | Cosine similarity for entity deduplication |
+[.env.example](.env.example) lists the accepted environment keys;
+[config.ts](src/app/config.ts) is authoritative for defaults and validation. Configure the chat
+endpoint, API key, all six chat model slots and their fallbacks. Models must be available at
+your endpoint. The client uses OpenAI-compatible chat completions. Provider compatibility
+and answer quality must be checked with the real-model suite.
 
-### Provider configuration
+Embeddings can use a separate endpoint or be disabled. For the current acceptance run, set the
+embedding mode to `off` in the private environment file before running the commands below.
+Structured retrieval and summaries work without vectors. Semantic retrieval, entity similarity
+matching and contradiction detection require a working embedding provider.
 
-The client uses OpenAI-style chat completions. Set all chat model slots and their fallbacks to
-models available at your chosen endpoint; a matching API shape alone does not validate output
-quality. Test the selected configuration with the e2e harness.
+The database column is `vector(2560)`. Enabled embeddings and their fallback must produce 2560
+finite values; changing an environment setting does not migrate the column. Search is exact
+cosine search. Configuration/output checks are implemented; there is no live startup model probe.
 
-Embeddings can use a separate endpoint. `JEEVES_EMBEDDINGS=auto` currently disables them when
-the embedding host is `api.anthropic.com`; `off` disables them explicitly. Structured retrieval
-and summaries remain available. Vector-dependent semantic retrieval, entity similarity dedup
-and contradiction detection require working embeddings.
-
-For a local embedding service in staging:
-
-```bash
-npm run staging:up:embeddings
-docker exec jeeves-staging-ollama ollama pull qwen3-embedding:4b
-```
-
-Set `JEEVES_EMBED_BASE_URL`, model and dimensions accordingly. Current migrations use
-`vector(2560)` and exact cosine search. Changing `JEEVES_EMBED_DIMS` alone does not alter the
-column. Validate actual output dimensions, including any fallback model; enabled configuration must use 2560, and model responses (including fallback) are checked for finite values and matching dimensions. There is no live startup embedding probe.
-
-Use `JEEVES_*` configuration. The former `LLM_PASSIVE_*` / `LLM_CAPABLE_*` variables are no
-longer read by `config.ts`, and those model tiers are not an active foreground router.
-See [config.ts](src/app/config.ts) for definitive defaults and [.env.example](.env.example) for
-configuration keys; provider-specific examples are not a guarantee of model availability.
+An optional local embedding service is available through `npm run staging:up:embeddings`.
+Find its container using `docker compose -f docker-compose.staging.yml ps`, then install the
+configured model with `docker exec <embedding-container-name> ollama pull <model-name>`.
+Set its endpoint and model using the keys in the template.
 
 ### Application
 
@@ -212,18 +191,21 @@ reminders, decisions, actions and addressed privacy controls; code blocks and pr
 are not treated as direct commands. Actual person mentions carry their qualified user identity through action creation and
 reassignment, with membership checked in this conversation. Plain-text assignees require an
 unambiguous full name or handle. The addressed named-task variant also accepts `@Bob really needs to …`.
-Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. The `JEEVES_*` configuration keys and old bot-name text prefix remain compatible; the product name is Wire Team Bot.
+Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. Runtime configuration remains compatible with existing deployments; use the keys in the linked template.
 
 ## Development
 
 ```bash
-npm ci                        # see "Dependency notes" below before using plain `npm install`
+npm ci --ignore-scripts
+npm rebuild prisma @prisma/client @prisma/engines
+npx prisma generate
 cp .env.example .env          # fill in the Wire app token, app ID and crypto key
-npx prisma migrate dev        # create the local DB schema
+npx prisma migrate deploy     # apply existing migrations to your isolated local DB
 npm run dev                   # start with ts-node
 
 npm test                      # run unit + contract tests (Vitest)
 npx tsc --noEmit              # type-check
+npm run lint                  # lint source and tests
 
 npm run build && npm run test:e2e            # end-to-end LLM-as-judge test suite
 npm run test:e2e -- --filter TC-DEC         # run a subset of scenarios
@@ -245,8 +227,7 @@ Database migrations live in `prisma/migrations/`. The schema is in `prisma/schem
   ```
 
 - **`npm install` on npm 10.9.x** fails with `Cannot read properties of null (reading 'edgesOut')` while resolving
-  this tree. Use `npm ci` with the committed lockfile, or npm 11+ (`npx npm@12 install`) when you need to change
-  dependencies.
+  this tree. Use `npm ci` with the committed lockfile, and the install sequence above. Dependency changes are outside the current QA scope.
 - **`npm ci` compiles better-sqlite3 unnecessarily** on npm 10 (it ignores the package's `gypfile: false` when
   reading from the lockfile). The Dockerfile and CI therefore run
   `npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines`; Prisma is the only dependency whose
@@ -302,6 +283,9 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 The current local image is `wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#candidate-disposition--2026-09-18)
 for passing checks, the retained e2e failures and human/Wire acceptance still required.
+The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
+failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
+QA session. No new features or legacy branch imports are part of that sequence.
 
 Use synthetic data in a separate database. The development run used Postgres 16 + pgvector,
 `node:22-trixie-slim`, and the existing staging provider settings. Embeddings were explicitly
@@ -319,14 +303,13 @@ docker run -d --name wire-team-bot-v3-test-db \
 docker run --rm -it --network host --user "$(id -u):$(id -g)" \
   --env-file .env.staging -e npm_config_cache=/tmp/npm-cache \
   -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
-  -e JEEVES_EMBEDDINGS=off -v "$PWD":/app -w /app node:22-trixie-slim bash
+  -v "$PWD":/app -w /app node:22-trixie-slim bash
 
 # Inside that container:
 npx prisma migrate deploy
 npm run build
 npx tsc --noEmit
 npm run lint
-npm test
 INTEGRATION_TESTS=1 npm test
 npm run test:e2e -- --json
 EVALUATION_COMMIT=<tested-commit> npm run test:acceptance
@@ -342,7 +325,7 @@ already installed `ts-node`; they do not download an unpinned runner.
 To repeat the reaction lifecycle check in that isolated test container:
 
 ```bash
-EVALUATION_COMMIT=7384b39 \
+EVALUATION_COMMIT=<tested-commit> \
 EVALUATION_FIXTURE=tests/acceptance/reaction-fixture.json \
 EVALUATION_REPORT=tests/acceptance/reaction-report.json npm run test:acceptance
 ```
@@ -358,9 +341,11 @@ conversation; existing records do not receive retroactive reactions.
 The original `e35428b` baseline was built in a separate archived checkout with only
 [baseline-cli.patch](tests/acceptance/baseline-cli.patch) applied. That patch adds stable input IDs,
 framed replies and per-event drain to its CLI; it does not change routing, model prompts or writes.
-To reproduce, archive `e35428b` into a temporary directory, apply the patch with `patch -p1`, use the
-same locked dependencies and build it. Run the current evaluator with `EVALUATION_ROOT` pointing
-to that checkout, `EVALUATION_COMMIT=e35428b` and a separate `EVALUATION_REPORT` output path.
+Historical IDs in reports and image tags describe the original runs. Resolve `e35428b` through
+[the commit mapping](tests/acceptance/history-map.json) before archiving its rewritten commit
+into a temporary directory. Apply the patch with `patch -p1`, use the same locked dependencies
+and build it. Run the evaluator with `EVALUATION_ROOT` pointing to that checkout,
+`EVALUATION_COMMIT=<mapped-baseline-commit>` and a separate `EVALUATION_REPORT` output path.
 Use the same isolated DB and model slots listed in the baseline report.
 
 The fixed sample is [capture-fixture.json](tests/acceptance/capture-fixture.json). Compare
@@ -396,7 +381,7 @@ and its development tooling. Keep `/app/dist` and `/app/node_modules` from the i
 docker run --rm --network host --user "$(id -u):$(id -g)" \
   --env-file .env.staging \
   -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
-  -e JEEVES_EMBEDDINGS=off -e NODE_PATH=/validation/node_modules \
+  -e NODE_PATH=/validation/node_modules \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
