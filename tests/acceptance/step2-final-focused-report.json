@@ -1,0 +1,71 @@
+[
+  {
+    "runId": "mu72yr24",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-DEC-06",
+        "description": "Decision with named participants \u2014 response references who decided",
+        "passed": true,
+        "elapsedMs": 1180,
+        "outputs": [
+          "Decision **DEC-0411** logged: Alice and Bob agreed we will adopt a monorepo structure for all services"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:55:24.035Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-DEC-06-step-1",
+            "text": "decision: Alice and Bob agreed we will adopt a monorepo structure for all services"
+          }
+        ],
+        "records": [
+          {
+            "type": "decision",
+            "source": "TC-DEC-06-step-1",
+            "content": "Alice and Bob agreed we will adopt a monorepo structure for all services",
+            "author": "alice@cli.local",
+            "decidedBy": [],
+            "status": "active"
+          }
+        ],
+        "channelState": "active",
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72ysw6",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-STATE-03",
+        "description": "Secure mode \u2014 acknowledgement matches the persisted state",
+        "passed": true,
+        "elapsedMs": 1594,
+        "outputs": [
+          "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:55:26.415Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-STATE-03-step-1",
+            "text": "@jeeves secure mode"
+          }
+        ],
+        "records": [],
+        "channelState": "secure",
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  }
+]

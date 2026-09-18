@@ -284,8 +284,8 @@ The CLI can inject a parser reference instant and conversation timezone for synt
 runs only; the Wire composition still uses the real clock. Network timers, processing queues,
 and record creation timestamps remain real. The e2e report records each scenario's reference
 instant/timezone and actual source events. Every scenario inventories stored decisions/actions/
-reminders only after CLI exit and queue drain. Nine scenarios have mandatory exact fact/source/
-qualified identity/status/date checks; other inventories remain available for review without
+reminders only after CLI exit and queue drain. Eleven scenarios have mandatory exact fact/source/
+qualified identity/status/date checks (including durable secure state); other inventories remain available for review without
 being labelled checked. Generated IDs serve command substitutions, not stored-fact matching.
 
 Expectation changes and their reasons:
@@ -302,7 +302,9 @@ Expectation changes and their reasons:
   [first run](tests/acceptance/step2-date-judge-before.json),
   [policy-clarified rerun](tests/acceptance/step2-date-judge-policy-report.json). Four deterministic
   command/list replies in TC-ACT-10/11 now require exact full text, plus exact stored facts,
-  instead of asking a model to interpret fixed output. Wrong date/owner, extra text or an extra
+  instead of asking a model to interpret fixed output. TC-DEC-06 and TC-STATE-03 subsequently
+  received the same exact checks after the full run reproduced judge errors on their correct
+  confirmations; stored names/source and durable secure state are also mandatory. Wrong date/owner, extra text or an extra
   record all fail. Natural-language answers remain model-judged; neither failed report is hidden.
 
 Validation so far: 14/20 date cases failed before the parser fix; after it, **365 tests in 43
@@ -314,6 +316,16 @@ image regression follows before declaring QA-3 complete.
 [rejects the previous image](tests/acceptance/step2-old-image-regression.json) with its wrong
 next-week stored date and confirmation. Original 57/60 and step-one 58/60
 reports remain unchanged. No classifier/extractor change, new dependency or staging deployment.
+
+The first full image run was **61/63** ([report](tests/acceptance/step2-e2e-report.json)); all nine
+then-mandatory stored checks passed. The two failures were fixed-output judge errors in
+TC-DEC-06 (explicit Alice/Bob agreement rejected as a recorder/maker confusion) and TC-STATE-03
+(the existing acknowledgement rejected for not literally saying "secure mode").
+[Focused reruns](tests/acceptance/step2-final-focused-report.json) pass with exact text plus
+persisted facts/state. The final full regression is pending; the runtime image is unchanged.
+The fixed capture sample also completed: [report](tests/acceptance/step2-capture-report.json),
+20 expected/20 stored/20 correct facts (10 decisions, 10 actions), zero duplicates and stored/log
+privacy markers. Human approval remains pending.
 
 #### First automated implementation step — 2026-09-18
 

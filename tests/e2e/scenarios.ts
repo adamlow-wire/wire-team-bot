@@ -93,11 +93,12 @@ export const scenarios: Scenario[] = [
   {
     id: "TC-DEC-06",
     description: "Decision with named participants — response references who decided",
+    stored: [{ type: "decision", sourceStep: 1, terms: ["Alice", "Bob", "monorepo"], author: "alice@cli.local", decidedBy: [], status: "active" }],
     steps: [
       {
         input: "decision: Alice and Bob agreed we will adopt a monorepo structure for all services",
         captureAs: "DEC",
-        assert: "Jeeves confirms the decision was recorded with a DEC- reference and mentions Alice and/or Bob as the participants who made the decision",
+        replyEquals: "Decision **{{DEC}}** logged: Alice and Bob agreed we will adopt a monorepo structure for all services",
       },
     ],
   },
@@ -700,11 +701,12 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-STATE-03",
-    description: "Secure mode — bot confirms context cleared",
+    description: "Secure mode — acknowledgement matches the persisted state",
+    stored: [], channelState: "secure",
     steps: [
       {
         input: "@jeeves secure mode",
-        assert: "Jeeves acknowledges secure mode and indicates the conversation context has been cleared or disregarded",
+        replyEquals: "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice.",
       },
     ],
   },

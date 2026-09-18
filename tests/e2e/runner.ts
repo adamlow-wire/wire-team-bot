@@ -74,6 +74,7 @@ export interface Scenario {
   timezone?: string;
   /** Exact post-drain inventory expectations, including silent captures. */
   stored?: ExpectedRecord[];
+  channelState?: "active" | "paused" | "secure";
   /**
    * Either a flat array of string inputs (context-only steps with no assertion),
    * or Step objects for steps that need assertions or ID capture.
@@ -121,7 +122,7 @@ function scenarioEnv(scenarioId: string, context: EvaluationContext): Record<str
 
 async function runScenario(
   scenario: Scenario,
-): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[]; context: EvaluationContext; events: SourceEvent[]; records: StoredRecord[]; storedChecks: string[] | null }> {
+): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[]; context: EvaluationContext; events: SourceEvent[]; records: StoredRecord[]; channelState: string | null; storedChecks: string[] | null }> {
   const normalised: Step[] = scenario.steps.map(s =>
     typeof s === "string" ? { input: s } : s,
   );
@@ -243,8 +244,9 @@ async function runScenario(
   }
 
   const scope = { conversationId: env.E2E_CHANNEL_ID, conversationDom: "cli.local" };
-  const [decisions, actions, reminders] = await Promise.all([
+  const [decisions, actions, reminders, channel] = await Promise.all([
     prisma.decision.findMany({ where: scope }), prisma.action.findMany({ where: scope }), prisma.reminder.findMany({ where: scope }),
+    prisma.channelConfig.findUnique({ where: { channelId: `${scope.conversationId}@${scope.conversationDom}` } }),
   ]);
   const records: StoredRecord[] = [
     ...decisions.map(d => ({ type: "decision" as const, source: d.rawMessageId, content: d.summary,
@@ -254,12 +256,16 @@ async function runScenario(
     ...reminders.map(r => ({ type: "reminder" as const, source: r.rawMessageId, content: r.description,
       owner: `${r.targetId}@${r.targetDom}`, deadline: r.triggerAt.toISOString(), status: r.status })),
   ];
-  const storedChecks = scenario.stored === undefined ? null
+  const storedChecks = scenario.stored === undefined ? (scenario.channelState ? [] : null)
     : checkStoredRecords(records, scenario.stored, events.map(e => e.eventId));
+  const channelState = channel?.state ?? null;
+  if (scenario.channelState && channelState !== scenario.channelState) {
+    storedChecks!.push(`Expected durable channel state ${scenario.channelState}; found ${channelState}`);
+  }
   for (const reason of storedChecks ?? []) failures.push({ step: "(stored records)",
     assertion: "Post-drain inventory must match expected facts, source events, identities and dates exactly",
     reason, botOutput: "" });
-  return { passed: failures.length === 0, stepOutputs, failures, context, events, records, storedChecks };
+  return { passed: failures.length === 0, stepOutputs, failures, context, events, records, channelState, storedChecks };
 }
 
 // ── CLI process spawner ───────────────────────────────────────────────────────
@@ -324,6 +330,7 @@ interface ScenarioResult {
   context: EvaluationContext;
   events: SourceEvent[];
   records: StoredRecord[];
+  channelState: string | null;
   storedChecks: string[] | null;
   failures: Array<{ step: string; assertion: string; judgeReason: string; botOutput: string }>;
 }
@@ -404,7 +411,7 @@ async function main() {
     }
 
     if (jsonOut) {
-      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, context: result.context, events: result.events, records: result.records, storedChecks: result.storedChecks, failures });
+      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, context: result.context, events: result.events, records: result.records, channelState: result.channelState, storedChecks: result.storedChecks, failures });
     } else if (verbose && result.passed) {
       const lines = result.stepOutputs.join("\n").trim().split("\n").filter(Boolean);
       if (lines.length > 0) {
