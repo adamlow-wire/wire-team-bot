@@ -263,13 +263,13 @@ Final manual QA packet, prepared after QA-1 through QA-6:
    inventing writes/owners; judge latency and noise from the supplied measurements.
 
 Only after this single final acceptance stage passes does the five-day P3 pilot begin.
-Current state: QA-0 in progress; QA-1/QA-2 remain open. The most recent unchanged real-model
+Current state: QA-0 documentation/repository reconciliation is complete; QA-1/QA-2 remain open. The most recent unchanged real-model
 suite is 57/60, so the automated acceptance gate is not yet closed.
 
 Repository inventory (2026-09-18): `main` is the only active branch; PRs #8 and #9 are closed.
-Issue #7 describes obsolete composite-button confirmation UI, which the current text-command
-PoC does not require; retain its history, close it as not planned, and do not treat it as an
-unimplemented release feature. The following tags are recovery snapshots, not merge queues:
+Issue #7 described obsolete composite-button confirmation UI, which the current text-command
+PoC does not require. It is closed as not planned; there are no open issues or PRs. Its history
+is retained, and it is not an unimplemented release feature. The following tags are recovery snapshots, not merge queues:
 
 | Archive tag under `archive/2026-09-18/` | Preserved work | Why it is outside the active candidate |
 |---|---|---|
@@ -282,7 +282,11 @@ assistant attribution/session links removed from messages. History rewrite chang
 not application source trees. [The commit mapping](tests/acceptance/history-map.json) maps
 original full IDs to their rewritten counterparts. Existing image tags and evidence reports
 retain original IDs/configuration so historical measurements are not misrepresented as new runs.
-A private pre-rewrite Git bundle is retained outside the repository. GitHub may cache contributor
+All 159 rewritten commit trees were compared with their originals and are identical; all three
+archive tags retain the same source snapshots. Invalidated signature headers were removed.
+A verified private pre-rewrite Git bundle is retained outside the repository at
+`/tmp/wire-team-bot-history-_kaz61by/before-rewrite.bundle`. This documentation-only operation
+does not count as a fresh runtime, model or manual QA run. GitHub may cache contributor
 statistics or retain old closed-PR commit snapshots independently of current branch/tag history.
 
 ### Disposition of the former V3 gaps
