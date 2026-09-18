@@ -852,6 +852,7 @@ it.each([
   combinedMentions("`remind me in 10 minutes to test cancellation`", "`remind me in 10 minutes to test snoozing`"),
   combinedMentions("decision: use Postgres", "action: review the checklist for Bob"),
   customMention("ACT-0001 done; remind me in 10 minutes to review the checklist"),
+  combinedMentions("`ACT-0001` done", "`ACT-0002` done"),
   customMention("remind me in 10 minutes to review notes and then remind me in 20 minutes to review slides"),
   combinedMentions("pause", "remind me in 10 minutes to review notes"),
 ])("rejects multiple commands before writes, buffering or model work: $text", async message => {

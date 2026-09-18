@@ -20,6 +20,7 @@ describe("combined-command guard", () => {
   it.each([
     "remind me in 10 minutes to review notes and remind me in 20 minutes to review slides",
     "1. `ACT-0001 done`\n2. `ACT-0002 done`",
+    "`ACT-0001` done\n`ACT-0002` done",
     "@Wire Team Bot status\n@Wire Team Bot my actions",
   ])("recognises separate explicit commands: %s", text => {
     expect(hasMultipleCommands(text, [], botId)).toBe(true);

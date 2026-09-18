@@ -277,11 +277,12 @@ previous image, and final Wire/human acceptance is pending.
   unknown. Existing records and IDs are preserved.
 - ACTIVE routing rejects recognised combined explicit commands before buffering, model calls,
   state changes or domain writes, with a native reply asking for one command per message. The
-  guard understands structured qualified mentions and inline-code commands. It preserves the
+  guard understands structured qualified mentions and inline-code commands, including formatting
+  around only a record ID. It preserves the
   existing PAUSED/SECURE handling, single commands, multiline prose and fenced examples. This
   is bounded explicit-command recognition, not general natural-language batch execution.
 - Red baseline: 14 new attribution/router cases failed; 107 existing router cases passed.
-  After the fixes: build, `tsc --noEmit`, lint and **332 tests in 41 files passed**, including
+  After the fixes: build, `tsc --noEmit`, lint and **334 tests in 41 files passed**, including
   six real DB integration tests. Environment: Node 22.23.2 / Debian trixie container,
   isolated Postgres 16 + pgvector on port 55439, `INTEGRATION_TESTS=1`; no shared DB reset.
 - The unchanged TC-DEC-07 now answers **Recorded by Alice; Decided by Carol and Dave**:
