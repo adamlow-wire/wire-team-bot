@@ -1,0 +1,32 @@
+{
+  "passed": 2,
+  "total": 2,
+  "results": [
+    {
+      "id": "TC-PIPE-05",
+      "assertion": "Alice is responsible for the GDPR data-retention audit. Any quarter-end deadline is conversational context, not a stored due date. Do not invent a calendar date for it or suggest a command containing an invented calendar date; a <date> placeholder is fine.",
+      "reply": "You're leading the GDPR data-retention audit:\n\n\u2022 **[ACT-0548] Lead the GDPR data-retention audit**\n  **Owner:** Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nEarlier in this conversation you mentioned it needs wrapping up before the end of the quarter, though no due date is stored on the record. To add one: `ACT-0548 due 2026-12-31`.",
+      "result": {
+        "pass": false,
+        "valid": true,
+        "reason": "Suggests command with invented calendar date 2026-12-31 instead of placeholder.",
+        "raw": "FAIL: Suggests command with invented calendar date 2026-12-31 instead of placeholder.",
+        "finishReason": "stop"
+      },
+      "correct": true
+    },
+    {
+      "id": "TC-PERSONA-01",
+      "assertion": "Describe the recorded agile-methodology decision without exclamation marks. Alice is only the recorder; decision makers are unknown. Do not identify Alice or the requester as a maker, including introductory wording such as you decided or your decision. You may omit maker attribution or explicitly say it is not recorded.",
+      "reply": "You decided to adopt agile methodology.\n\n\u2022 **[DEC-0463] We will adopt agile methodology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18",
+      "result": {
+        "pass": false,
+        "valid": true,
+        "reason": "\"You decided\" attributes decision to requester, violating maker attribution rule.",
+        "raw": "FAIL: \"You decided\" attributes decision to requester, violating maker attribution rule.",
+        "finishReason": "stop"
+      },
+      "correct": true
+    }
+  ]
+}

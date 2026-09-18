@@ -197,7 +197,9 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-PIPE-05",
-    description: "Pronoun resolution — 'she'll handle it' attributed via sliding window",
+    description: "Pronoun resolution and honest handling of an unstored quarter deadline",
+    referenceTime: "2026-09-18T15:00:00.000Z", timezone: "UTC",
+    stored: [{ type: "action", sourceStep: 1, terms: ["GDPR", "audit"], owner: "alice@cli.local", deadline: null, status: "open" }],
     steps: [
       { input: "Alice is taking the lead on the GDPR data-retention audit", shareProcess: true },
       {
@@ -208,7 +210,7 @@ export const scenarios: Scenario[] = [
       {
         input: "@jeeves what is Alice responsible for?",
         shareProcess: true,
-        assert: "Jeeves mentions the GDPR data-retention audit or similar as something Alice is responsible for or working on",
+        assert: "Alice is responsible for the GDPR data-retention audit. Any quarter-end deadline is conversational context, not a stored due date. Do not invent a calendar date for it or suggest a command containing an invented calendar date; a <date> placeholder is fine.",
       },
     ],
   },
@@ -716,7 +718,8 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-PERSONA-01",
-    description: "No exclamation marks in any response",
+    description: "No exclamation marks or invented decision-maker pronouns",
+    stored: [{ type: "decision", sourceStep: 1, terms: ["agile", "methodology"], author: "alice@cli.local", decidedBy: [], status: "active" }],
     steps: [
       {
         input: "decision: we will adopt agile methodology",
@@ -724,7 +727,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "@jeeves what did we decide about our methodology?",
-        assert: "Jeeves responds without using any exclamation marks",
+        assert: "Describe the recorded agile-methodology decision without exclamation marks. Alice is only the recorder; decision makers are unknown. Do not identify Alice or the requester as a maker, including introductory wording such as you decided or your decision. You may omit maker attribution or explicitly say it is not recorded.",
       },
     ],
   },

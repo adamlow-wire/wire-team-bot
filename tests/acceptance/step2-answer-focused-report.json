@@ -1,0 +1,123 @@
+[
+  {
+    "runId": "mu74sey9",
+    "judgeModel": "claude-opus-5",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-PIPE-05",
+        "description": "Pronoun resolution and honest handling of an unstored quarter deadline",
+        "passed": true,
+        "elapsedMs": 23745,
+        "outputs": [
+          "",
+          "",
+          "You own the GDPR data-retention audit:\n\n\u2022 **[ACT-0573] Lead the GDPR data-retention audit**\n  **Owner:** Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nNo deadline is stored on the record, though earlier in this conversation you noted it needs to be wrapped up before the end of the quarter. To attach that, use `ACT-0573 due <date>`."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-PIPE-05-step-1",
+            "text": "Alice is taking the lead on the GDPR data-retention audit"
+          },
+          {
+            "eventId": "TC-PIPE-05-step-2",
+            "text": "she'll need to have it wrapped up before the end of the quarter"
+          },
+          {
+            "eventId": "TC-PIPE-05-step-3",
+            "text": "@jeeves what is Alice responsible for?"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-PIPE-05-step-1",
+            "content": "Lead the GDPR data-retention audit",
+            "owner": "alice@cli.local",
+            "deadline": null,
+            "status": "open"
+          }
+        ],
+        "channelState": "active",
+        "storedChecks": [],
+        "judgements": [
+          {
+            "step": "@jeeves what is Alice responsible for?",
+            "assertion": "Alice is responsible for the GDPR data-retention audit. Any quarter-end deadline is conversational context, not a stored due date. Do not invent a calendar date for it or suggest a command containing an invented calendar date; a <date> placeholder is fine.",
+            "result": {
+              "pass": true,
+              "valid": true,
+              "reason": "Correctly identifies Alice as owner, notes no stored deadline, uses placeholder.",
+              "raw": "PASS: Correctly identifies Alice as owner, notes no stored deadline, uses placeholder.",
+              "finishReason": "stop"
+            }
+          }
+        ],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu74sxkx",
+    "judgeModel": "claude-opus-5",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-PERSONA-01",
+        "description": "No exclamation marks or invented decision-maker pronouns",
+        "passed": true,
+        "elapsedMs": 13963,
+        "outputs": [
+          "Decision **DEC-0467** logged: we will adopt agile methodology",
+          "The recorded decision is:\n\n\u2022 **[DEC-0467] We will adopt agile methodology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo decision makers were captured on the record, so I can't say who agreed it. If you want to add rationale or correct the entry, use `revoke DEC-0467 <reason>` and re-record with `decision: <corrected summary>`."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:46:51.780Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-PERSONA-01-step-1",
+            "text": "decision: we will adopt agile methodology"
+          },
+          {
+            "eventId": "TC-PERSONA-01-step-2",
+            "text": "@jeeves what did we decide about our methodology?"
+          }
+        ],
+        "records": [
+          {
+            "type": "decision",
+            "source": "TC-PERSONA-01-step-1",
+            "content": "we will adopt agile methodology",
+            "author": "alice@cli.local",
+            "decidedBy": [],
+            "status": "active"
+          }
+        ],
+        "channelState": "active",
+        "storedChecks": [],
+        "judgements": [
+          {
+            "step": "@jeeves what did we decide about our methodology?",
+            "assertion": "Describe the recorded agile-methodology decision without exclamation marks. Alice is only the recorder; decision makers are unknown. Do not identify Alice or the requester as a maker, including introductory wording such as you decided or your decision. You may omit maker attribution or explicitly say it is not recorded.",
+            "result": {
+              "pass": true,
+              "valid": true,
+              "reason": "No exclamation marks; Alice labeled recorder only; makers explicitly unknown.",
+              "raw": "PASS: No exclamation marks; Alice labeled recorder only; makers explicitly unknown.",
+              "finishReason": "stop"
+            }
+          }
+        ],
+        "failures": []
+      }
+    ]
+  }
+]
