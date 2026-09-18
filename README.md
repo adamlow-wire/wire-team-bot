@@ -286,11 +286,14 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The latest local QA image is `wire-team-bot:v3-rc-ae618ff`; staging still runs
-`wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
+Staging now runs the tested image `wire-team-bot:v3-rc-ae618ff`, with its existing database
+and crypto identity preserved and verified backups available. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
 for the date/answer fixes, evaluator calibration and preserved failure evidence. The final image
 passes 63/63 real-model scenarios and the fixed 20-event stored-record sample; 370 tests, build,
-type-check and lint pass. Staging activation and final Wire/human acceptance remain pending.
+type-check and lint pass. Staging activation is complete; final Wire/human acceptance remains pending.
+Use the [pinned-image manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
+and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md). The exact activation
+and rollback commands are in [PLAN.md](PLAN.md#staging-candidate-activation--2026-09-18).
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.

@@ -1,0 +1,122 @@
+{
+  "date": "2026-09-18",
+  "runtimeCommit": "ae618ff3c7b5cda642e603ed8a755076bdf1655d",
+  "candidateImage": "wire-team-bot:v3-rc-ae618ff",
+  "candidateImageId": "sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0",
+  "previousImage": "wire-team-bot:v3-rc-4bc7e1f",
+  "previousImageId": "sha256:06e3fcd51e35a94a6e3f81c840bdf0234fa776778d992ea58e7144dd8ec54d7b",
+  "backups": {
+    "directory": "/home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm",
+    "createdAt": "2026-09-18T16:20:20.034077+00:00",
+    "stoppedAt": "2026-09-18T16:19:38.943416288Z",
+    "stopExitCode": 0,
+    "databaseArchiveFullyReadable": true,
+    "cryptoArchiveMembers": 6,
+    "sqliteBackupsChecked": 1,
+    "sqliteIntegrity": [
+      "ok"
+    ],
+    "files": {
+      "database.dump": {
+        "bytes": 35413,
+        "sha256": "a66ce17ae71412041a4c4f7e091dbd7a07a85fb9c626753fba9b853062ea6f96"
+      },
+      "crypto-store.tar.gz": {
+        "bytes": 2416211,
+        "sha256": "51809e0fbbe685c44febb570d0019025893768e16164df67b76ef42319c1d9d2"
+      }
+    }
+  },
+  "preflight": {
+    "environmentMatches": true,
+    "schemaAndMigrationsMatch": true
+  },
+  "startup": {
+    "checkedAt": "2026-09-18T16:21:19.408360+00:00",
+    "image": "wire-team-bot:v3-rc-ae618ff",
+    "imageId": "sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0",
+    "status": "running",
+    "startedAt": "2026-09-18T16:20:45.159830561Z",
+    "restartCount": 0,
+    "cryptoVolume": "jeeves-staging_jeeves-staging-crypto",
+    "levels": {
+      "info": 34,
+      "warn": 2,
+      "debug": 16
+    },
+    "startup": [
+      {
+        "time": "2026-09-18T16:20:47.184Z",
+        "level": "info",
+        "msg": "Wire Team Bot starting"
+      },
+      {
+        "time": "2026-09-18T16:20:47.546Z",
+        "level": "info",
+        "msg": "Rehydrated pending reminders from DB",
+        "count": 1
+      },
+      {
+        "time": "2026-09-18T16:20:47.603Z",
+        "level": "info",
+        "msg": "Member cache hydrated from SDK store",
+        "conversations": 3
+      },
+      {
+        "time": "2026-09-18T16:20:47.603Z",
+        "level": "info",
+        "msg": "Wire client connected, listening for events"
+      }
+    ],
+    "noPendingMigrations": true
+  },
+  "database": {
+    "tablesChecked": 12,
+    "allFingerprintsUnchanged": true,
+    "counts": {
+      "Decision": 4,
+      "Action": 6,
+      "Reminder": 8,
+      "AuditLog": 67,
+      "channel_config": 3,
+      "entities": 9,
+      "entity_relationships": 3,
+      "conversation_signals": 30,
+      "conversation_summaries": 1,
+      "embeddings": 0,
+      "entity_id_sequences": 3,
+      "_prisma_migrations": 11
+    }
+  },
+  "reminder": {
+    "id": "REM-0008",
+    "status": "pending",
+    "triggerAt": "2026-09-21T06:00:00.000Z",
+    "version": 1,
+    "rehydrated": true,
+    "deliveryTestedByThisRestart": false
+  },
+  "cryptoVolumePreserved": true,
+  "manualWireRoundTrip": "pending operator status reply",
+  "manualAcceptance": "pending",
+  "productionDeployment": false,
+  "sharedDatabaseReset": false,
+  "validation": "Previously recorded 370 tests and 63/63 real-model cases; not rerun for this operational activation",
+  "steadyState": {
+    "checkedAt": "2026-09-18T16:27:20.679671+00:00",
+    "status": "running",
+    "restartCount": 0,
+    "imageId": "sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0",
+    "levels": {
+      "info": 100,
+      "warn": 13,
+      "debug": 16
+    },
+    "sdkDiagnostics": {
+      "info": 96,
+      "debug": 12,
+      "warn": 12
+    }
+  },
+  "warnings": "Embeddings intentionally disabled; SDK diagnostics retain severity only. Warning cause is not inferred; operator round trip remains pending."
+}

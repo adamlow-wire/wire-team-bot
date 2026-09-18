@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `ae618ff`.
+Updated: 2026-09-18. Staging runtime: `ae618ff` (baseline `e35428b`). Latest tested QA runtime: `ae618ff`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -267,8 +267,125 @@ Current state: QA-0 through QA-3 are implemented. Adam authorised the second imp
 step on 2026-09-18. The final `ae618ff` image passes **63/63 strengthened real-model scenarios**,
 all fifteen mandatory stored-record/state checks, and the unchanged **20/20 stored-fact sample**.
 Build/type-check/lint and **370 unit/contract/isolated DB tests** pass. All earlier failed runs and
-raw-review findings remain intact. Staging still runs `4bc7e1f`; candidate activation and final
-Wire/human acceptance are the next stage. This is code and automated QA completion, not pilot approval.
+raw-review findings remain intact. QA-6 activation is complete: staging now runs that exact image,
+with verified backups, unchanged durable records, member/reminder hydration and no startup errors.
+Final Wire/human acceptance remains pending. This is code and automated QA completion, not pilot approval.
+
+#### Staging candidate activation — 2026-09-18
+
+Adam authorised the staging upgrade. [Activation evidence](tests/acceptance/staging-qa6-activation.json)
+records the exact image ID, backup checks and startup observations. Only the staging bot was
+recreated; production and the staging database container were untouched.
+
+- Activated `wire-team-bot:v3-rc-ae618ff` (the locally tested image), ID
+  `sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0`.
+  Previous image `wire-team-bot:v3-rc-4bc7e1f` remains available for rollback.
+- Effective environment, credentials, Prisma schema and migration files match the previous
+  service. Existing `jeeves-staging_jeeves-staging-crypto` and database volumes were retained.
+  No tokens/keys were refreshed and no database was reset or restored.
+- Old bot stopped cleanly at **16:19:38 UTC**. Private backups are in
+  `/home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/`, outside Git, with protected
+  configuration, database archive and crypto archive. The entire database archive was decoded
+  successfully without executing a restore; the crypto archive was extracted privately and its
+  SQLite database passed `PRAGMA quick_check`. Verification copies were removed.
+- New container started at **16:20:45 UTC** and reported connection/listening readiness at
+  **16:20:47 UTC**. No pending migrations. Member cache hydrated **three conversations** and
+  **one pending reminder**. Zero startup errors and zero restarts. Content-free SDK warnings
+  remain visible; they do not establish a failed or successful client round trip.
+- All **twelve table fingerprints are unchanged**: 4 decisions, 6 actions, 8 reminders,
+  67 audit entries and 3 channel configurations among them. `REM-0008` remains pending,
+  version 1, due **2026-09-21 06:00 UTC**, and was rehydrated. This verifies preservation and
+  hydration; delivery after this restart has not yet occurred.
+- A real mentioned `status` request with the correct native quote is requested from Adam.
+  Receive/decrypt/reply on this exact candidate and remaining manual acceptance stay pending
+  until observed. Earlier screenshots and 370 tests/63 e2e cases remain their recorded runs;
+  no runtime suite was rerun for this operational activation.
+
+To reapply the candidate without rebuilding or changing volumes:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/candidate.override.yml \
+  up -d --no-deps --no-build --pull never jeeves
+```
+
+Rollback the image while retaining current data and crypto state:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/rollback.override.yml \
+  up -d --no-deps --no-build --pull never jeeves
+```
+
+Do not restore the pre-upgrade crypto snapshot for an ordinary image rollback: the live store
+may have advanced. Database restoration is unnecessary because schema and migrations did not
+change. The protected backup is a recovery resource, not an instruction to overwrite live data.
+Keep this image pinned throughout manual QA; avoid a rebuilding `staging:up` during acceptance.
+
+#### Final manual QA on the pinned staging candidate
+
+Use **Demo for Anna** (`8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io`) as the primary
+and **Wire Team Bot Testing** (`3c09c898-b840-4644-9bfc-1fc29d87b2cc@staging.zinfra.io`) for
+scope-denial checks. Both were previously designated by Adam. Use actual Wire mentions of the
+bot and people, selected in the client; the text below a mention is the command. Use the IDs
+returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one command per
+message except the deliberately combined-command test. All cases are **pending on ae618ff**.
+The developer verifies persisted sources, qualified owners, status, deadlines and audits after
+processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
+team transcripts into review artifacts.
+
+1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
+   another `status` quickly as separate messages. Each reply must quote its own source. Check
+   the current requester is addressed correctly. Confirm the registered app name and description
+   use Wire Team Bot; the previous registry display was AI Team Bot (adamlow, staging), and
+   registry branding needs an admin update if still unchanged.
+2. **Decision attribution and corrections.** As @adamhuman, send `decision: use SQLite for the
+   RC final ledger because setup is simple` and keep `DEC-A`. Ask `Who recorded DEC-A, and who
+   made that decision?`: recorder must be Adam (Human), with maker unknown. Send `decision:
+   Adam Low agreed to use Postgres for the RC final ledger because transactions are required
+   supersedes DEC-A`; keep `DEC-B`. Ask for the current decision, rationale, recorder and maker:
+   Postgres/transactions, Adam (Human) recorder, Adam Low maker. Send `revoke DEC-B RC final
+   check finished` and ask again; neither decision should be active or automatically revived.
+3. **Structured assignment and dates.** As @adamhuman, send `action: prepare the RC final
+   checklist for @Adam Low by this Friday`, inserting an actual member mention. Keep `ACT-A`.
+   For a September 18 run, the stored date is September 18, not September 25. As @adamlow_wire,
+   ask `my actions` and `what am I responsible for?`; the owner must be Adam Low. Reassign with
+   `ACT-A reassign to @Adam (Human)` using a real mention, set `ACT-A due next Friday`, then
+   `ACT-A done`. Check the owner, next-week date, completion and removal from open lists.
+4. **Passive feedback.** Without mentioning the bot, send `I'll send the RC final handover
+   note tomorrow.` Wait for 📝 and inspect `my actions`. Send `I've sent the RC final handover
+   note.` as the same owner; expect ✅ and removal from the open list. Verify exactly one action
+   and the matching creation/completion audits, including the original qualified source.
+5. **Combined commands and reminders.** In one message, send two bot-mentioned lines:
+   `remind me in 20 minutes to check RC final cancellation` and `remind me in 20 minutes to
+   check RC final snoozing`. Expect a split-message instruction and **zero** reminders from that
+   source. Send the two lines separately; keep their IDs. Immediately cancel the first with
+   `cancel REM-A`; snooze the second with `snooze REM-B 2 minutes`. Confirm the second arrives
+   at its revised time and the first never fires. For recovery, create `remind me in 2 minutes
+   to check RC final recovery` and tell the developer as soon as it is confirmed. The developer
+   stops the bot until it is overdue, checks it remains pending, then restarts the same image
+   and verifies receipt plus fired state. Do this coordinated interruption before more commands.
+6. **PAUSED and SECURE.** Test each state separately. Send a synthetic ambient commitment and
+   immediately mention `pause` (or `secure mode`); wait for confirmation. Send a unique marker
+   such as `RC_PAUSED_BEFORE_0918`. The developer restarts the same image. Send
+   `RC_PAUSED_AFTER_0918` while still blocked, then mention `resume`. Repeat with `RC_SECURE_...`
+   markers. Markers must not reach later model requests, stored records, signals or audits.
+   Capture logs/DB checks through the developer; silence alone is not proof. If the pre-pause job
+   had already finished, do not claim that run demonstrated in-flight cancellation.
+7. **Cross-channel denial.** In Demo for Anna create `action: keep the RC final scope marker`
+   and retain its open ID. In Wire Team Bot Testing ask about that ID, then send `<ID> done`.
+   Expect no record disclosure or mutation. The developer checks the original remains open with
+   unchanged version and audit count; then close it in its original conversation.
+8. **Quality and usefulness.** Review [the 20 source/record pairs and ten known answers](tests/acceptance/qa6-quality-review.md),
+   including silent captures and the unknown-answer control. Record reviewer/date, corrections,
+   useful answers out of ten, and whether the measured 7.7-second median/16.1-second slowest
+   response and notification volume are acceptable. Try `catch me up`, `team actions` and
+   `overdue actions` in the designated channel. Apply §5 thresholds; synthetic matching is not
+   human approval. Existing multi-day simulation review remains unapproved.
+
+After these checks pass, record the pilot team/channels, owner, start date and five working days
+of feedback. Any privacy leak or wrong-target mutation blocks the pilot. Production deployment
+remains outside this staging acceptance.
 
 #### Second automated implementation step — 2026-09-18
 
@@ -415,8 +532,8 @@ Runtime/harness commit `ae618ff3c7b5cda642e603ed8a755076bdf1655d`, image
   including six real isolated Postgres/pgvector tests. No shared DB reset, historical-record
   migration, staging activation or production deployment was performed in this step.
 
-**Next:** QA-6 candidate activation with fresh staging DB/crypto backup and preserved identity,
-then the final QA-7 Wire/UI and human-quality packet above. Keep the candidate pinned during
+**Next:** QA-7 Wire/UI and human-quality acceptance using the pinned staging candidate and
+the exact manual packet below. QA-6 activation is now recorded below. Keep the candidate pinned during
 manual QA; do not start P3 until those gates pass. Existing dates are not rewritten, date-only
 weekday deadlines still default to noon, DST gap/fold ambiguity remains outside this fix,
 and model instructions do not guarantee every future answer. Dependency limits are recorded
@@ -607,11 +724,13 @@ Provisional thresholds for this small pilot (not production SLAs):
 ### Earlier staging candidate disposition — 2026-09-18
 
 This records the earlier staged runtime and its then-open defects. The later automated QA
-section above supersedes its code/validation status; staging remains on this earlier image.
+section above supersedes its code, validation and staging status. These paragraphs retain the
+earlier candidate's evidence and then-open defects.
 
 **Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `4bc7e1f` is available
-as `wire-team-bot:v3-rc-4bc7e1f` and active in staging. No production deployment was performed. The recorder/decider
-attribution bug, combined-command guidance, human review and remaining Wire gates are still open.
+as `wire-team-bot:v3-rc-4bc7e1f` and was active in staging at that point. No production deployment
+was performed. Recorder/decider attribution, combined-command guidance, human review and remaining
+Wire gates were still open for that earlier candidate.
 [Release evidence](tests/acceptance/release-evidence.json) records configuration and boundaries.
 
 - Fresh build, type-check and lint pass. **304 tests pass** in 39 files, including six isolated
