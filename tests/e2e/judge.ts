@@ -22,11 +22,17 @@ export interface JudgeResult {
 
 const SYSTEM_PROMPT = `You are a test evaluator for a team assistant bot called Wire Team Bot (legacy test assertions may call it Jeeves).
 You will be given a bot response and an assertion describing what a correct response should contain or do.
-Evaluate whether the bot response satisfies the assertion.
+Evaluate whether the bot response satisfies the assertion. The assertion defines the required behaviour: when it gives an exact date, compare the response against that date rather than substituting your own interpretation.
+Date policy: a date-only weekday matching the scenario's local calendar day means that same day, including after its default noon time. "Next Friday" means the following Friday. Do not move "this Friday" to next week merely because the reference day is Friday. Use the supplied conversation timezone for the reference calendar day.
+Recorder and decision maker are distinct roles. A requirement to identify the recorder does not require claiming that they made the decision.
 Reply with exactly one line in this format: PASS: <brief reason> or FAIL: <brief reason>
 Keep reasons under 15 words. Be strict but fair.`.trim();
 
-export async function judge(botResponse: string, assertion: string): Promise<JudgeResult> {
+export interface EvaluationContext { referenceTime: string; timezone: string }
+
+export async function judge(botResponse: string, assertion: string,
+  context: EvaluationContext = { referenceTime: new Date().toISOString(), timezone: "UTC" },
+): Promise<JudgeResult> {
   const baseUrl = process.env.JEEVES_LLM_BASE_URL;
   const apiKey  = process.env.JEEVES_LLM_API_KEY ?? "none";
   const model   = process.env.JEEVES_JUDGE_MODEL
@@ -43,7 +49,7 @@ export async function judge(botResponse: string, assertion: string): Promise<Jud
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Evaluation time (UTC): ${new Date().toISOString()}\nUse this date when evaluating relative deadlines.\n\nBot response:\n${botResponse}\n\nAssertion: ${assertion}`,
+        content: `Scenario reference time (UTC): ${context.referenceTime}\nConversation timezone: ${context.timezone}\nUse this scenario time and timezone, not the wall clock when this evaluation runs.\n\nBot response:\n${botResponse}\n\nAssertion: ${assertion}`,
       },
     ],
     max_tokens: 150,

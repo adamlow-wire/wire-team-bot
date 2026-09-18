@@ -186,6 +186,10 @@ owners and deadlines. A failed reaction send leaves the saved record intact; rea
 retried durably or backfilled onto older messages. Passive decisions do not receive these action
 reactions. Explicit commands retain their text confirmations.
 
+Date-only weekdays use noon in the conversation timezone. A weekday matching today stays on
+today even after noon; use an explicit time for a later deadline, or `next Friday` for the
+following week. Confirmations should be checked against the returned date.
+
 Use text commands for corrections. Supported text commands also accept a leading single-line inline-code span
 around the command prefix or whole command when pasted from an example. This includes
 reminders, decisions, actions and addressed privacy controls; code blocks and prose examples

@@ -1,5 +1,5 @@
 /**
- * E2E test runner for Jeeves — LLM-as-judge edition.
+ * E2E test runner for Wire Team Bot — answer judging plus stored-fact checks.
  *
  * Each step spawns `node dist/app/cli.js` with piped input and captures stdout.
  * Step and scenario assertions are evaluated by an LLM judge rather than regex.
@@ -16,7 +16,10 @@
  */
 
 import { createInterface } from "node:readline";
-import { randomUUID } from "node:crypto";
+import { PrismaClient } from "@prisma/client";
+import { checkStoredRecords, type ExpectedRecord, type StoredRecord } from "./storedRecords";
+import { exactReplyMatches } from "./replyChecks";
+import type { EvaluationContext } from "./judge";
 import { spawn }   from "child_process";
 import fs          from "fs";
 import path        from "path";
@@ -39,6 +42,7 @@ const jsonOut = args.includes("--json");
  * isolated from other scenarios and from previous suite runs.
  */
 const suiteRunId = Date.now().toString(36);
+const prisma = new PrismaClient();
 
 // ── Public types (imported by scenarios.ts) ───────────────────────────────────
 
@@ -52,6 +56,8 @@ export interface Step {
   captureAs?: "DEC" | "ACT" | "REM";
   /** Plain-English assertion evaluated by the LLM judge. */
   assert?: string;
+  /** Exact assertion for deterministic command output; stored facts are checked separately. */
+  replyEquals?: string;
   /**
    * When true, this step shares a CLI process with the immediately preceding step.
    * Use for follow-up / context-dependent exchanges where conversation state must
@@ -63,6 +69,11 @@ export interface Step {
 export interface Scenario {
   id: string;
   description: string;
+  /** Optional fixed parser clock; never freezes network or scheduler timers. */
+  referenceTime?: string;
+  timezone?: string;
+  /** Exact post-drain inventory expectations, including silent captures. */
+  stored?: ExpectedRecord[];
   /**
    * Either a flat array of string inputs (context-only steps with no assertion),
    * or Step objects for steps that need assertions or ID capture.
@@ -98,17 +109,19 @@ interface StepFailure {
  * an isolated DB conversation.  The suiteRunId suffix prevents cross-run
  * contamination when the suite is run multiple times against the same database.
  */
-function scenarioEnv(scenarioId: string): Record<string, string> {
+function scenarioEnv(scenarioId: string, context: EvaluationContext): Record<string, string> {
   return {
     ...process.env as Record<string, string>,
     LOG_LEVEL: "warn",
     E2E_CHANNEL_ID: `e2e-${scenarioId}-${suiteRunId}`,
+    E2E_REFERENCE_TIME: context.referenceTime,
+    E2E_TIMEZONE: context.timezone,
   };
 }
 
 async function runScenario(
   scenario: Scenario,
-): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[] }> {
+): Promise<{ passed: boolean; stepOutputs: string[]; failures: StepFailure[]; context: EvaluationContext; events: SourceEvent[]; records: StoredRecord[]; storedChecks: string[] | null }> {
   const normalised: Step[] = scenario.steps.map(s =>
     typeof s === "string" ? { input: s } : s,
   );
@@ -116,9 +129,11 @@ async function runScenario(
   const captures: Record<string, string> = {};
   const stepOutputs: string[] = [];
   const failures: StepFailure[] = [];
-  const env = scenarioEnv(scenario.id);
+  const context = { referenceTime: scenario.referenceTime ?? new Date().toISOString(), timezone: scenario.timezone ?? "UTC" };
+  const env = scenarioEnv(scenario.id, context);
+  const events: SourceEvent[] = [];
 
-  let pendingSharedInputs: string[] = [];
+  let pendingSharedInputs: SourceEvent[] = [];
   let pendingSharedSteps: Step[] = [];
 
   const flushShared = async () => {
@@ -138,9 +153,14 @@ async function runScenario(
           );
         }
       }
+      if (step.replyEquals !== undefined) {
+        const expected = applyCaptures(step.replyEquals, captures);
+        if (!exactReplyMatches(stepOut, expected)) failures.push({ step: step.input, assertion: expected,
+          reason: "Deterministic reply differs from the exact expected confirmation/list", botOutput: stepOut });
+      }
       if (step.assert) {
         const assertion = applyCaptures(step.assert, captures);
-        const result = await judge(stepOut, assertion);
+        const result = await judge(stepOut, assertion, context);
         if (!result.pass) {
           failures.push({ step: step.input.slice(0, 60), assertion, reason: result.reason, botOutput: stepOut });
         } else if (verbose) {
@@ -152,19 +172,20 @@ async function runScenario(
     pendingSharedSteps = [];
   };
 
-  for (const step of normalised) {
+  for (const [index, step] of normalised.entries()) {
+    // Flush before substitution so IDs captured by preceding shared steps exist.
+    if (!step.shareProcess) await flushShared();
     const resolvedInput = applyCaptures(step.input, captures);
+    const event = { eventId: `${scenario.id}-step-${index + 1}`, text: resolvedInput };
+    events.push(event);
 
     if (step.shareProcess) {
-      pendingSharedInputs.push(resolvedInput);
+      pendingSharedInputs.push(event);
       pendingSharedSteps.push(step);
       continue;
     }
 
-    // Flush any pending shared steps before running a new isolated step
-    await flushShared();
-
-    const output = await runOneLine(resolvedInput, env);
+    const output = await runOneLine(event, env);
     stepOutputs.push(output);
 
     // Capture a reference ID from this step's output if requested
@@ -179,10 +200,16 @@ async function runScenario(
       }
     }
 
+    if (step.replyEquals !== undefined) {
+      const expected = applyCaptures(step.replyEquals, captures);
+      if (!exactReplyMatches(output, expected)) failures.push({ step: resolvedInput, assertion: expected,
+        reason: "Deterministic reply differs from the exact expected confirmation/list", botOutput: output });
+    }
+
     // Per-step assertion — substitute captured IDs into the assertion text too
     if (step.assert) {
       const assertion = applyCaptures(step.assert, captures);
-      const result = await judge(output, assertion);
+      const result = await judge(output, assertion, context);
       if (!result.pass) {
         failures.push({
           step: resolvedInput.slice(0, 60),
@@ -202,7 +229,7 @@ async function runScenario(
   // Whole-scenario assertion
   if (scenario.assert) {
     const combined = stepOutputs.join("\n");
-    const result = await judge(combined, scenario.assert);
+    const result = await judge(combined, scenario.assert, context);
     if (!result.pass) {
       failures.push({
         step: "(overall)",
@@ -215,26 +242,46 @@ async function runScenario(
     }
   }
 
-  return { passed: failures.length === 0, stepOutputs, failures };
+  const scope = { conversationId: env.E2E_CHANNEL_ID, conversationDom: "cli.local" };
+  const [decisions, actions, reminders] = await Promise.all([
+    prisma.decision.findMany({ where: scope }), prisma.action.findMany({ where: scope }), prisma.reminder.findMany({ where: scope }),
+  ]);
+  const records: StoredRecord[] = [
+    ...decisions.map(d => ({ type: "decision" as const, source: d.rawMessageId, content: d.summary,
+      author: `${d.authorId}@${d.authorDom}`, decidedBy: d.decidedBy, status: d.status })),
+    ...actions.map(a => ({ type: "action" as const, source: a.rawMessageId, content: a.description,
+      owner: `${a.assigneeId}@${a.assigneeDom}`, deadline: a.deadline?.toISOString() ?? null, status: a.status })),
+    ...reminders.map(r => ({ type: "reminder" as const, source: r.rawMessageId, content: r.description,
+      owner: `${r.targetId}@${r.targetDom}`, deadline: r.triggerAt.toISOString(), status: r.status })),
+  ];
+  const storedChecks = scenario.stored === undefined ? null
+    : checkStoredRecords(records, scenario.stored, events.map(e => e.eventId));
+  for (const reason of storedChecks ?? []) failures.push({ step: "(stored records)",
+    assertion: "Post-drain inventory must match expected facts, source events, identities and dates exactly",
+    reason, botOutput: "" });
+  return { passed: failures.length === 0, stepOutputs, failures, context, events, records, storedChecks };
 }
 
 // ── CLI process spawner ───────────────────────────────────────────────────────
 
 /** Responses are framed by completed source event, after the processing queue drains. */
-async function runOneLine(input: string, env: Record<string, string>): Promise<string> {
+interface SourceEvent { eventId: string; text: string }
+
+async function runOneLine(input: SourceEvent, env: Record<string, string>): Promise<string> {
   return (await runMultiLine([input], env))[0] ?? "";
 }
 
-async function runMultiLine(inputs: string[], env: Record<string, string>): Promise<string[]> {
+async function runMultiLine(inputs: SourceEvent[], env: Record<string, string>): Promise<string[]> {
   const proc = spawn("node", [CLI], { cwd: ROOT, env: { ...env, E2E_JSON: "1" }, stdio: ["pipe", "pipe", "pipe"] });
+  const closed = new Promise<number | null>(resolve => { proc.once("close", resolve); proc.once("error", () => resolve(-1)); });
   const reader = createInterface({ input: proc.stdout });
   const iterator = reader[Symbol.asyncIterator]();
   const outputs: string[] = [];
   proc.stderr.resume();
   try {
     for (const input of inputs) {
-      const eventId = randomUUID();
-      proc.stdin.write(JSON.stringify({ eventId, text: input }) + "\n");
+      const eventId = input.eventId;
+      proc.stdin.write(JSON.stringify(input) + "\n");
       let timer: NodeJS.Timeout | undefined;
       try {
         const next = await Promise.race([
@@ -247,6 +294,14 @@ async function runMultiLine(inputs: string[], env: Record<string, string>): Prom
         outputs.push(result.replies.join("\n"));
       } finally { clearTimeout(timer); }
     }
+    proc.stdin.end();
+    let closeTimer: NodeJS.Timeout | undefined;
+    try {
+      const code = await Promise.race([closed, new Promise<never>((_, reject) => {
+        closeTimer = setTimeout(() => reject(new Error("CLI shutdown timed out")), 15_000);
+      })]);
+      if (code !== 0) throw new Error(`CLI exited with code ${code}`);
+    } finally { clearTimeout(closeTimer); }
     return outputs;
   } finally {
     proc.stdin.end();
@@ -266,6 +321,10 @@ interface ScenarioResult {
   elapsedMs: number;
   /** Preserve successful synthetic replies too, so judge verdicts can be reviewed. */
   outputs: string[];
+  context: EvaluationContext;
+  events: SourceEvent[];
+  records: StoredRecord[];
+  storedChecks: string[] | null;
   failures: Array<{ step: string; assertion: string; judgeReason: string; botOutput: string }>;
 }
 
@@ -345,7 +404,7 @@ async function main() {
     }
 
     if (jsonOut) {
-      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, failures });
+      jsonResults.push({ id: scenario.id, description: scenario.description, passed: result.passed, elapsedMs, outputs: result.stepOutputs, context: result.context, events: result.events, records: result.records, storedChecks: result.storedChecks, failures });
     } else if (verbose && result.passed) {
       const lines = result.stepOutputs.join("\n").trim().split("\n").filter(Boolean);
       if (lines.length > 0) {
@@ -366,7 +425,8 @@ async function main() {
     console.log(`\n${"─".repeat(70)}`);
     console.log(`  ${passed} passed, ${failed} failed\n`);
   }
-  process.exit(failed > 0 ? 1 : 0);
+  await prisma.$disconnect();
+  process.exitCode = failed > 0 ? 1 : 0;
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(async err => { console.error(err); await prisma.$disconnect(); process.exitCode = 1; });

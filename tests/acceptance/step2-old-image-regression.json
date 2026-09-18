@@ -1,0 +1,73 @@
+{
+  "runtime": "1ef4bf2",
+  "note": "Previous CLI lacks fixed-clock injection; actual test time was Friday 18 September after noon. Exact reply and stored-date checks must reject its next-week date.",
+  "runId": "mu72iqco",
+  "passed": 0,
+  "failed": 1,
+  "scenarios": [
+    {
+      "id": "TC-ACT-11",
+      "description": "A structured member mention keeps today's Friday deadline after noon",
+      "passed": false,
+      "elapsedMs": 1366,
+      "outputs": [
+        "Action **ACT-0452** created for **@Bob**: prepare the deck (due this Friday: 25 Sept 2026, 12:00)",
+        "**@Bob**\n- **ACT-0452** `open` \u2014 prepare the deck _(due 2026-09-25)_"
+      ],
+      "context": {
+        "referenceTime": "2026-09-18T15:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "events": [
+        {
+          "eventId": "TC-ACT-11-step-1",
+          "text": "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday"
+        },
+        {
+          "eventId": "TC-ACT-11-step-2",
+          "text": "@Wire Team Bot team actions"
+        }
+      ],
+      "records": [
+        {
+          "type": "action",
+          "source": "TC-ACT-11-step-1",
+          "content": "prepare the deck",
+          "owner": "bob@cli.local",
+          "deadline": "2026-09-25T12:00:00.000Z",
+          "status": "open"
+        }
+      ],
+      "storedChecks": [
+        "Missing or incorrect stored fact: {\"type\":\"action\",\"sourceStep\":1,\"terms\":[\"deck\"],\"owner\":\"bob@cli.local\",\"deadline\":\"2026-09-18T12:00:00.000Z\",\"status\":\"open\",\"source\":\"TC-ACT-11-step-1\"}",
+        "Unexpected, duplicate or incorrect stored record: {\"type\":\"action\",\"source\":\"TC-ACT-11-step-1\",\"content\":\"prepare the deck\",\"owner\":\"bob@cli.local\",\"deadline\":\"2026-09-25T12:00:00.000Z\",\"status\":\"open\"}"
+      ],
+      "failures": [
+        {
+          "step": "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday",
+          "assertion": "Action **ACT-0452** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+          "judgeReason": "Deterministic reply differs from the exact expected confirmation/list",
+          "botOutput": "Action **ACT-0452** created for **@Bob**: prepare the deck (due this Friday: 25 Sept 2026, 12:00)"
+        },
+        {
+          "step": "@Wire Team Bot team actions",
+          "assertion": "**@Bob**\n- **ACT-0452** `open` \u2014 prepare the deck _(due 2026-09-18)_",
+          "judgeReason": "Deterministic reply differs from the exact expected confirmation/list",
+          "botOutput": "**@Bob**\n- **ACT-0452** `open` \u2014 prepare the deck _(due 2026-09-25)_"
+        },
+        {
+          "step": "(stored records)",
+          "assertion": "Post-drain inventory must match expected facts, source events, identities and dates exactly",
+          "judgeReason": "Missing or incorrect stored fact: {\"type\":\"action\",\"sourceStep\":1,\"terms\":[\"deck\"],\"owner\":\"bob@cli.local\",\"deadline\":\"2026-09-18T12:00:00.000Z\",\"status\":\"open\",\"source\":\"TC-ACT-11-step-1\"}",
+          "botOutput": ""
+        },
+        {
+          "step": "(stored records)",
+          "assertion": "Post-drain inventory must match expected facts, source events, identities and dates exactly",
+          "judgeReason": "Unexpected, duplicate or incorrect stored record: {\"type\":\"action\",\"source\":\"TC-ACT-11-step-1\",\"content\":\"prepare the deck\",\"owner\":\"bob@cli.local\",\"deadline\":\"2026-09-25T12:00:00.000Z\",\"status\":\"open\"}",
+          "botOutput": ""
+        }
+      ]
+    }
+  ]
+}

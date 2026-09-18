@@ -1,0 +1,266 @@
+[
+  {
+    "runId": "mu72byle",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-PIPE-06",
+        "description": "Action dedup \u2014 an explicit personal commitment restated produces one action",
+        "passed": true,
+        "elapsedMs": 23296,
+        "outputs": [
+          "",
+          "",
+          "You have one open action:\n\n\u2022 **[ACT-0438] Update the API documentation ahead of the next sprint review**\n  **Owner:** Alice | **Status:** open\n  *Tags: documentation, api*\n\nNo deadline is recorded against it. To set one, use `ACT-0438 due <date>`; to close it out, `ACT-0438 done`."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:37:40.719Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-PIPE-06-step-1",
+            "text": "Alice: I will update the API documentation before the next sprint review"
+          },
+          {
+            "eventId": "TC-PIPE-06-step-2",
+            "text": "Alice: just a reminder that I will update the API documentation before the next sprint review"
+          },
+          {
+            "eventId": "TC-PIPE-06-step-3",
+            "text": "@jeeves what are Alice's open actions?"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-PIPE-06-step-1",
+            "content": "Update the API documentation ahead of the next sprint review",
+            "owner": "alice@cli.local",
+            "deadline": null,
+            "status": "open"
+          }
+        ],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72cgvg",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-PIPE-08",
+        "description": "Ownerless API documentation suggestions do not invent an Alice action",
+        "passed": true,
+        "elapsedMs": 23532,
+        "outputs": [
+          "",
+          "",
+          "I'm afraid there are no actions recorded in this channel yet \u2014 nothing open against your name or anyone else's.\n\nTo log one, use: `action: <description> for Alice` (add a deadline if there is one)."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:38:04.399Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-PIPE-08-step-1",
+            "text": "Alice: we need to update the API documentation before the next sprint review"
+          },
+          {
+            "eventId": "TC-PIPE-08-step-2",
+            "text": "Alice: just a reminder that the API docs still need updating for the new endpoints"
+          },
+          {
+            "eventId": "TC-PIPE-08-step-3",
+            "text": "@Wire Team Bot what are Alice's open actions?"
+          }
+        ],
+        "records": [],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72czco",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ID-03",
+        "description": "Decision recorder identity is reported without inventing a decision maker",
+        "passed": true,
+        "elapsedMs": 24485,
+        "outputs": [
+          "Decision **DEC-0382** logged: we will enforce semantic versioning for all internal packages",
+          "You did \u2014 DEC-0382 was recorded by you on 18 September 2026.\n\n\u2022 **[DEC-0382] We will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nWorth noting that the record doesn't identify who actually made the decision \u2014 only who logged it.",
+          "I'm afraid the decision makers aren't recorded for that one.\n\n\u2022 **[DEC-0382] we will enforce semantic versioning for all internal packages**\n  **Recorded by:** Alice (you) | **Date:** 2026-09-18\n\nThe record only captures who logged it \u2014 there's no \"Decided by\" attribution and no named participants in the summary, so I can't tell you who actually made the call.\n\nIf you want to correct or replace the record with proper attribution, you can revoke it and log a new one:\n\n- `revoke DEC-0382 missing attribution`\n- `decision: <summary including who decided>`"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:38:28.347Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ID-03-step-1",
+            "text": "Alice: decision: we will enforce semantic versioning for all internal packages"
+          },
+          {
+            "eventId": "TC-ID-03-step-2",
+            "text": "@Wire Team Bot who recorded DEC-0382?"
+          },
+          {
+            "eventId": "TC-ID-03-step-3",
+            "text": "@Wire Team Bot who made DEC-0382?"
+          }
+        ],
+        "records": [
+          {
+            "type": "decision",
+            "source": "TC-ID-03-step-1",
+            "content": "we will enforce semantic versioning for all internal packages",
+            "author": "alice@cli.local",
+            "decidedBy": [],
+            "status": "active"
+          }
+        ],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72dijc",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-DEC-07",
+        "description": "Retrieved decision \u2014 recorder and named decision makers stay distinct",
+        "passed": true,
+        "elapsedMs": 9144,
+        "outputs": [
+          "Decision **DEC-0383** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+          "\u2022 **[DEC-0383] Carol and Dave agreed we will use Terraform for infrastructure provisioning**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale was captured with the record. If you want to revoke it, the command is `revoke DEC-0383 <reason>`."
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T14:38:53.211Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-DEC-07-step-1",
+            "text": "decision: Carol and Dave agreed we will use Terraform for infrastructure provisioning"
+          },
+          {
+            "eventId": "TC-DEC-07-step-2",
+            "text": "@jeeves tell me about DEC-0383"
+          }
+        ],
+        "records": [
+          {
+            "type": "decision",
+            "source": "TC-DEC-07-step-1",
+            "content": "Carol and Dave agreed we will use Terraform for infrastructure provisioning",
+            "author": "alice@cli.local",
+            "decidedBy": [],
+            "status": "active"
+          }
+        ],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72fy0a",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ACT-10",
+        "description": "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+        "passed": true,
+        "elapsedMs": 1258,
+        "outputs": [
+          "Action **ACT-0449** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0449** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T09:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ACT-10-step-1",
+            "text": "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday."
+          },
+          {
+            "eventId": "TC-ACT-10-step-2",
+            "text": "@Wire Team Bot team actions"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-ACT-10-step-1",
+            "content": "prepare the slide deck",
+            "owner": "bob@cli.local",
+            "deadline": "2026-09-18T12:00:00.000Z",
+            "status": "open"
+          }
+        ],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  },
+  {
+    "runId": "mu72fzay",
+    "passed": 1,
+    "failed": 0,
+    "scenarios": [
+      {
+        "id": "TC-ACT-11",
+        "description": "A structured member mention keeps today's Friday deadline after noon",
+        "passed": true,
+        "elapsedMs": 1266,
+        "outputs": [
+          "Action **ACT-0450** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0450** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ACT-11-step-1",
+            "text": "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday"
+          },
+          {
+            "eventId": "TC-ACT-11-step-2",
+            "text": "@Wire Team Bot team actions"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-ACT-11-step-1",
+            "content": "prepare the deck",
+            "owner": "bob@cli.local",
+            "deadline": "2026-09-18T12:00:00.000Z",
+            "status": "open"
+          }
+        ],
+        "storedChecks": [],
+        "failures": []
+      }
+    ]
+  }
+]

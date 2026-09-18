@@ -263,12 +263,57 @@ Final manual QA packet, prepared after QA-1 through QA-6:
    inventing writes/owners; judge latency and noise from the supplied measurements.
 
 Only after this single final acceptance stage passes does the five-day P3 pilot begin.
-Current state: QA-0 is complete. The authorised first implementation step covers QA-1 and QA-2;
-both fixes now pass focused checks below. Stop for Adam's confirmation before the next step,
-QA-3 evaluator corrections. Existing e2e scenarios, judge and scoring code remain unchanged.
+Current state: QA-0, QA-1 and QA-2 are implemented. Adam authorised the second implementation
+step (QA-3) on 2026-09-18. Evaluator corrections and the Friday parser fix now pass focused
+checks; the final image/full regression for this step is pending.
 The unchanged full image regression is **58/60**, with a further date discrepancy found by DB
 inspection despite a judge PASS. The original 57/60 report remains intact. Staging still runs
 the previous image; automated release acceptance and final Wire/human acceptance remain pending.
+
+#### Second automated implementation step — 2026-09-18
+
+The date discrepancy was a runtime bug as well as an evaluation problem. Chrono's forward-date
+option promoted a date-only Friday to the following week once the implied noon passed. Parsing
+now uses the conversation timezone, keeps today's date-only weekday on today (default noon),
+and preserves explicit next-week requests. A future explicit time today stays today; past
+explicit-time requests retain forward-date behaviour. Calendar target dates account for DST;
+elapsed durations and explicit timezone expressions retain their specified instant. Existing
+records are not migrated. Gap/fold disambiguation for ambiguous local times is not expanded.
+
+The CLI can inject a parser reference instant and conversation timezone for synthetic framed
+runs only; the Wire composition still uses the real clock. Network timers, processing queues,
+and record creation timestamps remain real. The e2e report records each scenario's reference
+instant/timezone and actual source events. Every scenario inventories stored decisions/actions/
+reminders only after CLI exit and queue drain. Nine scenarios have mandatory exact fact/source/
+qualified identity/status/date checks; other inventories remain available for review without
+being labelled checked. Generated IDs serve command substitutions, not stored-fact matching.
+
+Expectation changes and their reasons:
+
+- TC-PIPE-06 now explicitly says Alice will do the work, retaining the one-action dedup requirement
+  and requiring the first source event. TC-PIPE-08 preserves both original ownerless messages
+  and requires zero captures. No ownership guess is permitted to improve recall.
+- TC-ID-03 asks who recorded the decision and, separately, who made it. Stored author must be
+  `alice@cli.local`, with no invented maker. TC-DEC-07 now requires both Carol and Dave as makers,
+  Alice as recorder, and the corresponding stored source/summary.
+- TC-ACT-09/10/11 use fixed clocks and exact persisted deadlines. New TC-ACT-12/13 cover local
+  Friday while UTC is Thursday, and explicit next Friday. Their assertions use concrete dates.
+- A model judge still rejected correct Friday confirmations after an explicit policy clarification:
+  [first run](tests/acceptance/step2-date-judge-before.json),
+  [policy-clarified rerun](tests/acceptance/step2-date-judge-policy-report.json). Four deterministic
+  command/list replies in TC-ACT-10/11 now require exact full text, plus exact stored facts,
+  instead of asking a model to interpret fixed output. Wrong date/owner, extra text or an extra
+  record all fail. Natural-language answers remain model-judged; neither failed report is hidden.
+
+Validation so far: 14/20 date cases failed before the parser fix; after it, **365 tests in 43
+files passed**, including six isolated DB tests, plus build, production and e2e-harness strict
+TypeScript checks, and lint. Environment remains Node 22.23.2/glibc 2.41 and isolated Postgres
+16 + pgvector on port 55439. Focused real-model runs verify all affected stored facts; full
+image regression follows before declaring QA-3 complete.
+[Focused checks](tests/acceptance/step2-focused-report.json) pass; the strengthened Friday test
+[rejects the previous image](tests/acceptance/step2-old-image-regression.json) with its wrong
+next-week stored date and confirmation. Original 57/60 and step-one 58/60
+reports remain unchanged. No classifier/extractor change, new dependency or staging deployment.
 
 #### First automated implementation step — 2026-09-18
 
@@ -330,7 +375,7 @@ The first partial full run was stopped after the inline-ID formatting edge case 
 only the completed immutable-image run above is counted. Existing e2e scenarios, judge,
 acceptance evaluator and scoring code were not changed. No full 20-event quality sample or
 simulation was rerun in this bounded step; classifier/extractor/pipeline code is unchanged.
-QA-3 and subsequent acceptance work await Adam's requested confirmation.
+At the end of step one, QA-3 and subsequent acceptance work awaited Adam's confirmation.
 
 Repeat the focused check with the existing acceptance runner in the isolated test container:
 `EVALUATION_FIXTURE=tests/acceptance/step1-fixture.json EVALUATION_REPORT=/tmp/step1-report.json npm run test:acceptance`.

@@ -3,7 +3,7 @@
  *
  * Inputs are natural language — the way team members actually talk.
  * Assertions are plain English describing what a correct response looks like.
- * The LLM judge evaluates each assertion; no regexes.
+ * The LLM judge evaluates answers; selected scenarios also require exact stored facts.
  *
  * Steps that are plain strings send a message with no assertion (context only).
  * Steps with `assert` are evaluated. Steps with `captureAs` extract a reference
@@ -104,7 +104,8 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-DEC-07",
-    description: "Retrieved decision — who decided is included in the response",
+    description: "Retrieved decision — recorder and named decision makers stay distinct",
+    stored: [{ type: "decision", sourceStep: 1, terms: ["Carol", "Dave", "Terraform"], author: "alice@cli.local", decidedBy: [], status: "active" }],
     steps: [
       {
         input: "decision: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
@@ -112,7 +113,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "@jeeves tell me about {{DEC}}",
-        assert: "Jeeves describes the Terraform infrastructure decision and references Carol and/or Dave as the participants who made it",
+        assert: "Wire Team Bot describes the Terraform decision, names both Carol and Dave as its makers, and identifies Alice as the recorder. It must not label Alice as a decision maker.",
       },
     ],
   },
@@ -213,12 +214,13 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-PIPE-06",
-    description: "Action dedup — same commitment stated twice produces one action",
+    description: "Action dedup — an explicit personal commitment restated produces one action",
+    stored: [{ type: "action", sourceStep: 1, terms: ["API", "documentation"], owner: "alice@cli.local", status: "open" }],
     steps: [
-      // First mention — pipeline should extract one action.
-      "Alice: we need to update the API documentation before the next sprint review",
-      // Second mention restating the same intent — should NOT create a second action.
-      "Alice: just a reminder that the API docs still need updating for the new endpoints",
+      // Explicit ownership makes this a positive dedup test, not an inference of
+      // responsibility from the sender of an ownerless suggestion.
+      "Alice: I will update the API documentation before the next sprint review",
+      "Alice: just a reminder that I will update the API documentation before the next sprint review",
       {
         input: "@jeeves what are Alice's open actions?",
         assert: "Jeeves lists Alice's open actions and mentions the API documentation update — it does not list the same task twice or mention two separate API documentation actions",
@@ -248,6 +250,17 @@ export const scenarios: Scenario[] = [
         shareProcess: true,
         assert: "Jeeves does not list a new open action about sending or receiving the NDA — the completion announcement should not have created an additional open action",
       },
+    ],
+  },
+
+  {
+    id: "TC-PIPE-08",
+    description: "Ownerless API documentation suggestions do not invent an Alice action",
+    stored: [],
+    steps: [
+      "Alice: we need to update the API documentation before the next sprint review",
+      "Alice: just a reminder that the API docs still need updating for the new endpoints",
+      { input: "@Wire Team Bot what are Alice's open actions?", assert: "No open action is recorded for Alice. Do not claim she owns the API documentation work merely because she raised it." },
     ],
   },
 
@@ -339,6 +352,8 @@ export const scenarios: Scenario[] = [
   {
     id: "TC-ACT-09",
     description: "Pasted inline-code action commands reassign, change deadline and complete",
+    referenceTime: "2026-09-18T15:00:00.000Z", timezone: "UTC",
+    stored: [{ type: "action", sourceStep: 1, terms: ["formatting", "checklist"], owner: "bob@cli.local", deadline: "2026-09-19T15:00:00.000Z", status: "done" }],
     steps: [
       { input: "action: review the formatting smoke checklist", captureAs: "ACT" },
       { input: "@Wire Team Bot `{{ACT}} reassign to` @Bob", assert: "The action {{ACT}} was reassigned to Bob. The bot does not claim mentions cannot be used or that it can only read records." },
@@ -350,18 +365,36 @@ export const scenarios: Scenario[] = [
   {
     id: "TC-ACT-10",
     description: "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+    referenceTime: "2026-09-18T09:00:00.000Z", timezone: "UTC",
+    stored: [{ type: "action", sourceStep: 1, terms: ["slide", "deck"], owner: "bob@cli.local", deadline: "2026-09-18T12:00:00.000Z", status: "open" }],
     steps: [
-      { input: "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday.", captureAs: "ACT", assert: "An action was actually created for Bob to prepare the slide deck, due this Friday. It must not just offer command syntax, assign it to Alice, or use Monday as this action's deadline." },
-      { input: "@Wire Team Bot team actions", assert: "Exactly one action is listed: {{ACT}}, the slide deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice." },
+      { input: "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday.", captureAs: "ACT", replyEquals: "Action **{{ACT}}** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)" },
+      { input: "@Wire Team Bot team actions", replyEquals: "**@Bob**\n- **{{ACT}}** `open` — prepare the slide deck _(due 2026-09-18)_" },
     ],
   },
   {
     id: "TC-ACT-11",
-    description: "A structured member mention followed by really keeps the correct owner and task deadline",
+    description: "A structured member mention keeps today's Friday deadline after noon",
+    referenceTime: "2026-09-18T15:00:00.000Z", timezone: "UTC",
+    stored: [{ type: "action", sourceStep: 1, terms: ["deck"], owner: "bob@cli.local", deadline: "2026-09-18T12:00:00.000Z", status: "open" }],
     steps: [
-      { input: "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday", captureAs: "ACT", assert: "An action was actually created for Bob to prepare the deck, due this Friday. It must not report an unknown member, only offer syntax, assign it to Alice, or use Monday as this action's deadline." },
-      { input: "@Wire Team Bot team actions", assert: "Exactly one action is listed: {{ACT}}, preparing the deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice." },
+      { input: "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday", captureAs: "ACT", replyEquals: "Action **{{ACT}}** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)" },
+      { input: "@Wire Team Bot team actions", replyEquals: "**@Bob**\n- **{{ACT}}** `open` — prepare the deck _(due 2026-09-18)_" },
     ],
+  },
+  {
+    id: "TC-ACT-12",
+    description: "Friday uses the conversation calendar when UTC is still Thursday",
+    referenceTime: "2026-09-17T23:30:00.000Z", timezone: "Europe/London",
+    stored: [{ type: "action", sourceStep: 1, terms: ["timezone", "checklist"], owner: "bob@cli.local", deadline: "2026-09-18T11:00:00.000Z", status: "open" }],
+    steps: [{ input: "action: review the timezone checklist for Bob by this Friday", assert: "An action was created for Bob to review the timezone checklist, due Friday 18 September 2026. It must not move to Friday 25 September." }],
+  },
+  {
+    id: "TC-ACT-13",
+    description: "Explicit next Friday remains next week in the conversation timezone",
+    referenceTime: "2026-09-18T15:00:00.000Z", timezone: "Europe/London",
+    stored: [{ type: "action", sourceStep: 1, terms: ["next week", "checklist"], owner: "bob@cli.local", deadline: "2026-09-25T11:00:00.000Z", status: "open" }],
+    steps: [{ input: "action: review the next week checklist for Bob by next Friday", assert: "An action was created for Bob to review the checklist, due Friday 25 September 2026. It must not use Friday 18 September." }],
   },
   {
     id: "TC-ACT-07",
@@ -434,7 +467,8 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-ID-03",
-    description: "Decision is attributed to the member who logged it",
+    description: "Decision recorder identity is reported without inventing a decision maker",
+    stored: [{ type: "decision", sourceStep: 1, terms: ["semantic", "versioning"], author: "alice@cli.local", decidedBy: [], status: "active" }],
     steps: [
       {
         input: "Alice: decision: we will enforce semantic versioning for all internal packages",
@@ -442,8 +476,12 @@ export const scenarios: Scenario[] = [
         assert: "Jeeves confirms the decision was recorded with a DEC- reference",
       },
       {
-        input: "@jeeves who made {{DEC}}?",
-        assert: "Jeeves identifies Alice as the author or participant who made the decision",
+        input: "@Wire Team Bot who recorded {{DEC}}?",
+        assert: "Wire Team Bot identifies Alice as the recorder of the decision. It must not infer that she made it.",
+      },
+      {
+        input: "@Wire Team Bot who made {{DEC}}?",
+        assert: "Wire Team Bot says the decision makers are not recorded or cannot be identified. It may name Alice as recorder, but must not claim she made the decision",
       },
     ],
   },

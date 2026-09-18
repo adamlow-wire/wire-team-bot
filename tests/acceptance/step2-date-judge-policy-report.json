@@ -1,0 +1,114 @@
+[
+  {
+    "runId": "mu72dvel",
+    "passed": 0,
+    "failed": 1,
+    "scenarios": [
+      {
+        "id": "TC-ACT-10",
+        "description": "Addressed named assignment keeps its Friday deadline apart from Monday project context",
+        "passed": false,
+        "elapsedMs": 3264,
+        "outputs": [
+          "Action **ACT-0447** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0447** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T09:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ACT-10-step-1",
+            "text": "@Wire Team Bot we really need to get this presentation done by Monday, @Bob needs to prepare the slide deck by this Friday."
+          },
+          {
+            "eventId": "TC-ACT-10-step-2",
+            "text": "@Wire Team Bot team actions"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-ACT-10-step-1",
+            "content": "prepare the slide deck",
+            "owner": "bob@cli.local",
+            "deadline": "2026-09-18T12:00:00.000Z",
+            "status": "open"
+          }
+        ],
+        "storedChecks": [],
+        "failures": [
+          {
+            "step": "@Wire Team Bot we really need to get this presentation done ",
+            "assertion": "An action was actually created for Bob to prepare the slide deck, due Friday 18 September 2026, not Friday 25 September. It must not just offer command syntax, assign it to Alice, or use Monday as this action's deadline.",
+            "judgeReason": "Reference time is Friday 18 Sept 2026; \"this Friday\" should be 25 Sept, not 18 Sept.",
+            "botOutput": "Action **ACT-0447** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)"
+          },
+          {
+            "step": "@Wire Team Bot team actions",
+            "assertion": "Exactly one action is listed: ACT-0447, the slide deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice.",
+            "judgeReason": "Response shows ACT-0447 due 2026-09-18 (Friday), but assertion requires confirmation no separate presentation-delivery action assigned to Alice.",
+            "botOutput": "**@Bob**\n- **ACT-0447** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "runId": "mu72dy7y",
+    "passed": 0,
+    "failed": 1,
+    "scenarios": [
+      {
+        "id": "TC-ACT-11",
+        "description": "A structured member mention keeps today's Friday deadline after noon",
+        "passed": false,
+        "elapsedMs": 3482,
+        "outputs": [
+          "Action **ACT-0448** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
+          "**@Bob**\n- **ACT-0448** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+        ],
+        "context": {
+          "referenceTime": "2026-09-18T15:00:00.000Z",
+          "timezone": "UTC"
+        },
+        "events": [
+          {
+            "eventId": "TC-ACT-11-step-1",
+            "text": "@Wire Team Bot we really need to get this presentation to Yellow Taxis done by Monday, @Bob really needs to prepare the deck by this Friday"
+          },
+          {
+            "eventId": "TC-ACT-11-step-2",
+            "text": "@Wire Team Bot team actions"
+          }
+        ],
+        "records": [
+          {
+            "type": "action",
+            "source": "TC-ACT-11-step-1",
+            "content": "prepare the deck",
+            "owner": "bob@cli.local",
+            "deadline": "2026-09-18T12:00:00.000Z",
+            "status": "open"
+          }
+        ],
+        "storedChecks": [],
+        "failures": [
+          {
+            "step": "@Wire Team Bot we really need to get this presentation to Ye",
+            "assertion": "An action was actually created for Bob to prepare the deck, due Friday 18 September 2026, not Friday 25 September. It must not report an unknown member, only offer syntax, assign it to Alice, or use Monday as this action's deadline.",
+            "judgeReason": "Reference time is Friday 18 Sept 2026; \"this Friday\" should be 25 Sept, not 18 Sept.",
+            "botOutput": "Action **ACT-0448** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)"
+          },
+          {
+            "step": "@Wire Team Bot team actions",
+            "assertion": "Exactly one action is listed: ACT-0448, preparing the deck assigned to Bob with a Friday deadline. No separate presentation-delivery action is assigned to Alice.",
+            "judgeReason": "Response shows due date as 2026-09-18 (Friday), but assertion requires \"Friday deadline\" without confirming it's assigned to Bob or that no Alice action exists.",
+            "botOutput": "**@Bob**\n- **ACT-0448** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+          }
+        ]
+      }
+    ]
+  }
+]
