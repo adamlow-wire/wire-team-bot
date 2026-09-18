@@ -286,9 +286,11 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-The latest local QA image is `wire-team-bot:v3-rc-957f2c8`; staging still runs
+The latest local QA image is `wire-team-bot:v3-rc-ae618ff`; staging still runs
 `wire-team-bot:v3-rc-4bc7e1f`. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
-for the date fix, evaluator calibration, retained failing runs and remaining acceptance work.
+for the date/answer fixes, evaluator calibration and preserved failure evidence. The final image
+passes 63/63 real-model scenarios and the fixed 20-event stored-record sample; 370 tests, build,
+type-check and lint pass. Staging activation and final Wire/human acceptance remain pending.
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.
@@ -305,6 +307,7 @@ docker run -d --name wire-team-bot-v3-test-db \
   -e POSTGRES_DB=wire_team_bot_test -p 127.0.0.1:55439:5432 pgvector/pgvector:pg16
 
 # Run from the checkout, with approved model settings already in .env.staging.
+# For acceptance, add the calibrated judge override from PLAN.md to docker run.
 # This shell is only the test container; CLI/evaluation never connects to Wire.
 docker run --rm -it --network host --user "$(id -u):$(id -g)" \
   --env-file .env.staging -e npm_config_cache=/tmp/npm-cache \
@@ -395,7 +398,8 @@ docker build --label org.opencontainers.image.revision=<tested-commit> \
 ```
 
 To run the unchanged e2e suite against that image's compiled runtime, mount only the test harness
-and its development tooling. Keep `/app/dist` and `/app/node_modules` from the image:
+and its development tooling. Keep `/app/dist` and `/app/node_modules` from the image.
+For acceptance, add the calibrated judge override from PLAN.md to this command:
 
 ```bash
 docker run --rm --network host --user "$(id -u):$(id -g)" \
@@ -405,7 +409,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-957f2c8 \
+  --entrypoint node wire-team-bot:v3-rc-ae618ff \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```

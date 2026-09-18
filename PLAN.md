@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `957f2c8`.
+Updated: 2026-09-18. Staging runtime: `4bc7e1f` (baseline `e35428b`). Latest local QA runtime: `ae618ff`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -183,7 +183,7 @@ remaining validation dependency explicitly.
 |---|---|---|---|
 | P0 | Establish baseline using existing fixtures, isolated DB inspection and the intended model configuration. | Stable expected facts including missed/silent captures; reviewed precision/recall, duplicate count, ten known-answer questions, response times and failures. Record commit, configuration and date; do not rely on printed IDs alone. | Automated sample complete; human review pending |
 | P1 | Close the concrete data-retention, state-isolation and access-scope gaps in §3. | DB/log inspection with synthetic marker text; pause/secure/resume tests for both buffers and queued work; cross-channel and cross-domain retrieval/mutation denial tests. Review audit coverage on affected writes. | Implemented and automated regressions pass; Wire acceptance pending |
-| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Reactions and native replies implemented and Wire-confirmed; real-model regression 57/60, decision-attribution fix and acceptance checks pending |
+| P2 | Make existing user journeys dependable. Verify names after restart, reminder downtime/send-failure recovery, corrections, model failures, and text alternatives to dead controls. | Required journeys in §5 pass on CLI and Wire. Fix duplicate or malformed-output failures locally when reproduced. No unsupported “Shall I…?” or inert required button. | Reactions/native replies Wire-confirmed; attribution, combined-command guidance and Friday date fixes implemented. Latest step-two validation is recorded below; final candidate Wire/human acceptance pending |
 | P3 | Run one small team pilot and decide the next investment. | Five working days of use, short feedback log, counts against §5 and a keep/fix/stop decision. At most three evidence-backed follow-ups. | Pending |
 
 Small fixes may touch validation, deduplication, prompts or command variants. They do not imply
@@ -263,12 +263,12 @@ Final manual QA packet, prepared after QA-1 through QA-6:
    inventing writes/owners; judge latency and noise from the supplied measurements.
 
 Only after this single final acceptance stage passes does the five-day P3 pilot begin.
-Current state: QA-0, QA-1 and QA-2 are implemented. Adam authorised the second implementation
-step (QA-3) on 2026-09-18. Evaluator corrections and the Friday parser fix now pass focused
-checks; the final image/full regression for this step is pending.
-The unchanged full image regression is **58/60**, with a further date discrepancy found by DB
-inspection despite a judge PASS. The original 57/60 report remains intact. Staging still runs
-the previous image; automated release acceptance and final Wire/human acceptance remain pending.
+Current state: QA-0 through QA-3 are implemented. Adam authorised the second implementation
+step on 2026-09-18. The final `ae618ff` image passes **63/63 strengthened real-model scenarios**,
+all fifteen mandatory stored-record/state checks, and the unchanged **20/20 stored-fact sample**.
+Build/type-check/lint and **370 unit/contract/isolated DB tests** pass. All earlier failed runs and
+raw-review findings remain intact. Staging still runs `4bc7e1f`; candidate activation and final
+Wire/human acceptance are the next stage. This is code and automated QA completion, not pilot approval.
 
 #### Second automated implementation step — 2026-09-18
 
@@ -284,7 +284,7 @@ The CLI can inject a parser reference instant and conversation timezone for synt
 runs only; the Wire composition still uses the real clock. Network timers, processing queues,
 and record creation timestamps remain real. The e2e report records each scenario's reference
 instant/timezone and actual source events. Every scenario inventories stored decisions/actions/
-reminders only after CLI exit and queue drain. Thirteen scenarios have mandatory exact fact/source/
+reminders only after CLI exit and queue drain. Fifteen scenarios have mandatory exact fact/source/
 qualified identity/status/date checks (including durable secure state); other inventories remain available for review without
 being labelled checked. Generated IDs serve command substitutions, not stored-fact matching.
 
@@ -307,11 +307,11 @@ Expectation changes and their reasons:
   confirmations; stored names/source and durable secure state are also mandatory. Wrong date/owner, extra text or an extra
   record all fail. Natural-language answers remain model-judged; neither failed report is hidden.
 
-Validation so far: 14/20 date cases failed before the parser fix; after it, **365 tests in 43
+Initial validation: 14/20 date cases failed before the parser fix; after it, **365 tests in 43
 files passed**, including six isolated DB tests, plus build, production and e2e-harness strict
 TypeScript checks, and lint. Environment remains Node 22.23.2/glibc 2.41 and isolated Postgres
 16 + pgvector on port 55439. Focused real-model runs verify all affected stored facts; full
-image regression follows before declaring QA-3 complete.
+image regression followed, as recorded below.
 [Focused checks](tests/acceptance/step2-focused-report.json) pass; the strengthened Friday test
 [rejects the previous image](tests/acceptance/step2-old-image-regression.json) with its wrong
 next-week stored date and confirmation. Original 57/60 and step-one 58/60
@@ -322,7 +322,7 @@ then-mandatory stored checks passed. The two failures were fixed-output judge er
 TC-DEC-06 (explicit Alice/Bob agreement rejected as a recorder/maker confusion) and TC-STATE-03
 (the existing acknowledgement rejected for not literally saying "secure mode").
 [Focused reruns](tests/acceptance/step2-final-focused-report.json) pass with exact text plus
-persisted facts/state. The final full regression is pending; the runtime image is unchanged.
+persisted facts/state. That stage retained the same runtime image for the next full run.
 The fixed capture sample also completed: [report](tests/acceptance/step2-capture-report.json),
 20 expected/20 stored/20 correct facts (10 decisions, 10 actions), zero duplicates and stored/log
 privacy markers. Human approval remains pending.
@@ -353,8 +353,94 @@ Evaluator calibration follow-up:
   now also checks both actual owners, source events and deadlines. No false ownership/write is
   accepted to improve a score. These additions bring mandatory storage/state checks to thirteen.
 - Latest deterministic validation: **369 tests in 43 files**, six isolated DB tests, build,
-  production/harness strict type checks and lint pass. Calibrated focused and full image reruns
-  are in progress; earlier failing reports remain intact.
+  production/harness strict type checks and lint passed. The subsequent calibrated runs are
+  recorded below; earlier failing reports remain intact.
+
+The first calibrated full run was **62/63** ([report](tests/acceptance/step2-calibrated-e2e-report.json));
+all thirteen mandatory stored-record/state checks passed. TC-ID-04 received two empty evaluator
+responses; the actual reminder confirmation, persisted Alice/Bob ownership and caller-filtered
+list were correct on inspection. TC-ACT-12 also had an empty first verdict, followed by a valid
+PASS. These are retained evaluator failures/retries, not hidden application failures.
+The 150-token evaluator allowance was increased to a bounded 512 tokens; provider finish reasons
+are now retained for diagnosing truncation. The earlier response metadata was not retained, so
+its precise cause is not claimed. The [focused reminder rerun](tests/acceptance/step2-budget-focused-report.json)
+and [all twelve controls](tests/acceptance/step2-budget-calibration-report.json) pass. Fresh build,
+production/harness type checks, lint and **370 tests in 43 files** pass, including six isolated
+DB tests. The subsequent full run retained the same application image and assertions.
+
+Raw review of the next [63/63 assertion pass](tests/acceptance/step2-acceptance-e2e-report.json)
+found two uncovered answer errors: TC-PIPE-05 suggested December 31 for the current quarter on
+September 18, and TC-PERSONA-01 said "you decided" when only the recorder was known.
+[Both findings and original outputs are preserved](tests/acceptance/step2-raw-review-findings.json).
+That green score was **not accepted as final**. The answer guidance now also prohibits invented
+calendar dates in suggested commands and unsupported maker attribution in pronouns/introductory
+prose. Both scenarios have stricter answer assertions and post-process stored-source/identity
+checks (fifteen mandatory scenarios in total). [Both corrected journeys pass](tests/acceptance/step2-answer-focused-report.json),
+and [both saved bad answers fail the new assertions](tests/acceptance/step2-answer-negative-controls.json).
+Fresh build/type-check/lint and all **370 tests** pass. Runtime `ae618ff` was then built and
+validated in the final runs below.
+
+The release build reports [three high dependency audit entries](tests/acceptance/step2-dependency-audit.json)
+for one recursive-object stack-exhaustion advisory propagated through `deepmerge-ts`,
+`@prisma/config` and `prisma`. No dependency was changed. Inspection places `deepmerge-ts` in the local Prisma TypeScript/JavaScript
+configuration loader; the application has no direct import of it or `@prisma/config`. No path
+from Wire/model input to that loader was identified. This is a recorded dependency limitation,
+not an observed message-input exploit or a claimed clean security audit.
+
+**Final step-two evidence:** [validation summary](tests/acceptance/step2-validation.json).
+Runtime/harness commit `ae618ff3c7b5cda642e603ed8a755076bdf1655d`, image
+`wire-team-bot:v3-rc-ae618ff`, image ID
+`sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0`.
+
+- [Full immutable-image run](tests/acceptance/step2-final-runtime-e2e-report.json), `mu74v4ij`:
+  **63/63**, all fifteen mandatory storage/state checks pass, no malformed judge attempts.
+  Post-exit inventory contains 14 decisions, 26 actions and 8 reminders; all inventories were
+  inspected. These inventory totals are not an extraction-quality score. Raw answer review
+  confirms the corrected attribution, missing-deadline guidance, date boundaries, requester
+  identity and read-only reminder follow-up. Original/failing reports remain unmodified.
+- [Final unchanged capture sample](tests/acceptance/step2-final-capture-report.json):
+  **20 correct / 20 stored / 20 expected**, separately **10/10/10 decisions** and **10/10/10 actions**;
+  precision and recall **100% on this small synthetic fixture**, zero duplicates. Ten captures
+  were silent. All records match expected source events/facts/owners after processing exits;
+  no reply-ID scoring. Zero stored/diagnostic privacy markers, zero unsolicited text replies,
+  five capture reactions. The ten known answers contain the expected facts and the unknown
+  budget question is refused. Human correctness/usefulness approval remains pending.
+- Eleven answer requests including the unknown question: median **7,698 ms**, p95/maximum
+  **16,084 ms**, measured while the quality sample and isolated e2e suite shared the configured
+  provider. One malformed query-analysis response used the existing safe fallback; embeddings
+  were intentionally disabled. App model slots/dependencies are unchanged; only the evaluator
+  uses the documented judge override. Simulation was not rerun: classifier/extractor/pipeline
+  code did not change, and the existing simulation golden file still awaits human review.
+- Build, production and harness strict type checks, lint, and **370 tests in 43 files** pass,
+  including six real isolated Postgres/pgvector tests. No shared DB reset, historical-record
+  migration, staging activation or production deployment was performed in this step.
+
+**Next:** QA-6 candidate activation with fresh staging DB/crypto backup and preserved identity,
+then the final QA-7 Wire/UI and human-quality packet above. Keep the candidate pinned during
+manual QA; do not start P3 until those gates pass. Existing dates are not rewritten, date-only
+weekday deadlines still default to noon, DST gap/fold ambiguity remains outside this fix,
+and model instructions do not guarantee every future answer. Dependency limits are recorded
+above. Production deployment is not part of this work.
+
+Reproduce the calibrated full suite without starting a Wire client (the isolated test database
+must already be running and migrated):
+
+```bash
+docker run --rm --network host --user "$(id -u):$(id -g)" \
+  --env-file .env.staging -e JEEVES_JUDGE_MODEL=claude-opus-5 \
+  -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
+  -e JEEVES_EMBEDDINGS=off -e NODE_PATH=/validation/node_modules \
+  -v "$PWD/tests":/app/tests:ro \
+  -v "$PWD/node_modules":/validation/node_modules:ro \
+  -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
+  --entrypoint node wire-team-bot:v3-rc-ae618ff \
+  /validation/node_modules/ts-node/dist/bin.js --transpile-only \
+  --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
+```
+
+Use the same container/environment and substitute `/app/tests/e2e/calibrateJudge.ts` for
+`/app/tests/e2e/runner.ts --json` to repeat the twelve evaluator controls. Calibration checks the evaluator,
+not the app; keep its result separate from the 63 application scenarios.
 
 #### First automated implementation step — 2026-09-18
 
@@ -518,7 +604,10 @@ Provisional thresholds for this small pilot (not production SLAs):
 - At pilot end, the team identifies concrete saved effort and chooses continued use. Otherwise
   fix the most material problem or stop expanding scope.
 
-### Candidate disposition — 2026-09-18
+### Earlier staging candidate disposition — 2026-09-18
+
+This records the earlier staged runtime and its then-open defects. The later automated QA
+section above supersedes its code/validation status; staging remains on this earlier image.
 
 **Packaged for staging; acceptance incomplete, not pilot ready.** Runtime `4bc7e1f` is available
 as `wire-team-bot:v3-rc-4bc7e1f` and active in staging. No production deployment was performed. The recorder/decider

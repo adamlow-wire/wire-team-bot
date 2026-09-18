@@ -1,0 +1,199 @@
+{
+  "date": "2026-09-18",
+  "runtimeCommit": "ae618ff3c7b5cda642e603ed8a755076bdf1655d",
+  "harnessCommit": "ae618ff3c7b5cda642e603ed8a755076bdf1655d",
+  "image": {
+    "tag": "wire-team-bot:v3-rc-ae618ff",
+    "id": "sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0",
+    "runtimeUnchangedSinceImage": true
+  },
+  "environment": {
+    "node": "22.23.2",
+    "glibc": "2.41",
+    "container": "node:22-trixie-slim",
+    "database": "isolated Postgres 16 + pgvector, port 55439",
+    "integrationTests": true
+  },
+  "configuration": {
+    "slots": {
+      "classify": {
+        "model": "claude-haiku-4-5",
+        "fallback": "claude-haiku-4-5"
+      },
+      "extract": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "embed": {
+        "model": "qwen3-embedding:4b",
+        "fallback": "qwen3-embedding:4b"
+      },
+      "summarise": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "queryAnalyse": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "respond": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      },
+      "complexSynthesis": {
+        "model": "claude-opus-5",
+        "fallback": "claude-opus-5"
+      }
+    },
+    "embeddings": {
+      "enabled": false,
+      "dimensions": 2560
+    }
+  },
+  "judge": {
+    "model": "claude-opus-5",
+    "scope": "Evaluator only; application slots unchanged",
+    "calibrationPassed": 12,
+    "calibrationTotal": 12,
+    "negativeControls": 6,
+    "report": "step2-budget-calibration-report.json",
+    "maxOutputTokens": 512,
+    "additionalNegativeControls": {
+      "passed": 2,
+      "total": 2,
+      "report": "step2-answer-negative-controls.json"
+    }
+  },
+  "deterministic": {
+    "build": "pass",
+    "typeCheck": "pass",
+    "harnessStrictTypeCheck": "pass",
+    "lint": "pass",
+    "testsPassed": 370,
+    "testFilesPassed": 43,
+    "isolatedDbTestsPassed": 6
+  },
+  "dateRegression": {
+    "before": {
+      "passed": 6,
+      "failed": 14
+    },
+    "after": {
+      "passed": 20,
+      "failed": 0
+    },
+    "oldImageRejected": true,
+    "evidence": "step2-old-image-regression.json"
+  },
+  "e2e": {
+    "status": "pass",
+    "report": "step2-final-runtime-e2e-report.json",
+    "priorRuns": [
+      {
+        "report": "step2-e2e-report.json",
+        "passed": 61,
+        "total": 63
+      },
+      {
+        "report": "step2-final-e2e-report.json",
+        "passed": 60,
+        "total": 63
+      },
+      {
+        "report": "step2-calibrated-e2e-report.json",
+        "passed": 62,
+        "total": 63,
+        "failure": "Two empty evaluator responses on TC-ID-04; bot output and stored reminder owners reviewed as correct"
+      },
+      {
+        "report": "step2-acceptance-e2e-report.json",
+        "passed": 63,
+        "total": 63,
+        "acceptedAsFinal": false,
+        "rawReviewFindings": "step2-raw-review-findings.json"
+      }
+    ],
+    "runId": "mu74v4ij",
+    "passed": 63,
+    "failed": 0,
+    "mandatoryStoredStateChecks": 15,
+    "storedInventory": {
+      "decision": 14,
+      "action": 26,
+      "reminder": 8
+    },
+    "malformedJudgeAttempts": 0,
+    "rawOutputAndInventoryReviewed": true
+  },
+  "capture": {
+    "report": "step2-final-capture-report.json",
+    "correct": 20,
+    "stored": 20,
+    "expected": 20,
+    "decisions": {
+      "correct": 10,
+      "stored": 10,
+      "expected": 10
+    },
+    "actions": {
+      "correct": 10,
+      "stored": 10,
+      "expected": 10
+    },
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "silentCaptures": 10,
+    "privacyMarkers": {
+      "storedOccurrences": 0,
+      "diagnosticOccurrences": 0
+    },
+    "unsolicitedTextMessages": 0,
+    "captureReactions": 5,
+    "knownAnswersInspected": 10,
+    "unknownAnswerRefused": true,
+    "humanReview": "pending",
+    "answerLatencyMs": {
+      "p50": 7698,
+      "p95": 16084,
+      "max": 16084,
+      "sampleSize": 11,
+      "includesUnknownAnswer": true,
+      "conditions": "Synthetic quality sample ran alongside the isolated full e2e suite against the same provider"
+    },
+    "warnings": [
+      "Embeddings disabled",
+      "One malformed query-analysis response used the existing safe fallback"
+    ]
+  },
+  "remaining": [
+    "Activate candidate with staging backup and preserved crypto state",
+    "Final Wire UI and transport acceptance on this candidate",
+    "Human review of capture/answer quality and latency/noise",
+    "Simulation golden review remains unapproved",
+    "Five-working-day pilot after acceptance"
+  ],
+  "limits": [
+    "Embeddings off for model journeys; vector adapter tested with synthetic 2560-dimensional vectors",
+    "Date-only weekdays retain noon even when noon has passed; explicit next-week requests remain available",
+    "DST gap/fold disambiguation not expanded",
+    "Reminder delivery remains at least once; capture queue remains transient",
+    "Twelve judge calibration cases do not replace human review"
+  ],
+  "staging": {
+    "image": "wire-team-bot:v3-rc-4bc7e1f",
+    "changed": false
+  },
+  "sharedDatabaseReset": false,
+  "productionDeployment": false,
+  "dependencyAudit": {
+    "report": "step2-dependency-audit.json",
+    "highEntries": 3,
+    "uniqueAdvisories": 1,
+    "affectedPath": "Prisma local configuration merge via deepmerge-ts",
+    "applicationImportsFound": false,
+    "dependencyChanges": false,
+    "securityAuditCleanClaimed": false
+  },
+  "disposition": "Step two implemented and automated checks complete; staging activation and final Wire/human acceptance pending"
+}
