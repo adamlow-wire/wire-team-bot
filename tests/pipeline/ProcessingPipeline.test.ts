@@ -372,6 +372,7 @@ describe("pipeline privacy boundary", () => {
     vi.mocked(deps.channelConfig.get).mockResolvedValue({ state } as never);
     await new ProcessingPipeline(deps).process(baseJob());
     expect(deps.classifier.classify).not.toHaveBeenCalled();
+    expect(deps.wireOutbound.sendReaction).not.toHaveBeenCalled();
     expect(deps.signalRepo.create).not.toHaveBeenCalled();
   });
   it("fails closed when state cannot be read", async () => {
@@ -379,6 +380,7 @@ describe("pipeline privacy boundary", () => {
     vi.mocked(deps.channelConfig.get).mockRejectedValue(new Error("DB unavailable"));
     await new ProcessingPipeline(deps).process(baseJob());
     expect(deps.classifier.classify).not.toHaveBeenCalled();
+    expect(deps.wireOutbound.sendReaction).not.toHaveBeenCalled();
   });
   it("discards extraction finishing after cancellation", async () => {
     const controller = new AbortController();
@@ -422,4 +424,88 @@ it("does not recapture an unchanged active decision from another source event", 
   vi.mocked(deps.decisionRepo.query).mockImplementation(async query => query.rawMessageId ? [] : [{rawMessageId:"earlier-message",summary:"Use Postgres",status:"active"}] as never);
   await new ProcessingPipeline(deps).process(baseJob());
   expect(deps.decisionRepo.create).not.toHaveBeenCalled();
+});
+
+describe("passive action acknowledgements", () => {
+  const capture: ExtractResult = { ...emptyExtractResult, actions: fullExtractResult.actions };
+  const target = { id: "ACT-old", assigneeId: senderId, description: "Review checklist", rawMessageId: "earlier", status: "open", version: 1 };
+  const completion: ExtractResult = { ...emptyExtractResult, completions: [{ actionId: target.id, note: "Reviewed" }] };
+  function setup(result: ExtractResult) {
+    const deps = makeDeps({
+      classifier: { classify: vi.fn().mockResolvedValue(highSignalResult) },
+      extraction: { extract: vi.fn().mockResolvedValue(result) },
+    });
+    vi.mocked(deps.actionRepo.query).mockImplementation(async query => query.rawMessageId ? [] : [target] as never);
+    return deps;
+  }
+
+  it.each([
+    [capture, ["📝"]], [completion, ["✅"]],
+    [{ ...capture, completions: completion.completions }, ["📝", "✅"]],
+  ] as const)("acknowledges saved action outcomes with %j", async (result, emojis) => {
+    const deps = setup(result);
+    const order: string[] = [];
+    vi.mocked(deps.actionRepo.create).mockImplementation(async value => { order.push("create"); return value; });
+    vi.mocked(deps.actionRepo.update).mockImplementation(async value => { order.push("update"); return value; });
+    vi.mocked(deps.auditLog.append).mockImplementation(async entry => { if (entry.entityType === "Action") order.push("audit"); });
+    vi.mocked(deps.wireOutbound.sendReaction).mockImplementation(async () => { order.push("reaction"); });
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.wireOutbound.sendReaction).toHaveBeenCalledExactlyOnceWith(convId, "msg-1", emojis);
+    expect(order.at(-1)).toBe("reaction");
+    expect(order.filter(x => x === "audit")).toHaveLength(emojis.length);
+    expect(deps.wireOutbound.sendPlainText).not.toHaveBeenCalled();
+  });
+
+  it.each(["create", "update", "capture-audit", "completion-audit"])("does not acknowledge failed %s", async failure => {
+    const deps = setup(failure === "create" || failure === "capture-audit" ? capture : completion);
+    if (failure === "create") vi.mocked(deps.actionRepo.create).mockRejectedValue(new Error("write failed"));
+    else if (failure === "update") vi.mocked(deps.actionRepo.update).mockRejectedValue(new Error("write failed"));
+    else vi.mocked(deps.auditLog.append).mockRejectedValue(new Error("audit failed"));
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.wireOutbound.sendReaction).not.toHaveBeenCalled();
+  });
+
+  it.each(["empty", "unknown-owner", "low-confidence", "duplicate-source", "duplicate-fact", "foreign-completion"])("does not acknowledge %s", async variant => {
+    const deps = setup(variant === "empty" ? emptyExtractResult : variant === "foreign-completion" ? completion : capture);
+    if (variant === "unknown-owner") vi.mocked(deps.userResolution.resolveByHandleOrName).mockResolvedValue({ userId: null, ambiguous: true });
+    if (variant === "low-confidence") vi.mocked(deps.extraction.extract).mockResolvedValue({ ...capture, actions: [{ ...capture.actions[0], confidence: 0.1 }] });
+    if (variant === "duplicate-source" || variant === "duplicate-fact") vi.mocked(deps.actionRepo.query).mockResolvedValue([{ ...target, rawMessageId: variant === "duplicate-source" ? "msg-1" : "earlier", description: capture.actions[0].description }] as never);
+    if (variant === "foreign-completion") vi.mocked(deps.actionRepo.query).mockResolvedValue([{ ...target, assigneeId: { ...senderId, domain: "other.test" } }] as never);
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.wireOutbound.sendReaction).not.toHaveBeenCalled();
+    expect(deps.actionRepo.create).not.toHaveBeenCalled();
+    expect(deps.actionRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("suppresses duplicate completion writes and sends one reaction", async () => {
+    const deps = setup({ ...completion, completions: [...completion.completions, ...completion.completions] });
+    await new ProcessingPipeline(deps).process(baseJob());
+    expect(deps.actionRepo.update).toHaveBeenCalledOnce();
+    expect(vi.mocked(deps.auditLog.append).mock.calls.filter(([entry]) => entry.entityType === "Action")).toHaveLength(1);
+    expect(deps.wireOutbound.sendReaction).toHaveBeenCalledExactlyOnceWith(convId, "msg-1", ["✅"]);
+  });
+
+  it("does not react if cancellation arrives during persistence", async () => {
+    const deps = setup(capture);
+    const controller = new AbortController();
+    vi.mocked(deps.auditLog.append).mockImplementation(async () => { controller.abort(); });
+    await new ProcessingPipeline(deps).process(baseJob(), controller.signal);
+    expect(deps.actionRepo.create).toHaveBeenCalledOnce();
+    expect(deps.wireOutbound.sendReaction).not.toHaveBeenCalled();
+  });
+
+  it("does not repeat a saved write when the reaction send fails", async () => {
+    const deps = setup(capture);
+    vi.mocked(deps.wireOutbound.sendReaction).mockRejectedValue(new Error("private transport diagnostic"));
+    const pipeline = new ProcessingPipeline(deps);
+    await pipeline.process(baseJob());
+    expect(deps.actionRepo.create).toHaveBeenCalledOnce();
+    expect(deps.signalRepo.create).toHaveBeenCalled();
+    expect(JSON.stringify(vi.mocked(deps.logger.warn).mock.calls)).not.toContain("private transport diagnostic");
+    const stored = vi.mocked(deps.actionRepo.create).mock.calls[0][0];
+    vi.mocked(deps.actionRepo.query).mockResolvedValue([stored]);
+    await pipeline.process(baseJob());
+    expect(deps.actionRepo.create).toHaveBeenCalledOnce();
+    expect(deps.wireOutbound.sendReaction).toHaveBeenCalledOnce();
+  });
 });

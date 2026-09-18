@@ -570,6 +570,7 @@ describe("WireEventRouter contract: member cache lifecycle", () => {
     const conv = { id: "conv-1", domain: "wire.com" };
     const members = [{ userId: sender, role: "member" }];
     await router.onAppAddedToConversation(conv, members);
+    expect(deps.wireOutbound.sendPlainText).toHaveBeenCalledWith(convId, expect.stringMatching(/📝.*save an action.*✅.*save a completion/));
     expect(deps.memberCache.setMembers).toHaveBeenCalledWith(
       expect.objectContaining({ id: "conv-1" }),
       expect.any(Array),

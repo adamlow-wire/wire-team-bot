@@ -34,7 +34,11 @@ Product rules:
   them requires a proven replacement, not a blanket presentation change.
 - In groups, teach users to mention Wire Team Bot for questions and use the documented commands for
   changes. Existing unmentioned follow-ups are a heuristic, not a general conversation contract.
-- Keep passive capture quiet. Fix misleading prompts and dead controls before adding new ones.
+- Keep passive action capture quiet but visible: 📝 on the source message after an action and its
+  audit are saved; ✅ on an unmentioned completion after the status and audit are saved. A reaction
+  means at least one matching change succeeded; lists show details. No success reaction for skipped,
+  duplicate, failed or cancelled work. Reaction delivery failure must not undo or repeat a saved write.
+  Explain the meanings in the welcome message. Explicit commands retain their text confirmations.
 - Retain the existing Wire Team Bot voice: concise, no exclamation marks, “I'm afraid” rather than
   “Sorry”, “Shall I” for a supported offer. Accuracy matters more than persona polish.
 
@@ -563,6 +567,17 @@ September 18 12:00 UTC. Its source event produced exactly one action and one cre
 the audit retains only the source ID. The operator screenshot shows the unmentioned source,
 not a bot acknowledgement. **Capture passes; passive completion and subsequent list check
 remain pending.** This is one live smoke event, not a fresh aggregate quality evaluation.
+
+User-approved feedback change (2026-09-18): silent checklist capture left the operator unsure
+whether anything happened. Add post-persistence 📝/✅ reactions for passive action capture/completion
+through the existing outbound port, with mocked/contract coverage, real-model stored-record
+checks, simulation replay and a live Wire reaction check. Implementation is present: 296 unit/
+contract/isolated-DB tests, build/type-check/lint pass. The four-event real-model lifecycle passes:
+📝 on capture, ✅ on completion, no reaction for explicit creation or noise. Post-process inventory
+finds both expected actions, the passive one done/version 2, and all three source-linked action
+audits. Initial tests found a stopped isolated DB (restarted without reset) and new assertions
+that incorrectly counted signal audits as action audits (corrected to assert action audits).
+Full immutable-image e2e, simulation and real Wire display verification remain pending.
 
 Remaining entry checks, in order:
 

@@ -51,16 +51,17 @@ describe("WireOutboundAdapter contract", () => {
     expect(arg.items?.[2]).toMatchObject({ type: "composite_button", id: "no", text: "No" });
   });
 
-  it("sendReaction calls manager.sendMessage with a Reaction carrying the emoji set", async () => {
+  it.each(["📝", "✅", ["📝", "✅"]])("sendReaction maps %j to the qualified source message", async emoji => {
     const sendMessage = vi.fn().mockResolvedValue("ok");
     const adapter = createWireOutboundAdapter(makeRef(sendMessage), mockLogger);
-    await adapter.sendReaction(convId, "msg-1", "✓");
+    await adapter.sendReaction(convId, "msg-1", emoji);
     expect(sendMessage).toHaveBeenCalledOnce();
     const arg = sendMessage.mock.calls[0]![0] as { type?: string; messageId?: string; emojiSet?: Set<string> };
     expect(arg.type).toBe("reaction");
     expect(arg.messageId).toBe("msg-1");
     expect(arg.emojiSet).toBeInstanceOf(Set);
-    expect([...(arg.emojiSet ?? [])]).toEqual(["✓"]);
+    expect([...(arg.emojiSet ?? [])]).toEqual(typeof emoji === "string" ? [emoji] : emoji);
+    expect(arg).toMatchObject({ conversationId: convId });
   });
 
   it("getUserProfile resolves via manager.getUsers and maps the first result", async () => {

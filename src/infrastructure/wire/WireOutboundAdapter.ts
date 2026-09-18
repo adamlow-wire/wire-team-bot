@@ -86,13 +86,13 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
     async sendReaction(
       conversationId: QualifiedId,
       messageId: string,
-      emoji: string,
+      emoji: string | readonly string[],
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
       logger.debug("sendReaction", { conversationId: conversationId.id, messageId, emoji });
       await h.manager.sendMessage(
-        Reaction.create({ conversationId, messageId, emojiSet: new Set([emoji]) }),
+        Reaction.create({ conversationId, messageId, emojiSet: new Set(typeof emoji === "string" ? [emoji] : emoji) }),
       );
     },
 

@@ -278,10 +278,14 @@ export class ProcessingPipeline {
     }
 
     // ── Completions — close existing actions announced as done ─────────────
+    let savedCompletion = false;
+    let savedAction = false;
+    const completedIds = new Set<string>();
     for (const c of extracted.completions) {
       if (signal?.aborted) return;
       const target = openActions.find(a => a.id === c.actionId);
-      if (!target || target.assigneeId.id !== senderId.id || target.assigneeId.domain !== senderId.domain) continue;
+      if (!target || completedIds.has(target.id) || target.assigneeId.id !== senderId.id || target.assigneeId.domain !== senderId.domain) continue;
+      completedIds.add(target.id);
       try {
         await this.deps.actionRepo.update({
           ...target,
@@ -291,6 +295,7 @@ export class ProcessingPipeline {
           version: target.version + 1,
         });
         await this.audit(job, "Action", target.id, "entity_updated");
+        savedCompletion = true;
         log.info("Pipeline: action completed via NL announcement", { actionId: target.id });
       } catch (err) {
         log.warn("Pipeline: completion update failed", { actionId: c.actionId, err: (err instanceof Error ? err.name : "UnknownError") });
@@ -355,6 +360,7 @@ export class ProcessingPipeline {
         };
         await this.deps.actionRepo.create(action);
         await this.audit(job, "Action", id, "entity_created");
+        savedAction = true;
 
         // Tier 3: embed action (fire-and-forget)
         await this.embedAndStore({
@@ -369,6 +375,18 @@ export class ProcessingPipeline {
         }, conversationId, log, signal);
       } catch (err) {
         log.warn("Pipeline: action create failed", { err: (err instanceof Error ? err.name : "UnknownError") });
+      }
+    }
+
+    // Acknowledge only committed, audited action changes, once per source message.
+    // One reaction set preserves both meanings when a message creates and completes work.
+    if (!signal?.aborted && (savedAction || savedCompletion)) {
+      const emojis = [...(savedAction ? ["📝"] : []), ...(savedCompletion ? ["✅"] : [])];
+      try {
+        await this.deps.wireOutbound.sendReaction(conversationId, messageId, emojis);
+      } catch (err) {
+        // A failed acknowledgement must not turn a saved action into a failed write or replay it.
+        log.warn("Pipeline: action acknowledgement failed", { errorType: err instanceof Error ? err.name : "UnknownError" });
       }
     }
 

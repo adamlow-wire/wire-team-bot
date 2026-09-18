@@ -1,0 +1,10 @@
+{
+  "reviewStatus": "Synthetic reaction lifecycle: verify reaction source IDs and committed actions/audits after processing; not aggregate extraction quality",
+  "events": [
+    {"eventId":"reaction-create","text":"Bob: I will send the reaction smoke checklist by tomorrow.","expected":{"type":"action","terms":["reaction","checklist"],"owner":"bob"}},
+    {"eventId":"reaction-complete","text":"Bob: I've sent the reaction smoke checklist. That task is finished."},
+    {"eventId":"reaction-explicit","text":"action: review the explicit smoke report for Carol","expected":{"type":"action","terms":["explicit","report"],"owner":"carol"}},
+    {"eventId":"reaction-noise","text":"Good morning everyone."}
+  ],
+  "questions": []
+}

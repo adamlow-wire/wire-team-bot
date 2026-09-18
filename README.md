@@ -196,6 +196,14 @@ multiple requests in one message are not currently supported.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
+Passive action capture is quiet but visible: **📝** means at least one action was saved from
+that message; **✅** means at least one completion was saved. Both may appear when a message
+does both. Reactions follow the record and audit writes; duplicates, rejected captures and
+PAUSED/SECURE messages get no success reaction. Use `my actions` or `team actions` to inspect
+owners and deadlines. A failed reaction send leaves the saved record intact; reactions are not
+retried durably or backfilled onto older messages. Passive decisions do not receive these action
+reactions. Explicit commands retain their text confirmations.
+
 Use text commands for corrections. Supported text commands also accept a leading single-line inline-code span
 around the command prefix or whole command when pasted from an example. This includes
 reminders, decisions, actions and addressed privacy controls; code blocks and prose examples

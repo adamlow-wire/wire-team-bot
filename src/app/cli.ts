@@ -101,6 +101,7 @@ const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
 
 const evaluationMode = process.env.E2E_JSON === "1";
 let evaluationReplies: string[] = [];
+let evaluationReactions: Array<{ messageId: string; emojis: string[] }> = [];
 
 function createCliOutbound(): WireOutboundPort {
   return {
@@ -112,7 +113,11 @@ function createCliOutbound(): WireOutboundPort {
       if (evaluationMode) evaluationReplies.push(text);
       else process.stdout.write(`[Wire Team Bot] ${text}\n`);
     },
-    async sendReaction() {},
+    async sendReaction(_conversationId, messageId, emoji) {
+      const emojis = typeof emoji === "string" ? [emoji] : [...emoji];
+      if (evaluationMode) evaluationReactions.push({ messageId, emojis });
+      else process.stdout.write(`[Wire Team Bot reaction] ${emojis.join(" ")}\n`);
+    },
     async sendFile() {},
     async getUserProfile(userId: QualifiedId) {
       const m = MEMBERS.find((mem) => mem.id.id === userId.id);
@@ -283,6 +288,7 @@ async function main() {
     const event = evaluationMode ? JSON.parse(line) as { eventId: string; text: string } : null;
     const trimmed = (event?.text ?? line).trim();
     evaluationReplies = [];
+    evaluationReactions = [];
     const started = Date.now();
     if (!trimmed) continue;
     if (trimmed === "exit" || trimmed === "quit") break;
@@ -310,7 +316,7 @@ async function main() {
     await router.onTextMessageReceived(msg as Parameters<typeof router.onTextMessageReceived>[0]);
     if (event) {
       await processingQueue.waitForIdle(180_000);
-      process.stdout.write(JSON.stringify({ eventId: event.eventId, replies: evaluationReplies, elapsedMs: Date.now() - started }) + "\n");
+      process.stdout.write(JSON.stringify({ eventId: event.eventId, replies: evaluationReplies, reactions: evaluationReactions, elapsedMs: Date.now() - started }) + "\n");
     }
   }
 

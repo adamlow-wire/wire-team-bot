@@ -50,7 +50,7 @@ export interface WireOutboundPort {
   sendReaction(
     conversationId: QualifiedId,
     messageId: string,
-    emoji: string,
+    emoji: string | readonly string[],
   ): Promise<void>;
 
   /**

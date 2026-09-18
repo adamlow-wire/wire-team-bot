@@ -954,7 +954,7 @@ export class WireEventRouter extends WireEventsHandler {
         if (!legacyCfg?.purpose) {
           await this.deps.wireOutbound.sendPlainText(
             convId,
-            "I'm Wire Team Bot. To save the channel purpose, mention me with: context: <brief purpose>. Use decision: or action: to record work, and mention me with pause, secure mode, or resume to control listening.",
+            "I'm Wire Team Bot. To save the channel purpose, mention me with: context: <brief purpose>. Use decision: or action: to record work. I react 📝 when I save an action from the conversation and ✅ when I save a completion; use my actions to check details. Mention me with pause, secure mode, or resume to control listening.",
           );
         }
       }
