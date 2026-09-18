@@ -4,6 +4,7 @@ import { QualifiedId as SdkQualifiedId } from "@wireapp/wire-apps-js-sdk";
 import type { Config } from "./config";
 import type { Logger } from "./logging";
 import { createWireOutboundAdapter, type HandlerManagerRef } from "../infrastructure/wire/WireOutboundAdapter";
+import { WireReplyContext } from "../infrastructure/wire/WireReplyContext";
 import { WireEventRouter } from "../infrastructure/wire/WireEventRouter";
 import { createWireClient } from "../infrastructure/wire/WireClient";
 import { PrismaDecisionRepository } from "../infrastructure/persistence/postgres/PrismaDecisionRepository";
@@ -70,7 +71,8 @@ export interface Container {
 export function createContainer(config: Config, logger: Logger): Container {
   const handlerRef: HandlerManagerRef = { current: null };
 
-  const wireOutbound = createWireOutboundAdapter(handlerRef, logger);
+  const replyContext = new WireReplyContext();
+  const wireOutbound = createWireOutboundAdapter(handlerRef, logger, replyContext);
 
   const decisionsRepo = new PrismaDecisionRepository();
   const actionsRepo = new PrismaActionRepository();
@@ -267,6 +269,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     statusCommand,
     catchMeUpCommand,
     wireOutbound,
+    replyContext,
     messageBuffer,
     dateTimeService,
     memberCache,

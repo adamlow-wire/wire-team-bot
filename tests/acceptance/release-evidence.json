@@ -159,7 +159,7 @@
     "pendingRemindersBeforeSwitch": 0,
     "memberCacheHydratedConversations": 2,
     "sdkErrorDiagnostics": 0,
-    "transportRoundTrip": "pending operator capture/completion reaction test"
+    "transportRoundTrip": "passed: operator confirms capture/completion reactions on 7384b39; scoped DB confirms checklist done/version 2"
   },
   "wireChecks": {
     "mentionStatusRoundTrip": {
@@ -806,6 +806,15 @@
     "report": "reaction-report.json",
     "commit": "7384b39",
     "result": "passed: real-model capture/completion reactions match source IDs; post-drain inventory and audits verify persisted changes; explicit commands/noise have no reactions",
-    "wireDisplay": "pending"
+    "wireDisplay": "passed: operator confirms both capture/completion emojis in Wire on 2026-09-18",
+    "wireStoredRecord": {
+      "conversation": "8791c80e-8209-4509-9c33-360e83b44c62@staging.zinfra.io",
+      "actionId": "ACT-0006",
+      "fact": "Send the emoji smoke checklist",
+      "status": "done",
+      "version": 2,
+      "sourceId": "550e5ccf-e384-4535-8f2d-6a7a364474d9",
+      "updatedAt": "2026-09-18T09:01:45.912Z"
+    }
   }
 }

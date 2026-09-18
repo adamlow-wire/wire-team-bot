@@ -37,6 +37,7 @@ import type { ProcessingPipeline, MessageJob } from "../pipeline/ProcessingPipel
 import { toChannelId } from "../../domain/ids/channelId";
 import { bindUserMentions } from "./bindUserMentions";
 import { parseAddressedAction } from "./parseAddressedAction";
+import type { WireReplyContext } from "./WireReplyContext";
 
 const CONTEXT_WINDOW = 10;
 const NAME_TTL_MS = 24 * 60 * 60 * 1000; // re-fetch display names after 24 h to catch renames
@@ -81,6 +82,7 @@ export interface WireEventRouterDeps {
   // Infrastructure
   botUserId: QualifiedId;
   wireOutbound: WireOutboundPort;
+  replyContext?: WireReplyContext;
   messageBuffer: ConversationMessageBuffer;
   dateTimeService: DateTimeService;
   memberCache: ConversationMemberCache;
@@ -122,7 +124,10 @@ export class WireEventRouter extends WireEventsHandler {
   async onTextMessageReceived(wireMessage: TextMessage): Promise<void> {
     const channelId = toChannelId(wireMessage.conversationId);
     const previous = this.handlers.get(channelId) ?? Promise.resolve();
-    const current = previous.catch(() => {}).then(() => this.processTextMessage(wireMessage));
+    const current = previous.catch(() => {}).then(() => {
+      const process = () => this.processTextMessage(wireMessage);
+      return this.deps.replyContext ? this.deps.replyContext.withMessage(wireMessage, process) : process();
+    });
     this.handlers.set(channelId, current);
     try { await current; } finally {
       if (this.handlers.get(channelId) === current) this.handlers.delete(channelId);

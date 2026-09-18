@@ -6,6 +6,9 @@
  * and ports — no DB, no network.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { TextMessage } from "@wireapp/wire-apps-js-sdk";
+import { WireReplyContext } from "../../src/infrastructure/wire/WireReplyContext";
+import { createWireOutboundAdapter } from "../../src/infrastructure/wire/WireOutboundAdapter";
 import { WireEventRouter } from "../../src/infrastructure/wire/WireEventRouter";
 import type { WireEventRouterDeps } from "../../src/infrastructure/wire/WireEventRouter";
 import type { QualifiedId } from "../../src/domain/ids/QualifiedId";
@@ -786,4 +789,52 @@ it("parses the documented for-owner form followed by a deadline", async () => {
   const deps=makeDeps();
   await new WireEventRouter(deps).onTextMessageReceived(makeMessage("action: review the checklist for Bob by Friday"));
   expect(deps.createActionFromExplicit.execute).toHaveBeenCalledWith(expect.objectContaining({description:"review the checklist",assigneeReference:"Bob",deadlineText:"Friday"}));
+});
+
+
+it("quotes each actual source across overlapping channels and queued commands", async () => {
+  const context = new WireReplyContext();
+  const sendMessage = vi.fn().mockResolvedValue("sent");
+  const deps = makeDeps({ replyContext: context });
+  const adapter = createWireOutboundAdapter({ current: { manager: { sendMessage, sendAsset: vi.fn(), getUsers: vi.fn().mockResolvedValue([]) } } }, deps.logger, context);
+  deps.wireOutbound = adapter;
+  let release!: () => void;
+  let entered!: () => void;
+  const enteredFirst = new Promise<void>(resolve => { entered = resolve; });
+  const blocked = new Promise<void>(resolve => { release = resolve; });
+  deps.listMyActions.execute = vi.fn(async input => {
+    if (input.conversationId.domain === convId.domain && input.replyToMessageId === "first") {
+      entered();
+      await blocked;
+    }
+    await adapter.sendPlainText(input.conversationId, `list ${input.replyToMessageId}`, { replyToMessageId: input.replyToMessageId });
+    return [];
+  });
+  const router = new WireEventRouter(deps);
+  const source = (id: string, domain = convId.domain) => TextMessage.create({
+    conversationId: { ...convId, domain }, messageId: id, text: "my actions", senderId: sender,
+    timestamp: new Date("2026-09-18T09:00:00Z"),
+  });
+  const first = router.onTextMessageReceived(source("first"));
+  await enteredFirst;
+  const second = router.onTextMessageReceived(source("second"));
+  await router.onTextMessageReceived(source("first", "other.test"));
+  expect(sendMessage).toHaveBeenCalledTimes(1);
+  expect(sendMessage.mock.calls[0][0]).toMatchObject({ conversationId: { ...convId, domain: "other.test" }, quotedMessageId: "first" });
+  release();
+  await Promise.all([first, second]);
+  expect(sendMessage.mock.calls.slice(1).map(([m]) => [m.text, m.quotedMessageId])).toEqual([["list first", "first"], ["list second", "second"]]);
+  expect(context.get(convId, "first")).toBeUndefined();
+  expect(context.get(convId, "second")).toBeUndefined();
+});
+
+it("quotes router error responses and clears their source metadata", async () => {
+  const context = new WireReplyContext();
+  const deps = makeDeps({ replyContext: context });
+  const sendMessage = vi.fn().mockResolvedValue("sent");
+  deps.wireOutbound = createWireOutboundAdapter({ current: { manager: { sendMessage, sendAsset: vi.fn(), getUsers: vi.fn().mockResolvedValue([]) } } }, deps.logger, context);
+  vi.mocked(deps.listMyActions.execute).mockRejectedValue(new Error("synthetic failure"));
+  await new WireEventRouter(deps).onTextMessageReceived(TextMessage.create({ conversationId: convId, messageId: "failed-command", text: "my actions", senderId: sender }));
+  expect(sendMessage.mock.calls[0][0]).toMatchObject({ text: "Something went wrong. Please try again.", quotedMessageId: "failed-command" });
+  expect(context.get(convId, "failed-command")).toBeUndefined();
 });

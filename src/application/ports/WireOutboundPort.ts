@@ -8,7 +8,7 @@ export interface OutboundMention {
   length: number;
 }
 
-/** Options for plain-text send. replyToMessageId is ignored until the Wire SDK exposes reply-in-thread. */
+/** Reply to the matching incoming message while its handler is active, if Wire permits it. */
 export interface OutboundTextOptions {
   replyToMessageId?: string;
   mentions?: OutboundMention[];
@@ -19,7 +19,7 @@ export interface CompositeButton {
   label: string;
 }
 
-/** Options for composite prompt. replyToMessageId is ignored until the SDK supports it. */
+/** The prompt's leading text can quote the matching incoming message. */
 export interface CompositePromptOptions {
   replyToMessageId?: string;
 }

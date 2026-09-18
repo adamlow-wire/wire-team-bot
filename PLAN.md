@@ -39,6 +39,9 @@ Product rules:
   means at least one matching change succeeded; lists show details. No success reaction for skipped,
   duplicate, failed or cancelled work. Reaction delivery failure must not undo or repeat a saved write.
   Explain the meanings in the welcome message. Explicit commands retain their text confirmations.
+- Use native Wire replies for direct responses so each confirmation or answer identifies its source.
+  Keep only the SDK quote ID/hash during the handler; never persist source text for quoting.
+  Scheduled notifications remain standalone. Wire disallows quoting self-deleting messages.
 - Retain the existing Wire Team Bot voice: concise, no exclamation marks, “I'm afraid” rather than
   “Sorry”, “Shall I” for a supported offer. Accuracy matters more than persona polish.
 
@@ -315,7 +318,7 @@ attribution bug, combined-command guidance, human review and remaining Wire gate
   ✅ on its completion source, no reaction for explicit creation or ordinary chat. All stored
   records were inspected after drain: two expected actions, Bob's passive one done/version 2,
   Carol's explicit one open, and three action audits linked to the expected source events.
-  See [reaction-report.json](tests/acceptance/reaction-report.json). Wire client display is pending.
+  See [reaction-report.json](tests/acceptance/reaction-report.json). The operator confirmed both emojis display correctly in Wire on September 18.
 - Fresh fixed sample at `7384b39`: **20 correct / 20 total / 20 expected**, 10 decisions and 10
   actions, **100% precision / 100% recall**, zero duplicates or stored/log privacy markers.
   Baseline remains 10/10/20 (100%/50%). Five passive actions received 📝; unsolicited text replies
@@ -565,9 +568,9 @@ contract/isolated-DB tests, build/type-check/lint pass. The four-event real-mode
 finds both expected actions, the passive one done/version 2, and all three source-linked action
 audits. Initial tests found a stopped isolated DB (restarted without reset) and new assertions
 that incorrectly counted signal audits as action audits (corrected to assert action audits).
-Full immutable-image e2e is 57/60 and simulation is complete as detailed above. Real Wire
-reaction display remains pending; the next operator check must use a fresh unmentioned action
-and completion. Reactions are best effort, with no durable retry or backfill; failed delivery
+Full immutable-image e2e is 57/60 and simulation is complete as detailed above. The operator confirmed both reactions work in the Wire webapp. Scoped post-processing DB
+inspection finds the emoji smoke checklist as `ACT-0006`, done/version 2, source
+`550e5ccf-e384-4535-8f2d-6a7a364474d9`, updated at 09:01:45.912 UTC. Reactions are best effort, with no durable retry or backfill; failed delivery
 does not undo or repeat a persisted write. Both emojis share one reaction set for mixed outcomes.
 Staging started the pinned image at 08:57:46.917 UTC, preserved existing volumes, hydrated two
 conversations and connected with zero SDK errors. Fresh readable database/crypto backups and

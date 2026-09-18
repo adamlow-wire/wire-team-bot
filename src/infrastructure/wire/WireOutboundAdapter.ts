@@ -9,6 +9,7 @@ import type {
 import type { Logger } from "../../application/ports/Logger";
 import { TextMessage, CompositeMessage, CompositeButton, Reaction } from "@wireapp/wire-apps-js-sdk";
 import type { WireMessage, WireUser } from "@wireapp/wire-apps-js-sdk";
+import type { WireReplyContext } from "./WireReplyContext";
 
 /**
  * The subset of WireApplicationManager the outbound adapter needs.
@@ -36,7 +37,7 @@ async function streamToUint8Array(stream: NodeJS.ReadableStream): Promise<Uint8A
 /**
  * Implements WireOutboundPort using @wireapp/wire-apps-js-sdk.
  */
-export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger: Logger): WireOutboundPort {
+export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger: Logger, replyContext?: WireReplyContext): WireOutboundPort {
   return {
     async getUserProfile(userId: QualifiedId): Promise<UserProfile | null> {
       const h = handlerRef.current;
@@ -62,14 +63,17 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
       const h = handlerRef.current;
       if (!h?.manager) return;
       logger.debug("sendPlainText", { conversationId: conversationId.id, textLength: text.length });
-      await h.manager.sendMessage(TextMessage.create({ conversationId, text, mentions: options?.mentions }));
+      await h.manager.sendMessage({
+        ...TextMessage.create({ conversationId, text, mentions: options?.mentions }),
+        ...replyContext?.get(conversationId, options?.replyToMessageId),
+      });
     },
 
     async sendCompositePrompt(
       conversationId: QualifiedId,
       text: string,
       buttons: PromptButton[],
-      _options?: CompositePromptOptions,
+      options?: CompositePromptOptions,
     ): Promise<void> {
       const h = handlerRef.current;
       if (!h?.manager) return;
@@ -77,8 +81,13 @@ export function createWireOutboundAdapter(handlerRef: HandlerManagerRef, logger:
       await h.manager.sendMessage(
         CompositeMessage.create({
           conversationId,
-          text,
-          itemList: buttons.map((b) => CompositeButton.create({ id: b.id, text: b.label })),
+          itemList: [
+            {
+              ...TextMessage.create({ conversationId, text }),
+              ...replyContext?.get(conversationId, options?.replyToMessageId),
+            },
+            ...buttons.map((b) => CompositeButton.create({ id: b.id, text: b.label })),
+          ],
         }),
       );
     },

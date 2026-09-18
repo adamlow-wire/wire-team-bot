@@ -196,6 +196,8 @@ multiple requests in one message are not currently supported.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
+Direct command confirmations and answers use Wire’s native reply to identify the source message.
+Scheduled notifications remain standalone; self-deleting sources cannot be quoted by Wire.
 Passive action capture is quiet but visible: **📝** means at least one action was saved from
 that message; **✅** means at least one completion was saved. Both may appear when a message
 does both. Reactions follow the record and audit writes; duplicates, rejected captures and
