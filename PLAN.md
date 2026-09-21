@@ -582,6 +582,15 @@ inspection or in-flight cancellation proof is claimed.
 to a qualified bot-mentioned `resume`; PAUSED instead gives a standing-by reply. The earlier
 instruction to expect a SECURE status reply was incorrect. This silence was not an outage.
 
+**Case 7 — September 21, 12:35 UTC:** Adam reports the lookup and lowercase completion
+attempt in Wire Team Bot Testing were denied and ACT-0012 remained open in Demo for Anna.
+[Scoped record/audit verification](tests/acceptance/manual-scope-denial-0921.json) confirms the
+same original source, qualified owner, open status and version 1, with only its original creation
+audit and no mutation audit. This real two-conversation denial journey passes. The test reused
+ACT-0012 from the SECURE prelude instead of creating another synthetic action; it may now be
+closed in its original conversation. Quality/usefulness review and the timezone display fix
+remain outstanding, alongside explicitly pending evidence in the earlier checkpoints.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
