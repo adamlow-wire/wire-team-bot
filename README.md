@@ -6,11 +6,8 @@ conversation, extract structured records, answer questions and generate catch-up
 The official `@wireapp/wire-apps-js-sdk` supplies encrypted messaging, structured mentions,
 native replies and reactions. This application supplies the AI integration, storage and workflow logic.
 
-**Status: working toward 1.0; final acceptance in progress, not a production-ready release.**
-The current candidate has passed automated validation and the reported Wire journeys. Detailed
-human quality approval and the five-working-day pilot remain outstanding. See
-[PLAN.md](PLAN.md) for the source of truth on scope, architecture, evidence and release gates;
-this README covers capabilities, setup and operation. [AGENTS.md](AGENTS.md) contains contributor rules.
+This README covers capabilities, setup and operation. [PLAN.md](PLAN.md) tracks architecture,
+validation evidence and release progress. [AGENTS.md](AGENTS.md) contains contributor guidance.
 
 ## What the AI does
 

@@ -619,6 +619,9 @@ composition/configuration, package scripts, Docker/Compose and current acceptanc
 Corrected the clone example and explained model-server setup and container-local endpoints.
 Local documentation links/anchors, npm script references and formatting were checked. This is
 a documentation-only change; no fresh runtime tests, model evaluation or staging rollout.
+At Adam’s request, removed the generic “working toward / not production-ready” README banner.
+The opening retains the proof-of-concept purpose; detailed acceptance status remains here.
+This editorial change does not mark pending acceptance checks or the 1.0 release complete.
 
 #### Reminder timezone correction — 2026-09-21
 
