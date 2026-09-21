@@ -612,6 +612,14 @@ runs; preserve that limitation alongside the automated queue/buffer tests. No pi
 1.0 release is claimed. Timezone regression, staging replacement and focused UI retest are complete below; remaining
 human confirmations are next.
 
+README review — September 21: clarified the AI assistant purpose, model-backed capture/Q&A/
+summaries, deterministic command paths, optional embeddings, deployment-owned model services,
+prompt data and provider/privacy boundaries. Checked claims against routing, pipeline/adapters,
+composition/configuration, package scripts, Docker/Compose and current acceptance evidence.
+Corrected the clone example and explained model-server setup and container-local endpoints.
+Local documentation links/anchors, npm script references and formatting were checked. This is
+a documentation-only change; no fresh runtime tests, model evaluation or staging rollout.
+
 #### Reminder timezone correction — 2026-09-21
 
 The misleading display is fixed in runtime `2dbc0fd`: creation/list/snooze replies use the

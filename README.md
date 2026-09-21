@@ -1,23 +1,64 @@
 # Wire Team Bot
 
-**This is a proof of concept to demonstrate the power of the Wire JS SDK.**
-Wire Team Bot uses the official `@wireapp/wire-apps-js-sdk` to receive encrypted Wire messages,
-resolve structured mentions, send native replies and reactions, and preserve its application
-identity across restarts. A team assistant demonstrates these capabilities through decisions,
-actions, reminders and channel-scoped questions.
+**This is a proof of concept to demonstrate the power of the Wire JS SDK through an AI team assistant.**
+Wire Team Bot uses large language models (LLMs) to recognise decisions and commitments in team
+conversation, extract structured records, answer questions and generate catch-up summaries.
+The official `@wireapp/wire-apps-js-sdk` supplies encrypted messaging, structured mentions,
+native replies and reactions. This application supplies the AI integration, storage and workflow logic.
 
-**Status: working toward 1.0; QA in progress, not a production-ready release.** Automated checks and a final manual
-acceptance session must finish before the small team pilot. The SDK provides the Wire transport;
-this application supplies persistence, model calls and workflow logic.
+**Status: working toward 1.0; final acceptance in progress, not a production-ready release.**
+The current candidate has passed automated validation and the reported Wire journeys. Detailed
+human quality approval and the five-working-day pilot remain outstanding. See
+[PLAN.md](PLAN.md) for the source of truth on scope, architecture, evidence and release gates;
+this README covers capabilities, setup and operation. [AGENTS.md](AGENTS.md) contains contributor rules.
 
-**[PLAN.md](PLAN.md) defines the app, architecture, feature scope and delivery progress.**
-This README is the setup and operations guide. [AGENTS.md](AGENTS.md) contains contributor rules.
+## What the AI does
 
-Wire Team Bot is an authorised participant and sees decrypted messages. Chat and embedding requests
-go to the providers you configure. Use local endpoints for both to keep inference on-premises.
-Structured records remain sensitive. Extract-and-forget is the design requirement; the
-[plan's current-state review](PLAN.md#3-current-delivery-state) records implementation gaps
-that must be closed before sensitive team use. Do not treat the current build as privacy-validated.
+The bot calls separately configured model services. The repository contains prompts, retrieval,
+validation and application code; the bot image does not include model weights or train a model
+on your team's messages. Operators choose the models and run inference locally or through a
+hosted endpoint that supports the request format used by this application.
+
+| Capability | How it works |
+|---|---|
+| Passive capture | In ACTIVE conversations, a model classifies incoming ambient messages. Selected messages and recent context go to an extractor, which proposes decisions, actions, completions and related structured information. Application code validates and saves accepted changes. |
+| Questions | Models interpret the question and compose an answer using recent conversation and relevant stored records retrieved from the current channel. Retrieval does not extend across channels in this pilot. |
+| Catch-up summaries | A model summarises stored decisions, actions and activity signals. A catch-up request can reuse a stored summary. |
+| Optional semantic retrieval | An embedding model converts text into vectors to find related records by meaning and support similarity/contradiction checks. Embeddings are disabled in the current staging candidate; chat-model features still run. |
+| Explicit commands | Recognised commands such as `decision: …`, `action: …`, `ACT-0001 done`, `my actions`, reminders and privacy controls use application code to perform the operation without a chat-model call. Free-form variants may take the AI question or extraction path. |
+
+For example, an unmentioned `I'll send the checklist tomorrow` can produce an AI-extracted
+action and a 📝 reaction. `ACT-0001 done` uses a deterministic update path. Asking
+`What am I responsible for?` uses models and retrieved records to compose an answer. The Q&A
+path has no write tools: an answer suggesting a command is not confirmation that it ran.
+
+Extraction and generated answers can miss or misinterpret information. The application checks
+model output, identities, scope and state transitions before writes, but those checks do not
+make every extracted fact or answer correct. Inspect the saved records and use their IDs for
+corrections. A new model/provider configuration needs its own quality evaluation; passing
+results for one configuration do not establish the quality of another.
+
+### What data reaches the models
+
+**AI processing can happen without mentioning the bot while a conversation is ACTIVE.**
+Depending on the operation, prompts can include the triggering message or question, recent
+message text and speaker names, channel purpose, member names/IDs, and relevant stored
+records. Extraction uses a 30-message window; Q&A has a separate recent-message buffer
+(default 50). Enabled embeddings also send the text being embedded to the configured provider.
+Explicit commands can become later conversation context or stored records used by a model.
+
+Wire Team Bot is an authorised Wire participant and receives decrypted messages. Wire's
+end-to-end encryption covers delivery to that participant; onward requests to model services
+are a separate data path. All enabled model endpoints—chat and embeddings—must be local to keep inference on-premises. Provider retention and use of submitted data depend on that provider
+and deployment, not this repository.
+
+The application's extract-and-forget design keeps raw surrounding conversation in bounded
+in-memory buffers and persists structured records, source references, summaries and audits.
+Those records can contain sensitive information. PAUSED/SECURE controls stop new message
+processing and clear transient buffers; they do not erase existing records or retract requests
+already sent to a provider. The SDK also keeps local crypto/session state. See
+[PLAN.md](PLAN.md#3-current-delivery-state) for safeguards, observed evidence and remaining
+privacy-validation limits; this is not a blanket guarantee about every storage layer or provider.
 
 ## Quick start
 
@@ -32,12 +73,17 @@ that must be closed before sensitive team use. Do not treat the current build as
 ### 1. Clone and configure
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/adamlow-wire/wire-team-bot.git
 cd wire-team-bot
 cp .env.example .env
 # Edit .env using the template: Wire credentials, crypto key, model endpoint and model slots
 openssl rand -hex 32   # paste as WIRE_SDK_CRYPTO_KEY
 ```
+
+Configure a reachable chat endpoint and model names before starting. The bot image does not
+start a model server or download models. With Docker, `localhost` in an endpoint URL refers to
+the bot container; use an address reachable from that container. For the pilot setup, disable
+embeddings unless a compatible embedding service is configured (see [Model configuration](#model-configuration)).
 
 ### 2. Start the stack
 
@@ -124,13 +170,18 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 [.env.example](.env.example) lists the accepted environment keys;
 [config.ts](src/app/config.ts) is authoritative for defaults and validation. Configure the chat
 endpoint, API key, all six chat model slots and their fallbacks. Models must be available at
-your endpoint. The client uses OpenAI-compatible chat completions. Provider compatibility
-and answer quality must be checked with the real-model suite.
+your endpoint. The six slots are classification, extraction, summarisation, query analysis,
+response generation and complex-answer generation. They can share one model or use different
+models; fallbacks are separately configured model names at the same chat endpoint. The client
+uses OpenAI-compatible chat completions; API compatibility and answer quality must be checked
+with the real-model suite. An API-compatible service is not a guarantee of equivalent behaviour.
+The names/defaults in the template are configuration examples, not a live provider model catalogue.
 
 Embeddings can use a separate endpoint or be disabled. For the current acceptance run, set the
 embedding mode to `off` in the private environment file before running the commands below.
-Structured retrieval and summaries work without vectors. Semantic retrieval, entity similarity
-matching and contradiction detection require a working embedding provider.
+Disabling embeddings does not disable the chat models. Structured retrieval and model-generated
+summaries work without vectors. Semantic retrieval, entity similarity matching and contradiction
+detection require a working embedding provider.
 
 The database column is `vector(2560)`. Enabled embeddings and their fallback must produce 2560
 finite values; changing an environment setting does not migrate the column. Search is exact
@@ -246,7 +297,8 @@ Database migrations live in `prisma/migrations/`. The schema is in `prisma/schem
   this tree. Use `npm ci` with the committed lockfile, and the install sequence above. Dependency changes are outside the current QA scope.
 - **`npm ci` compiles better-sqlite3 unnecessarily** on npm 10 (it ignores the package's `gypfile: false` when
   reading from the lockfile). The Dockerfile and CI therefore run
-  `npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines`; Prisma is the only dependency whose
+  `npm ci --ignore-scripts` followed by `npm rebuild prisma @prisma/client @prisma/engines`;
+  the Dockerfile also uses `--no-audit` to separate auditing from the build. Prisma is the only dependency whose
   install hooks are needed. On a machine with a C++ toolchain, plain `npm ci` also works, just slower.
 
 ### Test layout
@@ -302,7 +354,8 @@ and crypto identity preserved and verified backups available. See [PLAN.md](PLAN
 for the fixes, evaluator calibration and preserved failure evidence. The current image passes
 64/64 real-model scenarios, 18 mandatory stored/state checks and 393 unit/contract/isolated DB
 tests, plus build, type-check and lint. The earlier 20/20 stored-fact quality sample remains
-historical evidence. Staging activation is complete; final Wire/human acceptance remains pending.
+historical evidence. Staging activation and the timezone Wire retest are complete; detailed human
+quality approval remains pending. These are recorded results, not a fresh run for documentation edits.
 Use the [pinned-image manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
 and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md). The exact activation
 and rollback commands are in [PLAN.md](PLAN.md#reminder-timezone-correction--2026-09-21).
