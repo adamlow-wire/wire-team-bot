@@ -1,0 +1,56 @@
+{
+  "date": "2026-09-21",
+  "runtimeCommit": "8e2cce8f52f1b5af67576eb8e6f09a9a9f45bbfb",
+  "imageCommit": "8c0c89d",
+  "image": "wire-team-bot:v3-rc-8c0c89d",
+  "imageId": "sha256:194eac6f1efb420b50ca5c54c6e6a816b83743c713868ccd0c91464310a79d93",
+  "environment": {
+    "node": "22.23.2",
+    "glibc": "2.41",
+    "database": "isolated Postgres16 + pgvector, port55439",
+    "embeddings": "off",
+    "configuration": "Existing staging application model slots; credentials and provider endpoints omitted",
+    "judgeModel": "claude-opus-5"
+  },
+  "redBaseline": {
+    "failedNewRouterCases": 10,
+    "passedRouterCases": 119
+  },
+  "deterministic": {
+    "build": "pass",
+    "typeCheck": "pass",
+    "strictHarnessTypeCheck": "pass",
+    "lint": "pass",
+    "testsPassed": 387,
+    "testFiles": 43,
+    "isolatedDbTests": 6
+  },
+  "calibration": {
+    "passed": 12,
+    "total": 12
+  },
+  "e2e": {
+    "runId": "mub2kbt1",
+    "passed": 63,
+    "failed": 0,
+    "mandatoryStoredOrStateChecks": 17,
+    "report": "lowercase-id-e2e-report.json"
+  },
+  "additionalPostExitCheck": {
+    "scenario": "TC-REM-06",
+    "result": "pass",
+    "expectedCount": 1,
+    "match": "source, fact, qualified owner, cancelled status and exact snoozed deadline",
+    "record": {
+      "type": "reminder",
+      "source": "TC-REM-06-step-1",
+      "content": "check the formatting smoke reminder",
+      "owner": "alice@cli.local",
+      "deadline": "2026-09-21T11:00:57.267Z",
+      "status": "cancelled"
+    }
+  },
+  "rawReview": "Reviewed inputs, assertions, replies and post-exit inventories for lowercase decision supersession/revocation, action reassignment/deadline/completion/retrieval, and reminder snooze/cancel. Canonical replies preserved.",
+  "simulation": "Not rerun: classifier/extractor/pipeline unchanged. Earlier synthetic quality results remain historical.",
+  "wireConfirmation": "Lowercase completion on replacement candidate pending operator retest"
+}

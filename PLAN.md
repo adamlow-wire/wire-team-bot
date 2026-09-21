@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-21. Staging runtime: `ae618ff` (baseline `e35428b`). Latest tested QA runtime: `ae618ff`.
+Updated: 2026-09-21. Staging runtime/image: `8c0c89d` (case fix `8e2cce8`, baseline `e35428b`). Latest tested QA runtime: `8c0c89d`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -264,14 +264,15 @@ Final manual QA packet, prepared after QA-1 through QA-6:
    inventing writes/owners; judge latency and noise from the supplied measurements.
 
 Only after this single final acceptance stage passes does the five-day P3 pilot begin.
-Current state: QA-0 through QA-3 are implemented. Adam authorised the second implementation
+September 18 checkpoint (superseded by the September 21 case fix below): QA-0 through QA-3 are implemented. Adam authorised the second implementation
 step on 2026-09-18. The final `ae618ff` image passes **63/63 strengthened real-model scenarios**,
 all fifteen mandatory stored-record/state checks, and the unchanged **20/20 stored-fact sample**.
 Build/type-check/lint and **370 unit/contract/isolated DB tests** pass. All earlier failed runs and
 raw-review findings remain intact. QA-6 activation is complete: staging now runs that exact image,
 with verified backups, unchanged durable records, member/reminder hydration and no startup errors.
 Final Wire/human acceptance remains pending. The first candidate `status` smoke reply had the correct
-native quote but took approximately 25 seconds; the unresolved connection failure below blocks QA-7.
+native quote but took approximately 25 seconds. On September 21 Adam reported speed and reply
+targeting accepted; numeric timings and a confirmed cause of the earlier reconnects remain unavailable.
 This is code and automated QA completion, not pilot approval.
 
 #### Case-insensitive record references — 2026-09-21
@@ -282,7 +283,7 @@ is operator acceptance, not a measured transport latency benchmark or confirmed 
 Scoped DB inspection of `ACT-0008` in Demo for Anna confirms done/version 4, owner Adam (Human),
 deadline **2026-10-02 12:00 UTC**, original source ID and four audits: created for Adam Low,
 reassigned to Adam (Human), deadline changed, completed. The visible lowercase `act-0008 done`
-attempt failed; the uppercase retry succeeded. This additional usability defect is being fixed.
+attempt failed; the uppercase retry succeeded. This additional usability defect is fixed in the replacement candidate, with Wire confirmation pending.
 
 Root cause: command regexes already ignore case but passed lowercase captures unchanged to
 case-sensitive repository lookups. Normalize only matched ID tokens before mutations and direct
@@ -296,8 +297,37 @@ also gained mandatory post-exit stored-state checks; no assertions were relaxed.
 Red baseline: **10 new lowercase command cases fail**, 119 router cases pass. After the fix:
 build, `tsc --noEmit`, lint and **387 tests in 43 files** pass, including six isolated DB tests,
 case-insensitive direct retrieval and qualified-scope denials. Validation uses Node 22/trixie
-and the isolated pgvector database on port 55439. Full real-model validation and replacement
-image/staging activation are in progress; do not claim the new lowercase behavior is live yet.
+and the isolated pgvector database on port 55439. Fresh evaluator calibration is **12/12**;
+full real-model regression is **63/63**, with **17 mandatory post-exit stored/state checks**.
+An additional exact post-exit reminder inventory check confirms one correctly owned cancelled
+reminder, its source fact and the snoozed deadline. Raw inputs, replies and inventories for
+lowercase mutations and retrieval were reviewed; canonical replies and qualified scope remain intact.
+See [validation](tests/acceptance/lowercase-id-validation.json),
+[full results](tests/acceptance/lowercase-id-e2e-report.json),
+[calibration](tests/acceptance/lowercase-id-calibration.json) and
+[manual 1–3 evidence](tests/acceptance/manual-qa-steps-1-3.json).
+
+At **10:07:02 UTC**, staging was updated to `wire-team-bot:v3-rc-8c0c89d`, image
+`sha256:194eac6f1efb420b50ca5c54c6e6a816b83743c713868ccd0c91464310a79d93`.
+[Activation evidence](tests/acceptance/lowercase-id-staging-activation.json) records verified
+Postgres/crypto backups, identical environment and volumes, and unchanged fingerprints for all
+12 durable tables. Prisma files match the previous candidate; no migration changes. Startup
+hydrated three conversations and connected successfully, with zero errors and one expected
+embeddings-disabled warning. These are startup observations, not a sustained latency benchmark.
+Backups and image overrides are private under
+`/home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz`.
+To roll back only the bot, retaining current DB/crypto state:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz/rollback.override.yml \
+  up -d --no-deps --no-build --pull never jeeves
+```
+
+**Next:** create one fresh synthetic action in Wire, then complete it with its lowercase ID
+(e.g. `act-0009 done`, using the actual returned digits). Confirm the native quoted reply and
+removal from open actions. Cases 1–3 retain their operator pass on `ae618ff`; this focused check
+accepts the replacement fix. Cases 4–8 and human quality review remain pending.
 Classifier/extractor/pipeline code is unchanged; no simulation rerun is required for this fix.
 Container install/prune steps disable automatic npm audit uploads; the separately requested
 audit remains unapproved and its existing findings remain recorded. No dependencies changed.
@@ -308,7 +338,7 @@ Adam authorised proceeding toward 1.0. Preserve the current feature scope and fi
 acceptance sequence: pinned candidate → final Wire/human acceptance → five-working-day pilot →
 release decision against §5. Treat 1.0 as the version of this Wire JS SDK proof of concept, not
 a production-readiness claim. Package and lockfile versions remain `0.1.0` during acceptance;
-no release tag or replacement staging image has been created. Once accepted, update both version
+no 1.0 release tag has been created. Once accepted, update both version
 fields together, build the final immutable image, validate the packaged artifact with the existing
 checks and relevant journeys, and record its commit/digest, known limits and rollback instructions.
 Any functional/dependency fix returns through its focused reproduction and required regression
@@ -340,10 +370,9 @@ Work completed while the operator runs the next manual checks:
   it sends dependency names/versions to the npm registry. Adam has been asked whether to allow
   that transfer; no upload was attempted through another route and no audit pass is claimed.
 
-Next manual step is the requested latency/decision-recall result, then case 3 below. For a
-September 21 run, expect `this Friday` = September 25 and `next Friday` = October 2. Keep
-cases 3–8 and human quality review pending until their actual UI and stored-record evidence
-arrives. Friday's full test/e2e results remain their original runs; this new focused CLI check
+Adam subsequently reported cases 1–3 passed; see the case-insensitive record entry above.
+For a September 21 run, expect `this Friday` = September 25 and `next Friday` = October 2.
+Next is a focused lowercase-ID retest, then cases 4–8 and human quality review. Friday's full test/e2e results remain their original runs; this new focused CLI check
 does not replace them or the required real Wire acceptance.
 
 #### Monday status check — 2026-09-21
@@ -473,7 +502,7 @@ returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one
 message except the deliberately combined-command test. Case 1 has a correct quoted `status`
 reply; Adam subsequently reports tests 1–3 passed, including reply targeting, final decision
 recall and the action lifecycle (see the September 21 entry above). Lowercase ID input exposed
-one additional defect under repair. Cases 4–8 remain **pending on the final candidate**.
+one additional defect fixed in the replacement candidate, awaiting a focused Wire retest. Cases 4–8 remain **pending on the final candidate**.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.
@@ -489,8 +518,8 @@ arrays remain empty. The observed answer correctly uses that stored wording to i
 Low as maker rather than treating the recorder as maker. No runtime changes or fresh automated
 suite are claimed. These records are in `462a6490-fc3e-4c76-9f20-154c6b661336@staging.zinfra.io`,
 not either previously designated room; the operator has been asked to confirm its display name.
-Verification was limited to the reported synthetic facts and their audits. The final Wire
-question after revocation is still needed; do not mark the entire case passed yet.
+Verification was limited to the reported synthetic facts and their audits. On September 21 Adam reported the final post-revocation question passed as part of cases 1–3.
+That is operator confirmation; no new verbatim answer or numeric timing was supplied.
 
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check

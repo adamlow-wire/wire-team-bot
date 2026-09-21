@@ -104,9 +104,11 @@
   },
   "attributionStorage": "Both decidedBy arrays are empty; the replacement summary explicitly names Adam Low as maker and contains the rationale. Author fields identify Adam (Human) as recorder. sourceRef is null; rawMessageId retains the original source message ID.",
   "pending": [
-    "Wire answer to the current-decision question after revocation",
-    "Latency acceptance remains unresolved",
     "Conversation display-name confirmation"
   ],
-  "validation": "Evidence-only update; no runtime changes or repeated automated suite."
+  "validation": "Evidence-only update; no runtime changes or repeated automated suite.",
+  "operatorFollowup": {
+    "date": "2026-09-21",
+    "result": "Operator reports manual cases 1\u20133 passed, including post-revocation recall and speed/quote targeting. No new verbatim answer or numeric reply timings supplied."
+  }
 }

@@ -1,0 +1,62 @@
+{
+  "action": [
+    {
+      "id": "ACT-0008",
+      "status": "done",
+      "version": 4,
+      "assigneeName": "@Adam (Human)",
+      "deadline": "2026-10-02T12:00:00",
+      "rawMessageId": "2fa6e782-92fd-4359-b91d-34b6f113befc",
+      "description": "prepare the 1.0 QA checklist",
+      "creatorId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "creatorDom": "staging.zinfra.io",
+      "assigneeId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "assigneeDom": "staging.zinfra.io"
+    }
+  ],
+  "audits": [
+    {
+      "action": "entity_created",
+      "timestamp": "2026-09-21T09:24:09.634",
+      "details": {
+        "assigneeId": {
+          "id": "a558cea2-b054-485c-871c-bf9f90847d65",
+          "domain": "staging.zinfra.io"
+        },
+        "description": "prepare the 1.0 QA checklist"
+      }
+    },
+    {
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T09:46:23.325",
+      "details": {
+        "reassignedTo": "@Adam (Human)"
+      }
+    },
+    {
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T09:46:35.287",
+      "details": {
+        "deadline": "2026-10-02T12:00:00.000Z"
+      }
+    },
+    {
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T09:47:22.442",
+      "details": {
+        "newStatus": "done"
+      }
+    }
+  ],
+  "date": "2026-09-21",
+  "runtime": "ae618ff",
+  "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+  "conversationDomain": "staging.zinfra.io",
+  "operatorReportedPassed": [
+    "reply speed and native quote targeting",
+    "post-revocation decision recall",
+    "action assignment, personal recall, reassignment, deadline and completion"
+  ],
+  "numericReplyTimings": "not provided",
+  "additionalDefect": "Lowercase action ID did not match persisted uppercase ID; uppercase retry succeeded. Fixed in replacement candidate, real Wire lowercase confirmation pending."
+}

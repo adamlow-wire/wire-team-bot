@@ -1,0 +1,137 @@
+{
+  "startedAt": "2026-09-21T10:06:59.334481+00:00",
+  "previousImage": "wire-team-bot:v3-rc-ae618ff",
+  "candidateImage": "wire-team-bot:v3-rc-8c0c89d",
+  "before": {
+    "Decision": {
+      "count": 6,
+      "digest": "80b80946b0c7ec3193718d6b32d02c9d"
+    },
+    "Action": {
+      "count": 7,
+      "digest": "543de92a7624990294dad63cf1310508"
+    },
+    "Reminder": {
+      "count": 8,
+      "digest": "e718c23c23712360112a0d032578289f"
+    },
+    "AuditLog": {
+      "count": 81,
+      "digest": "c1b235f31dc432094c970e95fb38d8b4"
+    },
+    "channel_config": {
+      "count": 3,
+      "digest": "cce799e165c696fb5d7bbf90f6231e03"
+    },
+    "entities": {
+      "count": 9,
+      "digest": "ba1ea74547a31d36a1e913b6959f43d5"
+    },
+    "entity_relationships": {
+      "count": 3,
+      "digest": "c45c4d42f8dc4f622436466e21206525"
+    },
+    "embeddings": {
+      "count": 0,
+      "digest": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "conversation_signals": {
+      "count": 34,
+      "digest": "af4bee9fb07e77d01dd9731ce3d65357"
+    },
+    "conversation_summaries": {
+      "count": 2,
+      "digest": "3013bee9c1126a572997e9ae80443da1"
+    },
+    "entity_id_sequences": {
+      "count": 3,
+      "digest": "d615e289bea6b3cefd05b7ccb28098c5"
+    },
+    "_prisma_migrations": {
+      "count": 11,
+      "digest": "94ecba2148a172b9c2e8fbecb9e96ade"
+    }
+  },
+  "backupReadable": true,
+  "backupFiles": {
+    "database.dump": {
+      "bytes": 36808,
+      "sha256": "cb656b5ce03e34ea7311b73d766f363a91aaef59eeedcbfc676d0624e5e05c4e"
+    },
+    "crypto-store.tar.gz": {
+      "bytes": 2650774,
+      "sha256": "31c48a59ac7b4541fdf63d9fe3ba0dfef2712ead3085711d1dfee804eea882e3"
+    }
+  },
+  "candidateImageId": "sha256:194eac6f1efb420b50ca5c54c6e6a816b83743c713868ccd0c91464310a79d93",
+  "containerStartedAt": "2026-09-21T10:07:02.341741322Z",
+  "environmentUnchanged": true,
+  "volumesUnchanged": true,
+  "backupDirectory": "/home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz",
+  "after": {
+    "Decision": {
+      "count": 6,
+      "digest": "80b80946b0c7ec3193718d6b32d02c9d"
+    },
+    "Action": {
+      "count": 7,
+      "digest": "543de92a7624990294dad63cf1310508"
+    },
+    "Reminder": {
+      "count": 8,
+      "digest": "e718c23c23712360112a0d032578289f"
+    },
+    "AuditLog": {
+      "count": 81,
+      "digest": "c1b235f31dc432094c970e95fb38d8b4"
+    },
+    "channel_config": {
+      "count": 3,
+      "digest": "cce799e165c696fb5d7bbf90f6231e03"
+    },
+    "entities": {
+      "count": 9,
+      "digest": "ba1ea74547a31d36a1e913b6959f43d5"
+    },
+    "entity_relationships": {
+      "count": 3,
+      "digest": "c45c4d42f8dc4f622436466e21206525"
+    },
+    "embeddings": {
+      "count": 0,
+      "digest": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "conversation_signals": {
+      "count": 34,
+      "digest": "af4bee9fb07e77d01dd9731ce3d65357"
+    },
+    "conversation_summaries": {
+      "count": 2,
+      "digest": "3013bee9c1126a572997e9ae80443da1"
+    },
+    "entity_id_sequences": {
+      "count": 3,
+      "digest": "d615e289bea6b3cefd05b7ccb28098c5"
+    },
+    "_prisma_migrations": {
+      "count": 11,
+      "digest": "94ecba2148a172b9c2e8fbecb9e96ade"
+    }
+  },
+  "startup": {
+    "checkedAt": "2026-09-21T10:07:30.637233+00:00",
+    "startup": [
+      {
+        "msg": "Member cache hydrated from SDK store",
+        "conversations": 3
+      },
+      {
+        "msg": "Wire client connected, listening for events"
+      }
+    ],
+    "warningCount": 1,
+    "errorCount": 0,
+    "warningExplanation": "Expected embeddings-disabled configuration warning; no startup errors."
+  },
+  "wireLowercaseRetest": "pending operator"
+}
