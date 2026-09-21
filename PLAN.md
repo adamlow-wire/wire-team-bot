@@ -562,6 +562,14 @@ PAUSED persistence, resume and no-marker-persistence journey. Live in-flight can
 provider request payload exclusion were not demonstrated by this run; do not conflate the
 storage/UI check with those stronger claims. SECURE repeat remains pending.
 
+**Case 6B restart checkpoint — September 21:** [SECURE evidence](tests/acceptance/manual-secure-restart-0921.json)
+confirms durable SECURE from 11:24:30 UTC and an open secure interval. The supplied synthetic
+`RC_SECURE_BEFORE_0921` marker occurs zero times across ten application tables and container
+logs. At 11:26:02 UTC the same staging container/image/crypto volume restarted successfully,
+hydrated three conversations and connected with zero startup errors. SECURE and the original
+open interval were preserved. Post-restart marker/status/resume checks and interval closure
+remain pending; provider payload exclusion and live in-flight cancellation are not claimed.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit

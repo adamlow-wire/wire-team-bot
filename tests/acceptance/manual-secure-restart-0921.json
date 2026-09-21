@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-09-21T11:25:24.686779+00:00",
+  "channel": {
+    "state": "secure",
+    "changedAt": "2026-09-21T11:24:30.614+00:00",
+    "secureRanges": [
+      {
+        "end": null,
+        "start": "2026-09-21T11:24:30.614Z"
+      }
+    ]
+  },
+  "marker": "RC_SECURE_BEFORE_0921",
+  "markerCounts": {
+    "Action": 0,
+    "Decision": 0,
+    "Reminder": 0,
+    "AuditLog": 0,
+    "channel_config": 0,
+    "entities": 0,
+    "entity_relationships": 0,
+    "embeddings": 0,
+    "conversation_signals": 0,
+    "conversation_summaries": 0
+  },
+  "markerLogOccurrences": 0,
+  "restart": {
+    "startedAt": "2026-09-21T11:26:02.134807768Z",
+    "image": "wire-team-bot:v3-rc-8c0c89d",
+    "sameContainerImageVolumes": true,
+    "startup": [
+      {
+        "msg": "Member cache hydrated from SDK store",
+        "conversations": 3
+      },
+      {
+        "msg": "Wire client connected, listening for events"
+      }
+    ],
+    "errors": 0,
+    "channelAfter": {
+      "state": "secure",
+      "changedAt": "2026-09-21T11:24:30.614+00:00",
+      "secureRanges": [
+        {
+          "end": null,
+          "start": "2026-09-21T11:24:30.614Z"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Post-restart marker, resume and later storage checks pending.",
+    "Provider request payloads not inspected; live in-flight cancellation not established."
+  ]
+}
