@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-09-21T12:47:11.328427+00:00",
+  "actions": [
+    {
+      "id": "ACT-0010",
+      "description": "Send the RC final handover note",
+      "status": "done",
+      "version": 2,
+      "rawMessageId": "27c77215-88d7-4bf4-b5d2-d5256280f85b",
+      "assigneeId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "assigneeDom": "staging.zinfra.io",
+      "timestamp": "2026-09-21T10:25:21.479",
+      "updatedAt": "2026-09-21T10:25:48.958"
+    }
+  ],
+  "audits": [
+    {
+      "entityId": "ACT-0010",
+      "action": "entity_created",
+      "timestamp": "2026-09-21T10:25:28.162",
+      "details": {
+        "sourceMessageId": "27c77215-88d7-4bf4-b5d2-d5256280f85b"
+      }
+    },
+    {
+      "entityId": "ACT-0010",
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T10:25:48.96",
+      "details": {
+        "sourceMessageId": "ee49f561-3376-4e2a-b7f6-c4b0aee8653d"
+      }
+    }
+  ],
+  "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+  "conversationDomain": "staging.zinfra.io",
+  "operatorEvidence": "Adam reported case 4 passed; this post-process check closes the source/fact/owner/audit inventory check."
+}

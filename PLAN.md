@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-21. Staging runtime/image: `8c0c89d` (case fix `8e2cce8`, baseline `e35428b`). Latest tested QA runtime: `8c0c89d`.
+Updated: 2026-09-21. Staging runtime/image: `2dbc0fd` (timezone fix; baseline `e35428b`). Latest tested QA runtime: `2dbc0fd`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -591,22 +591,68 @@ ACT-0012 from the SECURE prelude instead of creating another synthetic action; i
 closed in its original conversation. Quality/usefulness review and the timezone display fix
 remain outstanding, alongside explicitly pending evidence in the earlier checkpoints.
 
+**Case 4 storage follow-up — September 21, 12:47 UTC:** [Post-process evidence](tests/acceptance/manual-passive-feedback-0921.json)
+confirms exactly one matching handover action, ACT-0010, owned by Adam (Human), done/version 2.
+Its creation and completion have exactly two audits, retaining their distinct original source
+message IDs. This closes the pending fact/source/owner/duplicate/audit check for the operator's
+passed passive-feedback journey.
+
 **Case 8 update — September 21:** Adam reports test 8 worked. Live summary/list UI checks
 are operator-confirmed; the explicit 20-capture/ten-answer review, useful-answer count and
 speed/noise assessment have been requested before recording human quality approval. Reminder
 receipt/non-delivery confirmation has also been requested; do not infer it from this answer.
 
-**Timezone correction in progress:** use the configured conversation timezone for reminder
-creation/list/snooze and include an explicit zone label (UTC default, BST/GMT for Europe/London).
-Keep stored deadlines and scheduling instants unchanged. Tests cover summer/winter, routing
-and a host timezone different from the conversation. Full validation and candidate replacement
-must precede claiming this is live. Classifier/extractor/pipeline code remains unchanged.
+Current acceptance checkpoint: the operator reports the eight Wire UI journeys worked; scoped
+storage checks now cover passive completion, reminders, PAUSED/SECURE markers and cross-channel
+mutation denial. Formal human fact/answer review and speed/noise approval remain pending, as do
+explicit recovery-receipt/cancelled-non-delivery confirmation and the new timezone UI retest.
+Live in-flight cancellation/provider payload exclusion was not observed in the manual privacy
+runs; preserve that limitation alongside the automated queue/buffer tests. No pilot approval or
+1.0 release is claimed. Timezone regression and staging replacement are complete below; next is the focused UI
+retest and remaining human confirmations.
 
-**Open display defect:** reminder confirmations, snooze and list render times without a timezone,
-which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
-formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
-zone display with regression checks before final acceptance; the elapsed scheduling evidence above
-passes independently. The coordinated recovery test used the unchanged candidate.
+#### Reminder timezone correction — 2026-09-21
+
+The misleading display is fixed in runtime `2dbc0fd`: creation/list/snooze replies use the
+configured conversation timezone and include its label. UTC is the default; Europe/London
+renders BST in summer and GMT in winter. Demo for Anna remains configured UTC; no timezone
+setting or stored deadline was changed. Wire client timezone is not inferred. No dependency,
+schema, classifier, extractor or pipeline change; simulation was not rerun.
+
+[Validation evidence](tests/acceptance/timezone-validation.json) records fresh build/type-check/lint,
+**393 tests in 44 files**, six isolated DB tests, and strict checks of the harness/new tests.
+Tests run with server timezone America/New_York to reject implicit host-local rendering.
+Before the fix, zone/routing assertions failed; one initial test also had an unset parser stub.
+A subsequent strict check caught a missing outbound mock method. Both fixture issues were
+corrected without relaxing assertions; all final checks passed.
+[Evaluator calibration](tests/acceptance/timezone-calibration.json) passed **12/12**.
+[Full real-model e2e](tests/acceptance/timezone-e2e-report.json) passed **64/64**, with **18 mandatory
+post-exit stored/state checks**. The new exact-output journey checks BST create/list/snooze,
+cancellation and the unchanged UTC scheduling instant by source, fact and qualified owner.
+[Focused results](tests/acceptance/timezone-focused-report.json) also passed. Environment is
+Node 22.23.2/trixie, isolated Postgres16+pgvector on port55439, embeddings off, existing staging
+application slots and the established evaluator override; credentials/endpoints are omitted.
+
+[Staging activation](tests/acceptance/timezone-staging-activation.json) completed at **13:00 UTC**:
+`wire-team-bot:v3-rc-2dbc0fd`, image
+`sha256:b47ade6e94525c2b08d35c20bcd79114538e04b29ce76b57a0baf94603516bd6`.
+Database/crypto archives were verified readable; all twelve durable table fingerprints,
+environment and volumes remained unchanged. Startup hydrated three conversations and connected
+with zero errors and the expected embeddings-disabled warning. No production action occurred.
+Private backups and rollback override: `/home/sysop/wire/wire-team-bot-backups/timezone-ngs69pir`.
+To restore the preceding bot image while retaining current DB/crypto state:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/timezone-ngs69pir/rollback.override.yml \
+  up -d --no-deps --no-build --pull never jeeves
+```
+
+**Pending UI retest:** in Demo for Anna, create a reminder, show reminders, snooze it, then cancel
+it. All displayed reminder times must explicitly say UTC for this channel. Prior Wire journey
+results remain evidence on `8c0c89d`; the new display change needs this focused confirmation.
+Formal human quality/usefulness approval and the outstanding reminder receipt confirmations
+remain separate gates before the five-day pilot and subsequent 1.0 release decision.
 
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check

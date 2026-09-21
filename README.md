@@ -162,6 +162,10 @@ Record ID prefixes are case-insensitive: `act-0008`, `Act-0008` and `ACT-0008` r
 same action. Keep the hyphen and digits unchanged. Replies retain canonical uppercase IDs.
 The same rule applies to `DEC-` and `REM-` command references.
 
+Reminder creation, snooze and list replies show the conversation’s configured timezone with
+an explicit label (for example, `UTC` or `BST`). UTC is the default; the bot cannot infer the
+Wire client’s local timezone. Display formatting does not change the scheduled instant.
+
 | Task | Example |
 |---|---|
 | Record a decision | `decision: we will use Postgres` |
@@ -293,15 +297,15 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-Staging now runs the tested image `wire-team-bot:v3-rc-8c0c89d`, with its existing database
+Staging now runs the tested image `wire-team-bot:v3-rc-2dbc0fd`, with its existing database
 and crypto identity preserved and verified backups available. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
 for the fixes, evaluator calibration and preserved failure evidence. The current image passes
-63/63 real-model scenarios, 17 mandatory stored/state checks and 387 unit/contract/isolated DB
+64/64 real-model scenarios, 18 mandatory stored/state checks and 393 unit/contract/isolated DB
 tests, plus build, type-check and lint. The earlier 20/20 stored-fact quality sample remains
 historical evidence. Staging activation is complete; final Wire/human acceptance remains pending.
 Use the [pinned-image manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
 and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md). The exact activation
-and rollback commands are in [PLAN.md](PLAN.md#case-insensitive-record-references--2026-09-21).
+and rollback commands are in [PLAN.md](PLAN.md#reminder-timezone-correction--2026-09-21).
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.
@@ -420,7 +424,7 @@ docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
-  --entrypoint node wire-team-bot:v3-rc-8c0c89d \
+  --entrypoint node wire-team-bot:v3-rc-2dbc0fd \
   /validation/node_modules/ts-node/dist/bin.js --transpile-only \
   --project /validation/tsconfig.json /app/tests/e2e/runner.ts --json
 ```
