@@ -1,0 +1,87 @@
+{
+  "checkedAt": "2026-09-21T11:02:28.132677+00:00",
+  "channel": {
+    "timezone": "UTC",
+    "state": "active"
+  },
+  "reminders": [
+    {
+      "id": "REM-0009",
+      "description": "check RC final cancellation",
+      "status": "cancelled",
+      "version": 2,
+      "triggerAt": "2026-09-21T11:18:18.629",
+      "timestamp": "2026-09-21T10:58:18.633",
+      "updatedAt": "2026-09-21T10:58:50.855",
+      "rawMessageId": "7ac67928-40d2-4a05-9693-3298917b5d3a",
+      "targetId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "targetDom": "staging.zinfra.io"
+    },
+    {
+      "id": "REM-0010",
+      "description": "check RC final snoozing",
+      "status": "fired",
+      "version": 3,
+      "triggerAt": "2026-09-21T11:01:09.827",
+      "timestamp": "2026-09-21T10:58:27.866",
+      "updatedAt": "2026-09-21T11:01:09.925",
+      "rawMessageId": "76d6ac86-1317-403b-997d-aa501ba79824",
+      "targetId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "targetDom": "staging.zinfra.io"
+    }
+  ],
+  "audits": [
+    {
+      "entityId": "REM-0009",
+      "action": "entity_created",
+      "timestamp": "2026-09-21T10:58:18.633",
+      "details": {
+        "triggerAt": "2026-09-21T11:18:18.629Z",
+        "description": "check RC final cancellation"
+      }
+    },
+    {
+      "entityId": "REM-0010",
+      "action": "entity_created",
+      "timestamp": "2026-09-21T10:58:27.866",
+      "details": {
+        "triggerAt": "2026-09-21T11:18:27.865Z",
+        "description": "check RC final snoozing"
+      }
+    },
+    {
+      "entityId": "REM-0009",
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T10:58:50.859",
+      "details": {
+        "status": "cancelled"
+      }
+    },
+    {
+      "entityId": "REM-0010",
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T10:59:09.832",
+      "details": {
+        "snoozedUntil": "2026-09-21T11:01:09.827Z"
+      }
+    },
+    {
+      "entityId": "REM-0010",
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T11:01:09.937",
+      "details": {
+        "status": "fired"
+      }
+    }
+  ],
+  "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+  "conversationDomain": "staging.zinfra.io",
+  "runtime": "8c0c89d",
+  "operatorEvidence": "Screenshots show combined-command refusal, separate creation, cancellation, snooze, pending list and delivered REM-0010.",
+  "limitations": [
+    "Cancelled original deadline has not yet elapsed at inspection; non-delivery observation pending.",
+    "Combined source event ID not supplied; exactly two matching reminder facts with distinct separate-command source IDs found.",
+    "Displayed times omit timezone; confirmation formatting uses server-local time. Channel timezone is UTC.",
+    "Recovery test pending."
+  ]
+}

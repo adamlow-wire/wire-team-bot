@@ -525,6 +525,21 @@ not either previously designated room; the operator has been asked to confirm it
 Verification was limited to the reported synthetic facts and their audits. On September 21 Adam reported the final post-revocation question passed as part of cases 1–3.
 That is operator confirmation; no new verbatim answer or numeric timing was supplied.
 
+**Case 5 progress — September 21, 11:02 UTC:** screenshots confirm the expected combined-command
+refusal, separate creation, cancellation and snoozed delivery. [Scoped stored evidence](tests/acceptance/manual-reminder-cancel-snooze.json)
+finds exactly two matching facts with separate source IDs: `REM-0009` cancelled/version 2,
+`REM-0010` fired/version 3, both owned by Adam (Human). The latter was snoozed at 10:59:09 UTC
+until 11:01:09 UTC, then marked fired at 11:01:09.925 with one firing audit. This matches
+12:01 UK summer time in the client. Cancelled non-delivery through its original 11:18 UTC
+(12:18 UK) deadline and coordinated overdue recovery remain pending. Combined-event source ID
+was not supplied; the inventory check finds no extra matching reminder fact.
+
+**Open display defect:** reminder confirmations, snooze and list render times without a timezone,
+which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
+formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
+zone display with regression checks before final acceptance; the elapsed scheduling evidence above
+passes independently. Keep the current candidate for the coordinated recovery test.
+
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check
    the current requester is addressed correctly. Confirm the registered app name and description
