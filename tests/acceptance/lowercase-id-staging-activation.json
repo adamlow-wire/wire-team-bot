@@ -133,5 +133,5 @@
     "errorCount": 0,
     "warningExplanation": "Expected embeddings-disabled configuration warning; no startup errors."
   },
-  "wireLowercaseRetest": "pending operator"
+  "wireLowercaseRetest": "Passed: Adam reports the lowercase-ID retest worked on 2026-09-21. Operator confirmation only; no additional DB inspection."
 }

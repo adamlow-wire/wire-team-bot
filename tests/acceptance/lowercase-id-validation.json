@@ -52,5 +52,5 @@
   },
   "rawReview": "Reviewed inputs, assertions, replies and post-exit inventories for lowercase decision supersession/revocation, action reassignment/deadline/completion/retrieval, and reminder snooze/cancel. Canonical replies preserved.",
   "simulation": "Not rerun: classifier/extractor/pipeline unchanged. Earlier synthetic quality results remain historical.",
-  "wireConfirmation": "Lowercase completion on replacement candidate pending operator retest"
+  "wireConfirmation": "Passed: Adam reports the lowercase-ID retest worked on 2026-09-21. Operator confirmation only; no additional DB inspection."
 }

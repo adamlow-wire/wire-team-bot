@@ -58,5 +58,5 @@
     "action assignment, personal recall, reassignment, deadline and completion"
   ],
   "numericReplyTimings": "not provided",
-  "additionalDefect": "Lowercase action ID did not match persisted uppercase ID; uppercase retry succeeded. Fixed in replacement candidate, real Wire lowercase confirmation pending."
+  "additionalDefect": "Lowercase action ID originally failed; replacement candidate fixes lookup normalization. Adam confirmed the real Wire lowercase retest passed on 2026-09-21."
 }

@@ -283,7 +283,7 @@ is operator acceptance, not a measured transport latency benchmark or confirmed 
 Scoped DB inspection of `ACT-0008` in Demo for Anna confirms done/version 4, owner Adam (Human),
 deadline **2026-10-02 12:00 UTC**, original source ID and four audits: created for Adam Low,
 reassigned to Adam (Human), deadline changed, completed. The visible lowercase `act-0008 done`
-attempt failed; the uppercase retry succeeded. This additional usability defect is fixed in the replacement candidate, with Wire confirmation pending.
+attempt failed; the uppercase retry succeeded. This additional usability defect is fixed in the replacement candidate, with Wire confirmation passed by Adam on September 21.
 
 Root cause: command regexes already ignore case but passed lowercase captures unchanged to
 case-sensitive repository lookups. Normalize only matched ID tokens before mutations and direct
@@ -324,10 +324,10 @@ docker compose -f docker-compose.staging.yml \
   up -d --no-deps --no-build --pull never jeeves
 ```
 
-**Next:** create one fresh synthetic action in Wire, then complete it with its lowercase ID
-(e.g. `act-0009 done`, using the actual returned digits). Confirm the native quoted reply and
-removal from open actions. Cases 1–3 retain their operator pass on `ae618ff`; this focused check
-accepts the replacement fix. Cases 4–8 and human quality review remain pending.
+**Wire follow-up — September 21:** Adam confirms the lowercase-ID retest worked on the
+replacement candidate. This is operator confirmation; no new record ID or screenshot was
+supplied and no additional DB inspection is claimed. Cases 1–3 retain their earlier pass.
+**Next:** case 4 passive capture/completion, followed by cases 5–8 and human quality review.
 Classifier/extractor/pipeline code is unchanged; no simulation rerun is required for this fix.
 Container install/prune steps disable automatic npm audit uploads; the separately requested
 audit remains unapproved and its existing findings remain recorded. No dependencies changed.
@@ -502,7 +502,7 @@ returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one
 message except the deliberately combined-command test. Case 1 has a correct quoted `status`
 reply; Adam subsequently reports tests 1–3 passed, including reply targeting, final decision
 recall and the action lifecycle (see the September 21 entry above). Lowercase ID input exposed
-one additional defect fixed in the replacement candidate, awaiting a focused Wire retest. Cases 4–8 remain **pending on the final candidate**.
+one additional defect fixed in the replacement candidate; Adam confirms the focused Wire retest passed on September 21. Cases 4–8 remain **pending on the final candidate**.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.
