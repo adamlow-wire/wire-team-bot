@@ -780,6 +780,14 @@ A verified private pre-rewrite Git bundle is retained outside the repository at
 does not count as a fresh runtime, model or manual QA run. GitHub may cache contributor
 statistics or retain old closed-PR commit snapshots independently of current branch/tag history.
 
+**Attribution reverified on GitHub — 2026-09-21:** the authenticated account is
+`adamlow-wire`, and GitHub's repository contributors API lists only that account. Published
+`main` and all three archive tags match the inspected local refs. All reachable commit authors,
+committers and archive taggers are Adam Low <adam.low@wire.com>; no unwanted co-author trailers
+or assistant/session attribution were found in commit messages. Repository-local Git name/email
+are now pinned to that identity. No additional history rewrite or branch/tag deletion was needed.
+This is a repository metadata check; the staging image and acceptance results are unchanged.
+
 ### Disposition of the former V3 gaps
 
 Old IDs are retained only to make the consolidation traceable. This table replaces that backlog;
