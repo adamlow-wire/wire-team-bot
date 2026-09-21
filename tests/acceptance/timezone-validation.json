@@ -65,5 +65,5 @@
     "review": "Exact new timezone replies and cancelled source/fact/owner/deadline inventory reviewed after process exit."
   },
   "simulation": "Not rerun: classifier/extractor/pipeline unchanged. Historical quality evidence retains its original run date.",
-  "wireTimezoneConfirmation": "pending"
+  "wireTimezoneConfirmation": "Passed 2026-09-21: operator screenshot and scoped record/audit check; see manual-timezone-ui-0921.json."
 }

@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-09-21T13:07:58.87622+00:00",
+  "record": {
+    "id": "REM-0012",
+    "description": "check timezone display",
+    "status": "cancelled",
+    "version": 3,
+    "triggerAt": "2026-09-21T13:09:12.139",
+    "timestamp": "2026-09-21T13:06:58.07",
+    "updatedAt": "2026-09-21T13:07:20.468",
+    "rawMessageId": "44cae257-1ec6-496b-87e2-9b52d186191f",
+    "targetId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+    "targetDom": "staging.zinfra.io"
+  },
+  "audits": [
+    {
+      "action": "entity_created",
+      "timestamp": "2026-09-21T13:06:58.07",
+      "details": {
+        "triggerAt": "2026-09-21T13:26:58.029Z",
+        "description": "check timezone display"
+      }
+    },
+    {
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T13:07:12.294",
+      "details": {
+        "snoozedUntil": "2026-09-21T13:09:12.139Z"
+      }
+    },
+    {
+      "action": "entity_updated",
+      "timestamp": "2026-09-21T13:07:20.471",
+      "details": {
+        "status": "cancelled"
+      }
+    }
+  ],
+  "operatorEvidence": "Screenshot confirms UTC labels on creation, listing and snooze, followed by cancellation of REM-0012.",
+  "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+  "conversationDomain": "staging.zinfra.io",
+  "passed": true,
+  "runtime": "2dbc0fd"
+}

@@ -605,11 +605,11 @@ receipt/non-delivery confirmation has also been requested; do not infer it from 
 Current acceptance checkpoint: the operator reports the eight Wire UI journeys worked; scoped
 storage checks now cover passive completion, reminders, PAUSED/SECURE markers and cross-channel
 mutation denial. Formal human fact/answer review and speed/noise approval remain pending, as do
-explicit recovery-receipt/cancelled-non-delivery confirmation and the new timezone UI retest.
+explicit recovery-receipt/cancelled-non-delivery confirmation. The new timezone UI retest passed below.
 Live in-flight cancellation/provider payload exclusion was not observed in the manual privacy
 runs; preserve that limitation alongside the automated queue/buffer tests. No pilot approval or
-1.0 release is claimed. Timezone regression and staging replacement are complete below; next is the focused UI
-retest and remaining human confirmations.
+1.0 release is claimed. Timezone regression, staging replacement and focused UI retest are complete below; remaining
+human confirmations are next.
 
 #### Reminder timezone correction — 2026-09-21
 
@@ -648,9 +648,13 @@ docker compose -f docker-compose.staging.yml \
   up -d --no-deps --no-build --pull never jeeves
 ```
 
-**Pending UI retest:** in Demo for Anna, create a reminder, show reminders, snooze it, then cancel
-it. All displayed reminder times must explicitly say UTC for this channel. Prior Wire journey
-results remain evidence on `8c0c89d`; the new display change needs this focused confirmation.
+**UI retest passed — September 21, 13:07 UTC:** the operator screenshot shows explicit UTC
+labels on creation, listing and snooze, then cancellation. [Scoped stored evidence](tests/acceptance/manual-timezone-ui-0921.json)
+confirms REM-0012 cancelled/version 3, original qualified owner/source preserved, with exactly
+three audits: creation at 13:06 UTC for 13:26 UTC, snooze to 13:09:12 UTC, then cancellation.
+The stored snoozed instant matches the displayed time. This closes the display defect on
+`2dbc0fd`; prior Wire journey results remain evidence on `8c0c89d`. No runtime change or
+fresh automated test run occurred during this evidence-only checkpoint.
 Formal human quality/usefulness approval and the outstanding reminder receipt confirmations
 remain separate gates before the five-day pilot and subsequent 1.0 release decision.
 
