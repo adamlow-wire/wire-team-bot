@@ -83,5 +83,9 @@
     "Combined source event ID not supplied; exactly two matching reminder facts with distinct separate-command source IDs found.",
     "Displayed times omit timezone; confirmation formatting uses server-local time. Channel timezone is UTC.",
     "Recovery test pending."
-  ]
+  ],
+  "operatorFollowup": {
+    "date": "2026-09-21",
+    "result": "Adam instructed acceptance of the reminder confirmation: REM-0011 arrived once and cancelled REM-0009 never arrived. No new screenshot or instrumented receipt evidence supplied."
+  }
 }

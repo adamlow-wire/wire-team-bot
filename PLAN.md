@@ -604,8 +604,9 @@ receipt/non-delivery confirmation has also been requested; do not infer it from 
 
 Current acceptance checkpoint: the operator reports the eight Wire UI journeys worked; scoped
 storage checks now cover passive completion, reminders, PAUSED/SECURE markers and cross-channel
-mutation denial. Formal human fact/answer review and speed/noise approval remain pending, as do
-explicit recovery-receipt/cancelled-non-delivery confirmation. The new timezone UI retest passed below.
+mutation denial. Formal human fact/answer review and speed/noise approval remain pending. Adam subsequently
+instructed accepting recovery receipt and cancelled non-delivery; see the follow-up below.
+The new timezone UI retest passed below.
 Live in-flight cancellation/provider payload exclusion was not observed in the manual privacy
 runs; preserve that limitation alongside the automated queue/buffer tests. No pilot approval or
 1.0 release is claimed. Timezone regression, staging replacement and focused UI retest are complete below; remaining
@@ -655,8 +656,12 @@ three audits: creation at 13:06 UTC for 13:26 UTC, snooze to 13:09:12 UTC, then 
 The stored snoozed instant matches the displayed time. This closes the display defect on
 `2dbc0fd`; prior Wire journey results remain evidence on `8c0c89d`. No runtime change or
 fresh automated test run occurred during this evidence-only checkpoint.
-Formal human quality/usefulness approval and the outstanding reminder receipt confirmations
-remain separate gates before the five-day pilot and subsequent 1.0 release decision.
+**Reminder confirmation follow-up — September 21:** Adam instructed accepting confirmation
+that REM-0011 arrived exactly once and cancelled REM-0009 never arrived. This closes the
+operator receipt/non-delivery items at his direction; no additional screenshot or instrumented
+receipt evidence is claimed. The earlier database/audit evidence remains unchanged. Formal
+human fact/answer review and speed/noise approval remain pending before the five-day pilot
+and subsequent 1.0 release decision; Adam plans additional manual testing.
 
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check
