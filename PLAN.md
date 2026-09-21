@@ -299,6 +299,8 @@ case-insensitive direct retrieval and qualified-scope denials. Validation uses N
 and the isolated pgvector database on port 55439. Full real-model validation and replacement
 image/staging activation are in progress; do not claim the new lowercase behavior is live yet.
 Classifier/extractor/pipeline code is unchanged; no simulation rerun is required for this fix.
+Container install/prune steps disable automatic npm audit uploads; the separately requested
+audit remains unapproved and its existing findings remain recorded. No dependencies changed.
 
 #### Work toward 1.0.0 — 2026-09-21
 

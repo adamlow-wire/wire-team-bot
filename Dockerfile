@@ -19,7 +19,7 @@ COPY prisma ./prisma
 # `node-gyp rebuild` that fails on this toolchain-free image. better-sqlite3 13 ships
 # prebuilt binaries in its tarball and needs no build step. Prisma is the only
 # dependency whose install hooks we actually need, so rebuild just those.
-RUN npm ci --ignore-scripts \
+RUN npm ci --ignore-scripts --no-audit \
  && npm rebuild prisma @prisma/client @prisma/engines
 
 # Generate the Prisma client from the schema before compiling TypeScript.
@@ -29,7 +29,7 @@ COPY src ./src
 RUN npm run build
 
 # Drop devDependencies so the runner stage gets a clean prod-only node_modules.
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --no-audit
 
 # ── Stage 2: run ─────────────────────────────────────────────────────────────
 FROM node:22-trixie-slim AS runner
