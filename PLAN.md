@@ -543,6 +543,16 @@ preserved. Backend recovery passes; operator confirmation of one visible deliver
 No runtime change or new model/test-suite run occurred. Cancelled REM-0009's original deadline
 has not yet elapsed; its non-delivery observation remains pending.
 
+**Case 6A checkpoint — September 21:** the operator screenshot shows pause acknowledgement
+followed by `RC_PAUSED_BEFORE_0921`. [Read-only checks and restart evidence](tests/acceptance/manual-paused-restart-0921.json)
+confirm durable PAUSED at 11:17:38 UTC; the marker occurs zero times across ten application
+tables and container logs. At 11:19:32 UTC the same container/image/crypto volume restarted,
+hydrated three conversations and connected with zero startup errors. The stored state remains
+PAUSED with its original change timestamp. Post-restart marker, status, resume and subsequent
+storage checks are pending. This checkpoint does not prove in-flight cancellation or absence
+from provider request payloads; those were not observed. At 11:18:56 UTC, REM-0009 was still
+cancelled/version 2 past its original deadline; visible non-delivery confirmation remains pending.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit

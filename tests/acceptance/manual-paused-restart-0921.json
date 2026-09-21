@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-09-21T11:18:56.662982+00:00",
+  "state": {
+    "state": "paused",
+    "changedAt": "2026-09-21T11:17:38.604+00:00"
+  },
+  "reminders": [
+    {
+      "id": "REM-0009",
+      "status": "cancelled",
+      "version": 2,
+      "triggerAt": "2026-09-21T11:18:18.629"
+    },
+    {
+      "id": "REM-0011",
+      "status": "fired",
+      "version": 2,
+      "triggerAt": "2026-09-21T11:07:41.733"
+    }
+  ],
+  "marker": "RC_PAUSED_BEFORE_0921",
+  "markerCounts": {
+    "Action": 0,
+    "Decision": 0,
+    "Reminder": 0,
+    "AuditLog": 0,
+    "channel_config": 0,
+    "entities": 0,
+    "entity_relationships": 0,
+    "embeddings": 0,
+    "conversation_signals": 0,
+    "conversation_summaries": 0
+  },
+  "markerLogOccurrences": 0,
+  "restart": {
+    "startedAt": "2026-09-21T11:19:32.1492409Z",
+    "image": "wire-team-bot:v3-rc-8c0c89d",
+    "sameContainerImageVolumes": true,
+    "startup": [
+      {
+        "msg": "Member cache hydrated from SDK store",
+        "conversations": 3
+      },
+      {
+        "msg": "Wire client connected, listening for events"
+      }
+    ],
+    "errors": 0,
+    "stateAfter": {
+      "state": "paused",
+      "changedAt": "2026-09-21T11:17:38.604+00:00"
+    }
+  },
+  "limitations": [
+    "No provider-request payload inspection; no claim this proves absence from provider inputs.",
+    "Post-restart marker/resume checks and in-flight cancellation evidence pending."
+  ]
+}
