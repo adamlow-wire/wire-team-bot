@@ -1,0 +1,247 @@
+{
+  "checkedAt": "2026-09-21T07:44:32.474Z",
+  "runtime": "ae618ff",
+  "image": "wire-team-bot:v3-rc-ae618ff",
+  "environment": "Node 22.23.2 / Debian trixie; isolated Postgres+pgvector port 55439",
+  "modelInvoked": false,
+  "wireConnected": false,
+  "status": "pass",
+  "runs": [
+    {
+      "channel": "qa-monday-3689adef-1304-419f-b6c4-b876812b1934",
+      "timezone": "UTC",
+      "referenceTime": "2026-09-21T08:00:00.000Z",
+      "actions": [
+        {
+          "source": "35e0fe15-369b-413e-823c-79c759aaf236-this",
+          "fact": "verify Monday this-week date",
+          "owner": "bob@cli.local",
+          "creator": "alice@cli.local",
+          "status": "open",
+          "deadline": "2026-09-25T12:00:00.000Z",
+          "version": 1
+        },
+        {
+          "source": "35e0fe15-369b-413e-823c-79c759aaf236-next",
+          "fact": "verify Monday next-week date",
+          "owner": "bob@cli.local",
+          "creator": "alice@cli.local",
+          "status": "open",
+          "deadline": "2026-10-02T12:00:00.000Z",
+          "version": 1
+        },
+        {
+          "source": "35e0fe15-369b-413e-823c-79c759aaf236-lifecycle",
+          "fact": "verify Monday ownership lifecycle",
+          "owner": "alice@cli.local",
+          "creator": "alice@cli.local",
+          "status": "done",
+          "deadline": "2026-10-02T12:00:00.000Z",
+          "version": 4
+        }
+      ],
+      "auditCount": 6,
+      "exchanges": [
+        {
+          "input": "action: verify Monday this-week date for Bob by this Friday",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-this",
+          "replies": [
+            "Action **ACT-0610** created for **Bob**: verify Monday this-week date (due this Friday: 25 Sept 2026, 12:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 146
+        },
+        {
+          "input": "action: verify Monday next-week date for Bob by next Friday",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-next",
+          "replies": [
+            "Action **ACT-0611** created for **Bob**: verify Monday next-week date (due next Friday: 2 Oct 2026, 12:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 12
+        },
+        {
+          "input": "action: verify Monday ownership lifecycle for Bob by this Friday",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-lifecycle",
+          "replies": [
+            "Action **ACT-0612** created for **Bob**: verify Monday ownership lifecycle (due this Friday: 25 Sept 2026, 12:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 8
+        },
+        {
+          "input": "Bob: @Wire Team Bot my actions",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-bob",
+          "replies": [
+            "- **ACT-0612** `open` \u2014 verify Monday ownership lifecycle _(due 2026-09-25)_\n- **ACT-0610** `open` \u2014 verify Monday this-week date _(due 2026-09-25)_\n- **ACT-0611** `open` \u2014 verify Monday next-week date _(due 2026-10-02)_"
+          ],
+          "reactions": [],
+          "elapsedMs": 3
+        },
+        {
+          "input": "ACT-0612 reassign to Alice",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-reassign",
+          "replies": [
+            "**ACT-0612** reassigned from **Bob** to **Alice**."
+          ],
+          "reactions": [],
+          "elapsedMs": 5
+        },
+        {
+          "input": "ACT-0612 due 2 October 2026",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-due",
+          "replies": [
+            "**ACT-0612** deadline set to **2 Oct 2026, 12:00**."
+          ],
+          "reactions": [],
+          "elapsedMs": 7
+        },
+        {
+          "input": "ACT-0612 done",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-done",
+          "replies": [
+            "**ACT-0612** marked as `done`."
+          ],
+          "reactions": [],
+          "elapsedMs": 4
+        },
+        {
+          "input": "Alice: @Wire Team Bot my actions",
+          "eventId": "35e0fe15-369b-413e-823c-79c759aaf236-alice",
+          "replies": [
+            "No open actions for you in this conversation."
+          ],
+          "reactions": [],
+          "elapsedMs": 2
+        }
+      ],
+      "checks": "Exact post-exit fact/source/owner/creator/date/status/version inventory; no extra decisions or reminders; command and personal-list replies checked"
+    },
+    {
+      "channel": "qa-monday-f7b9233a-8f98-4461-84e3-1b67ead9e6bc",
+      "timezone": "Europe/London",
+      "referenceTime": "2026-09-21T08:00:00.000Z",
+      "actions": [
+        {
+          "source": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-this",
+          "fact": "verify Monday this-week date",
+          "owner": "bob@cli.local",
+          "creator": "alice@cli.local",
+          "status": "open",
+          "deadline": "2026-09-25T11:00:00.000Z",
+          "version": 1
+        },
+        {
+          "source": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-next",
+          "fact": "verify Monday next-week date",
+          "owner": "bob@cli.local",
+          "creator": "alice@cli.local",
+          "status": "open",
+          "deadline": "2026-10-02T11:00:00.000Z",
+          "version": 1
+        },
+        {
+          "source": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-lifecycle",
+          "fact": "verify Monday ownership lifecycle",
+          "owner": "alice@cli.local",
+          "creator": "alice@cli.local",
+          "status": "done",
+          "deadline": "2026-10-02T11:00:00.000Z",
+          "version": 4
+        }
+      ],
+      "auditCount": 6,
+      "exchanges": [
+        {
+          "input": "action: verify Monday this-week date for Bob by this Friday",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-this",
+          "replies": [
+            "Action **ACT-0613** created for **Bob**: verify Monday this-week date (due this Friday: 25 Sept 2026, 11:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 144
+        },
+        {
+          "input": "action: verify Monday next-week date for Bob by next Friday",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-next",
+          "replies": [
+            "Action **ACT-0614** created for **Bob**: verify Monday next-week date (due next Friday: 2 Oct 2026, 11:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 13
+        },
+        {
+          "input": "action: verify Monday ownership lifecycle for Bob by this Friday",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-lifecycle",
+          "replies": [
+            "Action **ACT-0615** created for **Bob**: verify Monday ownership lifecycle (due this Friday: 25 Sept 2026, 11:00)"
+          ],
+          "reactions": [],
+          "elapsedMs": 7
+        },
+        {
+          "input": "Bob: @Wire Team Bot my actions",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-bob",
+          "replies": [
+            "- **ACT-0615** `open` \u2014 verify Monday ownership lifecycle _(due 2026-09-25)_\n- **ACT-0613** `open` \u2014 verify Monday this-week date _(due 2026-09-25)_\n- **ACT-0614** `open` \u2014 verify Monday next-week date _(due 2026-10-02)_"
+          ],
+          "reactions": [],
+          "elapsedMs": 3
+        },
+        {
+          "input": "ACT-0615 reassign to Alice",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-reassign",
+          "replies": [
+            "**ACT-0615** reassigned from **Bob** to **Alice**."
+          ],
+          "reactions": [],
+          "elapsedMs": 6
+        },
+        {
+          "input": "ACT-0615 due 2 October 2026",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-due",
+          "replies": [
+            "**ACT-0615** deadline set to **2 Oct 2026, 11:00**."
+          ],
+          "reactions": [],
+          "elapsedMs": 6
+        },
+        {
+          "input": "ACT-0615 done",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-done",
+          "replies": [
+            "**ACT-0615** marked as `done`."
+          ],
+          "reactions": [],
+          "elapsedMs": 6
+        },
+        {
+          "input": "Alice: @Wire Team Bot my actions",
+          "eventId": "6e778ffa-1127-4a15-8b48-b2cdf6caa96e-alice",
+          "replies": [
+            "No open actions for you in this conversation."
+          ],
+          "reactions": [],
+          "elapsedMs": 2
+        }
+      ],
+      "checks": "Exact post-exit fact/source/owner/creator/date/status/version inventory; no extra decisions or reminders; command and personal-list replies checked"
+    }
+  ],
+  "priorAttempt": {
+    "outcome": "CLI exited before its first reply",
+    "cause": "Existing isolated QA database was stopped",
+    "resolution": "Started the same QA database with data preserved; reran the complete check",
+    "runtimeDefectClaimed": false
+  },
+  "scope": "Focused fixed-clock Monday command/storage verification only; not a rerun of the real-model suite or real Wire UI acceptance.",
+  "reproduction": {
+    "clock": "E2E_REFERENCE_TIME=2026-09-21T08:00:00.000Z",
+    "timezones": [
+      "UTC",
+      "Europe/London"
+    ],
+    "harness": "Pinned image dist/app/cli.js with E2E_JSON=1 and a fresh E2E_CHANNEL_ID per timezone; replay exchanges sequentially, substitute returned IDs only for mutation commands, close stdin, then inspect all records/audits in that qualified conversation.",
+    "expected": "Three actions per timezone matched by fact and original source; exact owner/creator/status/version/deadline as recorded; six audits, zero decisions, zero reminders. Check all original command/list replies too."
+  }
+}

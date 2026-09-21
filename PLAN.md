@@ -5,7 +5,8 @@ Updated: 2026-09-21. Staging runtime: `ae618ff` (baseline `e35428b`). Latest tes
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
 QA acceptance of the existing bot, followed by a small real-world pilot with targeted
-reliability fixes. It is not a rewrite or a commitment to every former V3 proposal.
+reliability fixes. Adam set **1.0.0** as the release target on 2026-09-21. Keep that target within
+this proof-of-concept scope; it is not a rewrite or a commitment to every former V3 proposal.
 
 [README.md](README.md) covers setup and operation. [AGENTS.md](AGENTS.md) covers contributor
 rules. Update progress here; do not create another versioned plan or gap backlog.
@@ -273,6 +274,50 @@ Final Wire/human acceptance remains pending. The first candidate `status` smoke 
 native quote but took approximately 25 seconds; the unresolved connection failure below blocks QA-7.
 This is code and automated QA completion, not pilot approval.
 
+#### Work toward 1.0.0 — 2026-09-21
+
+Adam authorised proceeding toward 1.0. Preserve the current feature scope and finish the existing
+acceptance sequence: pinned candidate → final Wire/human acceptance → five-working-day pilot →
+release decision against §5. Treat 1.0 as the version of this Wire JS SDK proof of concept, not
+a production-readiness claim. Package and lockfile versions remain `0.1.0` during acceptance;
+no release tag or replacement staging image has been created. Once accepted, update both version
+fields together, build the final immutable image, validate the packaged artifact with the existing
+checks and relevant journeys, and record its commit/digest, known limits and rollback instructions.
+Any functional/dependency fix returns through its focused reproduction and required regression
+checks before replacing the pinned candidate. Do not restart the whole implementation backlog.
+
+Work completed while the operator runs the next manual checks:
+
+- [Monday command/storage check](tests/acceptance/monday-command-storage-qa.json): existing
+  `ae618ff` CLI in the pinned container, isolated Postgres/pgvector, fixed parser clock
+  `2026-09-21T08:00:00Z`, UTC and Europe/London. **Six expected/six stored actions**, matched after
+  CLI exit by source and fact, with exact qualified creator/owner, deadline, status and version.
+  Sixteen command/list exchanges pass, including reassignment, deadline mutation, completion and
+  removal from the owner's open list. **Twelve audits, zero extra decisions/reminders**. “This
+  Friday” is **25 September**, “next Friday” is **2 October**, at local noon for date-only weekdays.
+  Slowest synthetic command was **146 ms**; this excludes Wire transport and model calls.
+- The first attempt failed before a reply because the isolated QA DB was stopped. Started that
+  existing test container without resetting data, then reran the full focused check successfully.
+  Staging was neither redeployed nor restarted. No new application code or dependencies.
+- Through **07:45:43 UTC**, staging showed **zero SDK warnings and zero errors** since its
+  **07:37:04 UTC** start (about 8 minutes 38 seconds). This is an observation, not proof of a
+  permanent transport fix. Three timed, separated Wire `status` replies and the final revoked-
+  decision recall answer have been requested from Adam, along with the actual conversation name.
+- The known dependency issue was rechecked against its
+  [public advisory](https://github.com/advisories/GHSA-ggr8-5vv4-36mx): patched in `deepmerge-ts`
+  **8.0.0**; the installed Prisma config dependency pins **7.1.5**. Local inspection still places
+  it in the local config loader. No direct chat/model-input path was found. Do not treat a forced
+  major transitive override as a verified compatible fix. The prior audit remains the only full
+  recorded audit: automatic approval review rejected a fresh `npm audit --omit=dev --json` because
+  it sends dependency names/versions to the npm registry. Adam has been asked whether to allow
+  that transfer; no upload was attempted through another route and no audit pass is claimed.
+
+Next manual step is the requested latency/decision-recall result, then case 3 below. For a
+September 21 run, expect `this Friday` = September 25 and `next Friday` = October 2. Keep
+cases 3–8 and human quality review pending until their actual UI and stored-record evidence
+arrives. Friday's full test/e2e results remain their original runs; this new focused CLI check
+does not replace them or the required real Wire acceptance.
+
 #### Monday status check — 2026-09-21
 
 Read-only checks at **07:38 UTC** confirm staging still runs the exact `ae618ff` image
@@ -433,7 +478,8 @@ question after revocation is still needed; do not mark the entire case passed ye
    check finished` and ask again; neither decision should be active or automatically revived.
 3. **Structured assignment and dates.** As @adamhuman, send `action: prepare the RC final
    checklist for @Adam Low by this Friday`, inserting an actual member mention. Keep `ACT-A`.
-   For a September 18 run, the stored date is September 18, not September 25. As @adamlow_wire,
+   For a September 21 run, `this Friday` is September 25 and `next Friday` is October 2.
+   The earlier September 18 expectations remain specific to that date. As @adamlow_wire,
    ask `my actions` and `what am I responsible for?`; the owner must be Adam Low. Reassign with
    `ACT-A reassign to @Adam (Human)` using a real mention, set `ACT-A due next Friday`, then
    `ACT-A done`. Check the owner, next-week date, completion and removal from open lists.

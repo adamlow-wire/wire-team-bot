@@ -6,7 +6,7 @@ resolve structured mentions, send native replies and reactions, and preserve its
 identity across restarts. A team assistant demonstrates these capabilities through decisions,
 actions, reminders and channel-scoped questions.
 
-**Status: QA in progress; not a production-ready release.** Automated checks and a final manual
+**Status: working toward 1.0; QA in progress, not a production-ready release.** Automated checks and a final manual
 acceptance session must finish before the small team pilot. The SDK provides the Wire transport;
 this application supplies persistence, model calls and workflow logic.
 
