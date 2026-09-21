@@ -870,3 +870,31 @@ it.each([
   expect(deps.messageBuffer.push).not.toHaveBeenCalled();
   expect(deps.slidingWindow.push).not.toHaveBeenCalled();
 });
+
+it.each([
+  ["act-0008 done Keep This Note", "updateActionStatus", { actionId: "ACT-0008", newStatus: "done", completionNote: "Keep This Note" }],
+  ["done aCt-0008", "updateActionStatus", { actionId: "ACT-0008", newStatus: "done" }],
+  ["Act-0008 in progress", "updateActionStatus", { actionId: "ACT-0008", newStatus: "in_progress" }],
+  ["act-0008 reassign to Alice", "reassignAction", { actionId: "ACT-0008", newAssigneeReference: "Alice" }],
+  ["assign aCt-0008 to Alice", "reassignAction", { actionId: "ACT-0008", newAssigneeReference: "Alice" }],
+  ["act-0008 due next Friday", "updateActionDeadline", { actionId: "ACT-0008", deadlineText: "next Friday" }],
+  ["cancel rem-0008", "cancelReminder", { reminderId: "REM-0008" }],
+  ["snooze rEm-0008 2 hours", "snoozeReminder", { reminderId: "REM-0008", snoozeExpression: "2 hours" }],
+  ["revoke dec-0008 Keep This Reason", "revokeDecision", { decisionId: "DEC-0008", reason: "Keep This Reason" }],
+  ["decision: Keep Postgres supersedes dEc-0008", "supersedeDecision", { supersedesDecisionId: "DEC-0008", newSummary: "Keep Postgres" }],
+] as const)("canonicalizes only the ID prefix in %s", async (text, useCase, expected) => {
+  for (const addressed of [false, true]) {
+    const deps = makeDeps();
+    await new WireEventRouter(deps).onTextMessageReceived(addressed ? customMention(text) : makeMessage(text));
+    expect(deps[useCase].execute).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      ...expected, conversationId: convId, replyToMessageId: "msg-1",
+    }));
+    expect(deps.answerQuestion.execute).not.toHaveBeenCalled();
+  }
+});
+
+it.each(["act0008", "act_0008", "act- 0008", "act-0008x", "act–0008"])("does not repair malformed record ID %s into a mutation", async id => {
+  const deps = makeDeps();
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(`${id} done`));
+  expect(deps.updateActionStatus.execute).not.toHaveBeenCalled();
+});

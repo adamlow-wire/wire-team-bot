@@ -47,7 +47,7 @@ const prisma = new PrismaClient();
 // ── Public types (imported by scenarios.ts) ───────────────────────────────────
 
 export interface Step {
-  /** Message to send. Use {{DEC}}, {{ACT}}, {{REM}} to inject captured IDs. */
+  /** Message to send. Use {{DEC}}, {{ACT}}, {{REM}} for IDs; lowercase placeholders test lowercase input. */
   input: string;
   /**
    * After this step, capture the first matching ID into the named slot.
@@ -151,6 +151,7 @@ async function runScenario(
         const match = ID_PATTERNS[step.captureAs]?.exec(stepOut);
         if (match) {
           captures[step.captureAs] = match[0];
+          captures[step.captureAs.toLowerCase()] = match[0].toLowerCase();
         } else {
           process.stderr.write(
             `  ⚠  captureAs "${step.captureAs}" found no ID in response for: "${step.input.slice(0, 60)}"\n`,
@@ -198,6 +199,7 @@ async function runScenario(
       const match = ID_PATTERNS[step.captureAs]?.exec(output);
       if (match) {
         captures[step.captureAs] = match[0];
+        captures[step.captureAs.toLowerCase()] = match[0].toLowerCase();
       } else {
         process.stderr.write(
           `  ⚠  captureAs "${step.captureAs}" found no ID in response for: "${resolvedInput.slice(0, 60)}"\n`,

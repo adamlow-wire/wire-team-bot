@@ -274,6 +274,32 @@ Final Wire/human acceptance remains pending. The first candidate `status` smoke 
 native quote but took approximately 25 seconds; the unresolved connection failure below blocks QA-7.
 This is code and automated QA completion, not pilot approval.
 
+#### Case-insensitive record references — 2026-09-21
+
+Adam reports manual tests 1–3 passed on `ae618ff`: reply speed/quote targets, post-revocation
+recall and action ownership/deadline/completion. No numeric reply timings were supplied; this
+is operator acceptance, not a measured transport latency benchmark or confirmed root-cause fix.
+Scoped DB inspection of `ACT-0008` in Demo for Anna confirms done/version 4, owner Adam (Human),
+deadline **2026-10-02 12:00 UTC**, original source ID and four audits: created for Adam Low,
+reassigned to Adam (Human), deadline changed, completed. The visible lowercase `act-0008 done`
+attempt failed; the uppercase retry succeeded. This additional usability defect is being fixed.
+
+Root cause: command regexes already ignore case but passed lowercase captures unchanged to
+case-sensitive repository lookups. Normalize only matched ID tokens before mutations and direct
+structured retrieval. Accept lower/mixed-case ACT/DEC/REM prefixes; preserve the hyphen, digits,
+leading zeroes, surrounding text, qualified scope and canonical uppercase replies. No storage
+migration, changed IDs or new dependency. Malformed IDs remain malformed. The existing e2e
+capture mechanism now exposes lowercase aliases for test inputs; output and stored-fact
+assertions retain canonical IDs and original source events. Decision supersession/revocation
+also gained mandatory post-exit stored-state checks; no assertions were relaxed.
+
+Red baseline: **10 new lowercase command cases fail**, 119 router cases pass. After the fix:
+build, `tsc --noEmit`, lint and **387 tests in 43 files** pass, including six isolated DB tests,
+case-insensitive direct retrieval and qualified-scope denials. Validation uses Node 22/trixie
+and the isolated pgvector database on port 55439. Full real-model validation and replacement
+image/staging activation are in progress; do not claim the new lowercase behavior is live yet.
+Classifier/extractor/pipeline code is unchanged; no simulation rerun is required for this fix.
+
 #### Work toward 1.0.0 — 2026-09-21
 
 Adam authorised proceeding toward 1.0. Preserve the current feature scope and finish the existing
@@ -443,9 +469,9 @@ scope-denial checks. Both were previously designated by Adam. Use actual Wire me
 bot and people, selected in the client; the text below a mention is the command. Use the IDs
 returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one command per
 message except the deliberately combined-command test. Case 1 has a correct quoted `status`
-reply but failed latency; its multiple-message reply targeting remains pending. Case 2 passes
-recording, attribution, supersession and revocation, with the final post-revocation Wire answer
-still pending. Cases 3–8 remain **pending on ae618ff**.
+reply; Adam subsequently reports tests 1–3 passed, including reply targeting, final decision
+recall and the action lifecycle (see the September 21 entry above). Lowercase ID input exposed
+one additional defect under repair. Cases 4–8 remain **pending on the final candidate**.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.

@@ -149,8 +149,19 @@ describe("qualified explicit-ID scope", () => {
     const decisions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn().mockResolvedValue(makeDecision({ conversationId })) };
     const actions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn().mockResolvedValue(makeAction({ conversationId })) };
     const path = new StructuredRetrievalPath(decisions as never, actions as never);
-    expect(await path.retrieve({ ...basePlan, entities: ["DEC-0001", "ACT-0001"] }, scope)).toEqual([]);
-    expect(decisions.findById).toHaveBeenCalled();
-    expect(actions.findById).toHaveBeenCalled();
+    expect(await path.retrieve({ ...basePlan, entities: ["dec-0001", "aCt-0001"] }, scope)).toEqual([]);
+    expect(decisions.findById).toHaveBeenCalledWith("DEC-0001");
+    expect(actions.findById).toHaveBeenCalledWith("ACT-0001");
   });
+});
+
+
+it.each([["dec-0001", "act-0001"], ["dEc-0001", "aCt-0001"]])("retrieves canonical IDs from %s and %s", async (decisionId, actionId) => {
+  const decisions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn(async (id: string) => id === "DEC-0001" ? makeDecision({ status: "revoked" }) : null) };
+  const actions = { query: vi.fn().mockResolvedValue([]), findById: vi.fn(async (id: string) => id === "ACT-0001" ? makeAction({ status: "done" }) : null) };
+  const results = await new StructuredRetrievalPath(decisions as never, actions as never)
+    .retrieve({ ...basePlan, entities: [decisionId, actionId] }, scope);
+  expect(results).toHaveLength(2);
+  expect(decisions.findById).toHaveBeenCalledWith("DEC-0001");
+  expect(actions.findById).toHaveBeenCalledWith("ACT-0001");
 });

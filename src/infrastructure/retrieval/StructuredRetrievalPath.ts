@@ -29,8 +29,8 @@ export class StructuredRetrievalPath {
 
     // Detect explicit DEC-/ACT- IDs in the query entities so we can look them
     // up directly by ID rather than relying on substring matching.
-    const decisionIds = plan.entities.filter((e) => /^DEC-\d+$/i.test(e));
-    const actionIds   = plan.entities.filter((e) => /^ACT-\d+$/i.test(e));
+    const decisionIds = plan.entities.filter((e) => /^DEC-\d+$/i.test(e)).map(e => e.toUpperCase());
+    const actionIds   = plan.entities.filter((e) => /^ACT-\d+$/i.test(e)).map(e => e.toUpperCase());
 
     // ── Decisions ─────────────────────────────────────────────────────────────
     // Fetch all active channel decisions — no entity text filter.  Using

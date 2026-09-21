@@ -380,12 +380,13 @@ export class WireEventRouter extends WireEventsHandler {
     });
 
     // ── Fast-path: ID-based mutations ─────────────────────────────────────────
+    // Match prefixes without case sensitivity; persistence uses canonical uppercase IDs.
 
     // cancel REM-NNNN
     const cancelReminderMatch = commandText.match(/^cancel\s+(REM-\d+)\s*$/i);
     if (cancelReminderMatch) {
       await this.deps.cancelReminder.execute({
-        reminderId: cancelReminderMatch[1], conversationId: convId, actorId: sender, replyToMessageId: wireMessage.id,
+        reminderId: cancelReminderMatch[1].toUpperCase(), conversationId: convId, actorId: sender, replyToMessageId: wireMessage.id,
       });
       return;
     }
@@ -395,7 +396,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (snoozeReminderMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       await this.deps.snoozeReminder.execute({
-        reminderId: snoozeReminderMatch[1], conversationId: convId, actorId: sender,
+        reminderId: snoozeReminderMatch[1].toUpperCase(), conversationId: convId, actorId: sender,
         snoozeExpression: snoozeReminderMatch[2].trim(),
         timezone: config?.timezone ?? "UTC",
         replyToMessageId: wireMessage.id,
@@ -406,7 +407,7 @@ export class WireEventRouter extends WireEventsHandler {
     // ACT-NNNN reassign / assign ACT-NNNN to <name>
     const actReassignMatch = identityText.match(/^(?:(ACT-\d+)\s+reassign\s+to\s+(.+)|(?:assign|reassign)\s+(ACT-\d+)\s+to\s+(.+))$/i);
     if (actReassignMatch) {
-      const actionId = (actReassignMatch[1] ?? actReassignMatch[3])!;
+      const actionId = (actReassignMatch[1] ?? actReassignMatch[3])!.toUpperCase();
       const newAssignee = (actReassignMatch[2] ?? actReassignMatch[4])!.trim();
       await this.deps.reassignAction.execute({
         actionId, conversationId: convId, newAssigneeReference: restoreLabels(newAssignee), newAssigneeId: mentionBindings?.owner(newAssignee)?.userId, actorId: sender, replyToMessageId: wireMessage.id,
@@ -417,7 +418,7 @@ export class WireEventRouter extends WireEventsHandler {
     // ACT-NNNN status or status ACT-NNNN
     const actDoneMatch = commandText.match(/^(?:(ACT-\d+)\s+(done|cancelled|in[_\s]progress|close|complete|cancel)|(done|close|complete|cancel|cancelled|in[_\s]progress)\s+(ACT-\d+))\s*(.*)$/i);
     if (actDoneMatch) {
-      const actionId = (actDoneMatch[1] ?? actDoneMatch[4])!;
+      const actionId = (actDoneMatch[1] ?? actDoneMatch[4])!.toUpperCase();
       const rawStatus = (actDoneMatch[2] ?? actDoneMatch[3])!.toLowerCase();
       const note = actDoneMatch[5]?.trim() || undefined;
       const normStatus = rawStatus === "close" || rawStatus === "complete" ? "done"
@@ -436,7 +437,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (actDeadlineMatch) {
       const config = await this.deps.conversationConfig.get(convId);
       await this.deps.updateActionDeadline.execute({
-        actionId: actDeadlineMatch[1], conversationId: convId, actorId: sender,
+        actionId: actDeadlineMatch[1].toUpperCase(), conversationId: convId, actorId: sender,
         deadlineText: actDeadlineMatch[2].trim(), timezone: config?.timezone ?? "UTC",
         replyToMessageId: wireMessage.id,
       });
@@ -447,7 +448,7 @@ export class WireEventRouter extends WireEventsHandler {
     if (revokeMatch) {
       await this.deps.revokeDecision.execute({
         conversationId: convId, actorId: sender,
-        decisionId: revokeMatch[1], reason: revokeMatch[2].trim() || undefined, replyToMessageId: wireMessage.id,
+        decisionId: revokeMatch[1].toUpperCase(), reason: revokeMatch[2].trim() || undefined, replyToMessageId: wireMessage.id,
       });
       return;
     }
@@ -457,7 +458,7 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.supersedeDecision.execute({
         conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
-        newSummary: supersedeMatch[1].trim(), supersedesDecisionId: supersedeMatch[2],
+        newSummary: supersedeMatch[1].trim(), supersedesDecisionId: supersedeMatch[2].toUpperCase(),
         replyToMessageId: wireMessage.id,
       });
       return;

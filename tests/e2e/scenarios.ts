@@ -62,14 +62,18 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-DEC-04",
-    description: "Supersede a decision — old marked, new logged",
+    description: "Supersede using a lowercase decision ID — old marked, new logged",
+    stored: [
+      { type: "decision", sourceStep: 1, terms: ["deploy", "Fridays"], status: "superseded", author: "alice@cli.local" },
+      { type: "decision", sourceStep: 2, terms: ["never deploy", "Fridays"], status: "active", author: "alice@cli.local" },
+    ],
     steps: [
       {
         input: "decision: we will deploy on Fridays",
         captureAs: "DEC",
       },
       {
-        input: "decision: we will never deploy on Fridays supersedes {{DEC}}",
+        input: "decision: we will never deploy on Fridays supersedes {{dec}}",
         assert: "Jeeves confirms that the previous decision has been superseded and records the new one with a DEC- reference",
       },
     ],
@@ -77,14 +81,15 @@ export const scenarios: Scenario[] = [
 
   {
     id: "TC-DEC-05",
-    description: "Revoke a decision — confirmed",
+    description: "Revoke using a lowercase decision ID — confirmed",
+    stored: [{ type: "decision", sourceStep: 1, terms: ["standups", "9am"], status: "revoked", author: "alice@cli.local" }],
     steps: [
       {
         input: "decision: all standups at 9am",
         captureAs: "DEC",
       },
       {
-        input: "revoke {{DEC}}",
+        input: "revoke {{dec}}",
         assert: "Jeeves confirms that the decision has been revoked or removed",
       },
     ],
@@ -359,10 +364,10 @@ export const scenarios: Scenario[] = [
     stored: [{ type: "action", sourceStep: 1, terms: ["formatting", "checklist"], owner: "bob@cli.local", deadline: "2026-09-19T15:00:00.000Z", status: "done" }],
     steps: [
       { input: "action: review the formatting smoke checklist", captureAs: "ACT" },
-      { input: "@Wire Team Bot `{{ACT}} reassign to` @Bob", assert: "The action {{ACT}} was reassigned to Bob. The bot does not claim mentions cannot be used or that it can only read records." },
-      { input: "`{{ACT}} due tomorrow`", assert: "The deadline for {{ACT}} was updated to tomorrow." },
-      { input: "`{{ACT}}` done", assert: "The action {{ACT}} was marked done or completed." },
-      { input: "Bob: @Wire Team Bot What is the status and owner of {{ACT}}?", assert: "Action {{ACT}} belongs to Bob and is done or completed." },
+      { input: "@Wire Team Bot `{{act}} reassign to` @Bob", assert: "The action {{ACT}} was reassigned to Bob. The bot does not claim mentions cannot be used or that it can only read records." },
+      { input: "`{{act}} due tomorrow`", assert: "The deadline for {{ACT}} was updated to tomorrow." },
+      { input: "`{{act}}` done", assert: "The action {{ACT}} was marked done or completed." },
+      { input: "Bob: @Wire Team Bot What is the status and owner of {{act}}?", assert: "Action {{ACT}} belongs to Bob and is done or completed." },
     ],
   },
   {
@@ -537,8 +542,8 @@ export const scenarios: Scenario[] = [
     steps: [
       { input: "@Wire Team Bot `remind me in 2 minutes to check the formatting smoke reminder`", captureAs: "REM", assert: "A reminder was scheduled to check the formatting smoke reminder, with a REM reference and time. The bot must not merely explain syntax or say it cannot schedule." },
       { input: "@Wire Team Bot `show reminders`", assert: "The reminder list contains {{REM}} for checking the formatting smoke reminder." },
-      { input: "@Wire Team Bot `snooze {{REM}} 1 hour`", assert: "Reminder {{REM}} was snoozed and a new time is confirmed." },
-      { input: "@Wire Team Bot `cancel {{REM}}`", assert: "Reminder {{REM}} was cancelled." },
+      { input: "@Wire Team Bot `snooze {{rem}} 1 hour`", assert: "Reminder {{REM}} was snoozed and a new time is confirmed." },
+      { input: "@Wire Team Bot `cancel {{rem}}`", assert: "Reminder {{REM}} was cancelled." },
     ],
   },
 
