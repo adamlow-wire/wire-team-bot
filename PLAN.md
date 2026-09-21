@@ -570,6 +570,18 @@ hydrated three conversations and connected with zero startup errors. SECURE and 
 open interval were preserved. Post-restart marker/status/resume checks and interval closure
 remain pending; provider payload exclusion and live in-flight cancellation are not claimed.
 
+**Case 6B post-resume — September 21, 11:28 UTC:** [Updated SECURE evidence](tests/acceptance/manual-secure-restart-0921.json)
+confirms ACTIVE and the secure interval correctly closed at 11:27:59 UTC. Both secure-period
+markers occur zero times across ten application tables and container logs. `ACT-0012` was
+created at 11:24:20 UTC, about ten seconds before SECURE started; its presence after resume is
+expected, not a secure-period capture. Operator screenshots confirm resume and personal recall.
+The observed restart/resume/no-marker-persistence journey passes. No live provider payload
+inspection or in-flight cancellation proof is claimed.
+
+**Test-instruction correction:** SECURE ignores incoming `status` requests and responds only
+to a qualified bot-mentioned `resume`; PAUSED instead gives a standing-by reply. The earlier
+instruction to expect a SECURE status reply was incorrect. This silence was not an outage.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
@@ -612,7 +624,9 @@ passes independently. The coordinated recovery test used the unchanged candidate
    immediately mention `pause` (or `secure mode`); wait for confirmation. Send a unique marker
    such as `RC_PAUSED_BEFORE_0918`. The developer restarts the same image. Send
    `RC_PAUSED_AFTER_0918` while still blocked, then mention `resume`. Repeat with `RC_SECURE_...`
-   markers. Markers must not reach later model requests, stored records, signals or audits.
+   markers. In SECURE, `status` is deliberately ignored; mention `resume` to exit. In PAUSED,
+   `status` receives a standing-by reply. Markers must not reach later model requests, stored
+   records, signals or audits.
    Capture logs/DB checks through the developer; silence alone is not proof. If the pre-pause job
    had already finished, do not claim that run demonstrated in-flight cancellation.
 7. **Cross-channel denial.** In Demo for Anna create `action: keep the RC final scope marker`
