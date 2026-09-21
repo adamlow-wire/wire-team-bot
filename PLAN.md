@@ -780,13 +780,26 @@ A verified private pre-rewrite Git bundle is retained outside the repository at
 does not count as a fresh runtime, model or manual QA run. GitHub may cache contributor
 statistics or retain old closed-PR commit snapshots independently of current branch/tag history.
 
-**Attribution reverified on GitHub — 2026-09-21:** the authenticated account is
+**Attribution verification corrected — 2026-09-21:** the authenticated account is
 `adamlow-wire`, and GitHub's repository contributors API lists only that account. Published
 `main` and all three archive tags match the inspected local refs. All reachable commit authors,
 committers and archive taggers are Adam Low <adam.low@wire.com>; no unwanted co-author trailers
 or assistant/session attribution were found in commit messages. Repository-local Git name/email
-are now pinned to that identity. No additional history rewrite or branch/tag deletion was needed.
-This is a repository metadata check; the staging image and acceptance results are unchanged.
+are pinned to that identity. No additional history rewrite or branch/tag deletion was needed.
+
+**The visible contributor cleanup is nevertheless incomplete.** Adam's screenshot shows three
+contributors. A fresh unauthenticated read of GitHub's repository page and `/_sidebar` endpoint
+on September 21 confirmed `contributorCount: 3`, including the two historical accounts, while
+`/repos/adamlow-wire/wire-team-bot/contributors` returns only the owner. The previous completion
+claim verified the API/history but failed to verify the separate repository sidebar. This is
+not just an old screenshot. GitHub's
+[official contributor troubleshooting](https://docs.github.com/en/repositories/viewing-activity-and-data-for-your-repository/viewing-a-projects-contributors#contributor-data-is-stale-after-history-changes)
+says contributor displays can remain stale for about 24 hours after a history rewrite and to
+contact Support if incorrect data persists beyond that. The rewrite was September 18, so the
+support escalation is applicable. A request with both endpoint results is prepared locally at
+`/tmp/wire-team-bot-github-support.md`; it has **not** been submitted. No repository deletion,
+default-branch switching, additional force-push or hiding of the widget was performed. Mark
+this task complete only when the visible sidebar is also correct. Staging and app QA are unchanged.
 
 ### Disposition of the former V3 gaps
 
