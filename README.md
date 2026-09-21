@@ -180,14 +180,14 @@ The same rule applies to `DEC-` and `REM-` command references.
 
 Use an actual Wire mention for addressed commands, especially when resuming from PAUSED or
 SECURE. Q&A and summaries require a model endpoint. Passive extraction runs in ACTIVE channels.
+In SECURE, incoming messages—including `status`—are ignored except a bot-mentioned `resume`.
+In PAUSED, other bot-mentioned commands receive a standing-by reply.
+
 Direct command confirmations and answers use Wire’s native reply to identify the source message.
 Scheduled notifications remain standalone; self-deleting sources cannot be quoted by Wire.
 Passive action capture is quiet but visible: **📝** means at least one action was saved from
 that message; **✅** means at least one completion was saved. Both may appear when a message
 does both. Reactions follow the record and audit writes; duplicates, rejected captures and
-In SECURE, incoming messages—including `status`—are ignored except a bot-mentioned `resume`.
-In PAUSED, other bot-mentioned commands receive a standing-by reply.
-
 PAUSED/SECURE messages get no success reaction. Use `my actions` or `team actions` to inspect
 owners and deadlines. A failed reaction send leaves the saved record intact; reactions are not
 retried durably or backfilled onto older messages. Passive decisions do not receive these action
