@@ -538,7 +538,7 @@ export class WireEventRouter extends WireEventsHandler {
       await this.deps.createReminder.execute({
         conversationId: convId, authorId: sender, authorName: senderDisplayName ?? "",
         rawMessageId: wireMessage.id,
-        description: remindMatch[2].trim(), targetId: sender, triggerAt: parsed.value,
+        description: remindMatch[2].trim(), targetId: sender, triggerAt: parsed.value, timezone: config?.timezone ?? "UTC",
       });
       return;
     }
@@ -572,7 +572,8 @@ export class WireEventRouter extends WireEventsHandler {
         || /^(?:what|show|list|do we have any|any)\s+reminders?(?:\s+do\s+(?:we|i)\s+have)?[?]?$/i.test(commandLowered)
         || /^(?:what\s+reminders\s+do\s+i\s+have)\s*[?]?$/i.test(commandLowered)
         || /^(?:what|show|list)\s+(?:are\s+(?:the|our|my)\s+)?(?:open\s+|pending\s+)?reminders?\s*[?]?$/i.test(commandLowered)) {
-      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, replyToMessageId: wireMessage.id });
+      const config = await this.deps.conversationConfig.get(convId);
+      await this.deps.listMyReminders.execute({ conversationId: convId, targetId: sender, timezone: config?.timezone ?? "UTC", replyToMessageId: wireMessage.id });
       return;
     }
     if (commandLowered === "list decisions" || commandLowered === "decisions" || commandLowered === "decisions list") {

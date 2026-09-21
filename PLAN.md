@@ -591,6 +591,17 @@ ACT-0012 from the SECURE prelude instead of creating another synthetic action; i
 closed in its original conversation. Quality/usefulness review and the timezone display fix
 remain outstanding, alongside explicitly pending evidence in the earlier checkpoints.
 
+**Case 8 update — September 21:** Adam reports test 8 worked. Live summary/list UI checks
+are operator-confirmed; the explicit 20-capture/ten-answer review, useful-answer count and
+speed/noise assessment have been requested before recording human quality approval. Reminder
+receipt/non-delivery confirmation has also been requested; do not infer it from this answer.
+
+**Timezone correction in progress:** use the configured conversation timezone for reminder
+creation/list/snooze and include an explicit zone label (UTC default, BST/GMT for Europe/London).
+Keep stored deadlines and scheduling instants unchanged. Tests cover summer/winter, routing
+and a host timezone different from the conversation. Full validation and candidate replacement
+must precede claiming this is live. Classifier/extractor/pipeline code remains unchanged.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit

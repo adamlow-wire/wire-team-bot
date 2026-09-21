@@ -15,6 +15,7 @@ export interface CreateReminderInput {
   description: string;
   targetId: QualifiedId;
   triggerAt: Date;
+  timezone?: string;
 }
 
 export class CreateReminder {
@@ -74,7 +75,7 @@ export class CreateReminder {
 
     const triggerFormatted = saved.triggerAt.toLocaleString("en-GB", {
       weekday: "long", day: "numeric", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
+      hour: "2-digit", minute: "2-digit", timeZone: input.timezone ?? "UTC", timeZoneName: "short",
     });
     await this.wireOutbound.sendPlainText(
       input.conversationId,

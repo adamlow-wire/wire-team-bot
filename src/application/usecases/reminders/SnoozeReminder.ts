@@ -94,7 +94,7 @@ export class SnoozeReminder {
 
     await this.wireOutbound.sendPlainText(
       input.conversationId,
-      `**${reminder.id}** snoozed until **${newDate.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}**.`,
+      `**${reminder.id}** snoozed until **${newDate.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: input.timezone, timeZoneName: "short" })}**.`,
       { replyToMessageId: input.replyToMessageId },
     );
 

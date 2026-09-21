@@ -537,6 +537,19 @@ export const scenarios: Scenario[] = [
   // ── Feature 3: Reminders ────────────────────────────────────────────────
 
   {
+    id: "TC-REM-07",
+    description: "Reminder create, list and snooze display the configured timezone",
+    referenceTime: "2026-09-21T11:00:00.000Z", timezone: "Europe/London",
+    stored: [{ type: "reminder", sourceStep: 1, terms: ["timezone", "smoke"], owner: "alice@cli.local", deadline: "2026-09-21T11:02:00.000Z", status: "cancelled" }],
+    steps: [
+      { input: "remind me in 20 minutes to check timezone smoke", captureAs: "REM", replyEquals: "Reminder **{{REM}}** set for **Monday, 21 Sept 2026, 12:20 BST**: check timezone smoke" },
+      { input: "show reminders", replyEquals: "- **{{REM}}** — check timezone smoke _(Monday, 21 Sept 2026, 12:20 BST)_" },
+      { input: "snooze {{rem}} 2 minutes", replyEquals: "**{{REM}}** snoozed until **21 Sept 2026, 12:02 BST**." },
+      { input: "cancel {{rem}}", replyEquals: "**{{REM}}** cancelled." },
+    ],
+  },
+
+  {
     id: "TC-REM-06",
     description: "Pasted reminder commands create, list, snooze and cancel",
     steps: [

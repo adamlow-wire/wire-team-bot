@@ -898,3 +898,16 @@ it.each(["act0008", "act_0008", "act- 0008", "act-0008x", "act–0008"])("does n
   await new WireEventRouter(deps).onTextMessageReceived(customMention(`${id} done`));
   expect(deps.updateActionStatus.execute).not.toHaveBeenCalled();
 });
+
+
+it.each([
+  ["remind me in 2 minutes to check the zone", "createReminder"],
+  ["show reminders", "listMyReminders"],
+  ["snooze rem-0001 2 minutes", "snoozeReminder"],
+] as const)("passes the conversation timezone for %s", async (command, useCase) => {
+  const deps = makeDeps();
+  vi.mocked(deps.conversationConfig.get).mockResolvedValue({ timezone: "Europe/London" } as never);
+  vi.mocked(deps.dateTimeService.parse).mockReturnValue({ value: new Date("2026-09-21T11:20:00Z"), ambiguous: false });
+  await new WireEventRouter(deps).onTextMessageReceived(customMention(command));
+  expect(deps[useCase].execute).toHaveBeenCalledWith(expect.objectContaining({ timezone: "Europe/London" }));
+});

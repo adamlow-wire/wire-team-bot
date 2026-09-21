@@ -5,6 +5,7 @@ import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 export interface ListMyRemindersInput {
   conversationId: QualifiedId;
   targetId?: QualifiedId;
+  timezone?: string;
   replyToMessageId?: string;
 }
 
@@ -34,7 +35,7 @@ export class ListMyReminders {
       .sort((a, b) => a.triggerAt.getTime() - b.triggerAt.getTime())
       .map(
         (r) =>
-          `- **${r.id}** — ${r.description} _(${r.triggerAt.toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })})_`,
+          `- **${r.id}** — ${r.description} _(${r.triggerAt.toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: input.timezone ?? "UTC", timeZoneName: "short" })})_`,
       );
 
     await this.wireOutbound.sendPlainText(
