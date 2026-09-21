@@ -534,11 +534,20 @@ until 11:01:09 UTC, then marked fired at 11:01:09.925 with one firing audit. Thi
 (12:18 UK) deadline and coordinated overdue recovery remain pending. Combined-event source ID
 was not supplied; the inventory check finds no extra matching reminder fact.
 
+**Case 5 recovery — September 21:** [Coordinated recovery evidence](tests/acceptance/manual-reminder-recovery-0921.json)
+records `REM-0011`, due 11:07:41.733 UTC. Staging stopped at 11:06:28 UTC; a read at
+11:07:46 UTC confirmed the overdue record remained pending/version 1 with only its creation
+audit. The same container/image/crypto volume restarted at 11:07:47 UTC. At 11:07:49 UTC the
+record became fired/version 2, with one firing audit and its original source, owner and deadline
+preserved. Backend recovery passes; operator confirmation of one visible delivery is pending.
+No runtime change or new model/test-suite run occurred. Cancelled REM-0009's original deadline
+has not yet elapsed; its non-delivery observation remains pending.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
 zone display with regression checks before final acceptance; the elapsed scheduling evidence above
-passes independently. Keep the current candidate for the coordinated recovery test.
+passes independently. The coordinated recovery test used the unchanged candidate.
 
 1. **Round trip and reply targets.** Mention the bot with `status`, then send `my actions` and
    another `status` quickly as separate messages. Each reply must quote its own source. Check

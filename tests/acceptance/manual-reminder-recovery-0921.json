@@ -1,0 +1,80 @@
+{
+  "date": "2026-09-21",
+  "reminderId": "REM-0011",
+  "conversationId": "8791c80e-8209-4509-9c33-360e83b44c62",
+  "conversationDomain": "staging.zinfra.io",
+  "image": "wire-team-bot:v3-rc-8c0c89d",
+  "imageId": "sha256:194eac6f1efb420b50ca5c54c6e6a816b83743c713868ccd0c91464310a79d93",
+  "containerId": "96b39b861502fc66e3016db0f9a972f6b2ddab2047bab34530770b05f5c054d1",
+  "volumes": [
+    {
+      "Name": "jeeves-staging_jeeves-staging-crypto",
+      "Destination": "/app/storage"
+    }
+  ],
+  "originalDeadline": "2026-09-21T11:07:41.733Z",
+  "originalSource": "670a433c-fa2e-4405-b9af-488a3195e9b9",
+  "observedBeforeStop": {
+    "status": "pending",
+    "version": 1,
+    "checkedAt": "2026-09-21T11:06:01.791343Z"
+  },
+  "stoppedAt": "2026-09-21T11:06:28.606824621Z",
+  "overdueWhileStopped": {
+    "checkedAt": "2026-09-21T11:07:46.88118+00:00",
+    "record": {
+      "id": "REM-0011",
+      "status": "pending",
+      "version": 1,
+      "triggerAt": "2026-09-21T11:07:41.733",
+      "updatedAt": "2026-09-21T11:05:41.734",
+      "rawMessageId": "670a433c-fa2e-4405-b9af-488a3195e9b9",
+      "targetId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "targetDom": "staging.zinfra.io"
+    },
+    "audits": [
+      {
+        "action": "entity_created",
+        "timestamp": "2026-09-21T11:05:41.734",
+        "details": {
+          "triggerAt": "2026-09-21T11:07:41.733Z",
+          "description": "check RC final recovery"
+        }
+      }
+    ]
+  },
+  "restartRequestedAt": "2026-09-21T11:07:47.115300+00:00",
+  "sameContainerImageVolumes": true,
+  "afterRestart": {
+    "checkedAt": "2026-09-21T11:07:49.446953+00:00",
+    "record": {
+      "id": "REM-0011",
+      "status": "fired",
+      "version": 2,
+      "triggerAt": "2026-09-21T11:07:41.733",
+      "updatedAt": "2026-09-21T11:07:49.095",
+      "rawMessageId": "670a433c-fa2e-4405-b9af-488a3195e9b9",
+      "targetId": "c7aa1ae3-fdac-4a18-9ce0-020d0014b4ab",
+      "targetDom": "staging.zinfra.io"
+    },
+    "audits": [
+      {
+        "action": "entity_created",
+        "timestamp": "2026-09-21T11:05:41.734",
+        "details": {
+          "triggerAt": "2026-09-21T11:07:41.733Z",
+          "description": "check RC final recovery"
+        }
+      },
+      {
+        "action": "entity_updated",
+        "timestamp": "2026-09-21T11:07:49.098",
+        "details": {
+          "status": "fired"
+        }
+      }
+    ]
+  },
+  "automatedRecoveryPassed": true,
+  "operatorReceipt": "pending"
+}
