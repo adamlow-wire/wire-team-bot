@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-18. Staging runtime: `ae618ff` (baseline `e35428b`). Latest tested QA runtime: `ae618ff`.
+Updated: 2026-09-21. Staging runtime: `ae618ff` (baseline `e35428b`). Latest tested QA runtime: `ae618ff`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -272,6 +272,32 @@ with verified backups, unchanged durable records, member/reminder hydration and 
 Final Wire/human acceptance remains pending. The first candidate `status` smoke reply had the correct
 native quote but took approximately 25 seconds; the unresolved connection failure below blocks QA-7.
 This is code and automated QA completion, not pilot approval.
+
+#### Monday status check — 2026-09-21
+
+Read-only checks at **07:38 UTC** confirm staging still runs the exact `ae618ff` image
+(`sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0`).
+The container reports a start at **07:37:04 UTC**, zero restarts, and no temporary Node options
+or protocol probe mount. This status check did not restart or deploy anything. From that
+start through **07:38:50 UTC** (about 106 seconds), there were **zero SDK warnings and zero
+logged errors**. Friday's repeated reconnects were not observed in this short window;
+this does **not** establish their cause, a durable fix, or acceptable user-visible latency.
+Repeat timed real Wire `status` requests before closing that gate.
+
+The previously pending synthetic `REM-0008`, scoped to Demo for Anna, is now **fired/version 2**.
+Its original due time remains **06:00 UTC**; it was updated at **07:37:08.153 UTC**, shortly after
+the reported container start, with one matching firing audit at **07:37:08.159 UTC**. This is
+new durable evidence of overdue recovery; it is not on-time delivery or operator UI receipt
+confirmation. The reason for the container's start time was not investigated in this status check.
+
+Friday's **370 tests, 63/63 e2e cases, fifteen stored-state checks and 20/20 synthetic fact sample**
+remain the latest automated results; no suite was rerun on Monday. Decision QA remains at the
+recorded checkpoint below: correct attribution and audited supersession/revocation, with the
+post-revocation Wire answer outstanding. Remaining final manual cases and human quality review
+still gate the five-day pilot. The remote has only `main`, matching local `fae80ad` at inspection;
+reachable commit authors/committers are Adam Low only. The working tree was clean before this
+status-note update. The next focused step is timed `status` plus the outstanding decision question,
+then assignment/deadlines, passive feedback, reminders, privacy/scope and usefulness checks.
 
 #### Staging candidate activation — 2026-09-18
 
