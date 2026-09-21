@@ -52,7 +52,43 @@
     }
   },
   "limitations": [
-    "No provider-request payload inspection; no claim this proves absence from provider inputs.",
-    "Post-restart marker/resume checks and in-flight cancellation evidence pending."
-  ]
+    "Provider request payloads were not inspected; no live proof of absence from provider inputs.",
+    "The screenshots do not establish whether a job was in flight when pause began; live in-flight cancellation was not demonstrated."
+  ],
+  "postResume": {
+    "checkedAt": "2026-09-21T11:22:34.439949+00:00",
+    "state": "active",
+    "markerCounts": {
+      "RC_PAUSED_BEFORE_0921": {
+        "Action": 0,
+        "Decision": 0,
+        "Reminder": 0,
+        "AuditLog": 0,
+        "channel_config": 0,
+        "entities": 0,
+        "entity_relationships": 0,
+        "embeddings": 0,
+        "conversation_signals": 0,
+        "conversation_summaries": 0
+      },
+      "RC_PAUSED_AFTER_0921": {
+        "Action": 0,
+        "Decision": 0,
+        "Reminder": 0,
+        "AuditLog": 0,
+        "channel_config": 0,
+        "entities": 0,
+        "entity_relationships": 0,
+        "embeddings": 0,
+        "conversation_signals": 0,
+        "conversation_summaries": 0
+      }
+    },
+    "markerLogOccurrences": {
+      "RC_PAUSED_BEFORE_0921": 0,
+      "RC_PAUSED_AFTER_0921": 0
+    },
+    "operatorEvidence": "Screenshot shows post-restart marker, paused status response, successful resume, and no open actions.",
+    "passed": true
+  }
 }

@@ -553,6 +553,15 @@ storage checks are pending. This checkpoint does not prove in-flight cancellatio
 from provider request payloads; those were not observed. At 11:18:56 UTC, REM-0009 was still
 cancelled/version 2 past its original deadline; visible non-delivery confirmation remains pending.
 
+**Case 6A post-resume — September 21, 11:22 UTC:** the operator screenshot confirms the
+post-restart marker, paused status response, successful resume and an empty personal open-action
+list. Fresh checks confirm ACTIVE and zero occurrences of either `RC_PAUSED_BEFORE_0921` or
+`RC_PAUSED_AFTER_0921` across the ten checked application tables and container logs. The
+[updated evidence](tests/acceptance/manual-paused-restart-0921.json) passes the observed
+PAUSED persistence, resume and no-marker-persistence journey. Live in-flight cancellation and
+provider request payload exclusion were not demonstrated by this run; do not conflate the
+storage/UI check with those stronger claims. SECURE repeat remains pending.
+
 **Open display defect:** reminder confirmations, snooze and list render times without a timezone,
 which made a future deadline appear overdue beside the Wire client clock. Inspected create/snooze
 formatters use server-local `toLocaleString`; the channel is configured UTC. Fix consistent explicit
