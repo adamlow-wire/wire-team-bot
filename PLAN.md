@@ -327,7 +327,10 @@ docker compose -f docker-compose.staging.yml \
 **Wire follow-up — September 21:** Adam confirms the lowercase-ID retest worked on the
 replacement candidate. This is operator confirmation; no new record ID or screenshot was
 supplied and no additional DB inspection is claimed. Cases 1–3 retain their earlier pass.
-**Next:** case 4 passive capture/completion, followed by cases 5–8 and human quality review.
+**Case 4 follow-up — September 21:** Adam reports passive capture/completion passed in Wire.
+Post-process verification of the exact source record, duplicate count and creation/completion
+audits remains pending; no additional DB inspection is claimed from that report alone.
+**Next:** cases 5–8, the remaining stored-record checks and human quality review.
 Classifier/extractor/pipeline code is unchanged; no simulation rerun is required for this fix.
 Container install/prune steps disable automatic npm audit uploads; the separately requested
 audit remains unapproved and its existing findings remain recorded. No dependencies changed.
@@ -502,7 +505,8 @@ returned by this run in place of `DEC-A`, `DEC-B`, `ACT-A` and `REM-A`. Send one
 message except the deliberately combined-command test. Case 1 has a correct quoted `status`
 reply; Adam subsequently reports tests 1–3 passed, including reply targeting, final decision
 recall and the action lifecycle (see the September 21 entry above). Lowercase ID input exposed
-one additional defect fixed in the replacement candidate; Adam confirms the focused Wire retest passed on September 21. Cases 4–8 remain **pending on the final candidate**.
+one additional defect fixed in the replacement candidate; Adam confirms the focused Wire retest passed on September 21. Case 4 is operator-confirmed passed, with its stored-record/audit verification pending.
+Cases 5–8 remain **pending on the final candidate**.
 The developer verifies persisted sources, qualified owners, status, deadlines and audits after
 processing; the user checks Wire rendering and usefulness. Do not paste credentials or real
 team transcripts into review artifacts.
