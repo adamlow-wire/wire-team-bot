@@ -1,8 +1,8 @@
 services:
   wire-team-bot:
-    # Pull the latest image built by CI from GitHub Container Registry.
+    # Pull the versioned release image from GitHub Container Registry.
     # To build locally instead: replace `image:` with `build: .`
-    image: ghcr.io/adamlow-wire/wire-team-bot:latest
+    image: ghcr.io/adamlow-wire/wire-team-bot:1.0.0
     container_name: wire-team-bot
     restart: unless-stopped
     env_file:

@@ -5,11 +5,33 @@ Updated: 2026-09-22. Staging runtime/image: `4a2f003` (canonical naming; baselin
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
 QA acceptance of the existing bot, followed by a small real-world pilot with targeted
-reliability fixes. Adam set **1.0.0** as the release target on 2026-09-21. Keep that target within
-this proof-of-concept scope; it is not a rewrite or a commitment to every former V3 proposal.
+reliability fixes. Adam set **1.0.0** as the release target on 2026-09-21 and authorised publishing it on
+2026-09-22. The release versions this proof-of-concept scope; it does not expand the feature plan.
 
 [README.md](README.md) covers setup and operation. [AGENTS.md](AGENTS.md) covers contributor
 rules. Update progress here; do not create another versioned plan or gap backlog.
+
+### 1.0 release authorisation — 2026-09-22
+
+Adam explicitly requested creating release **1.0** now. Publish **Wire Team Bot 1.0** with tag
+`v1.0.0`, and align package/lockfile metadata at `1.0.0`. This supersedes the earlier requirement
+to wait until after P3 before tagging the proof of concept. It does not mark unobserved manual
+checks or the five-day pilot as passed. Human quality review, the final post-naming Wire UI
+round trip, external app-profile branding and the P3 usefulness/noise decision remain recorded.
+
+Application source, dependencies, schema and model settings are unchanged from tested runtime
+`4a2f003`. Its recorded September 22 evidence is **394 unit/contract/isolated DB tests**,
+**64/64 real-model scenarios**, **18 mandatory stored/state checks**, **20/20 stored facts with
+zero duplicates**, and successful build/type-check/lint. These are the existing run results,
+not new model-suite runs for a metadata-only release. See [validation](tests/acceptance/naming-validation.json).
+
+Release packaging enables tag-triggered container publication for `1.0.0`, `1.0` and `1`, and
+pins the default Compose file to `1.0.0`. The registry also retains `latest` and commit tags.
+CI dependency installation now uses `--no-audit`, matching the container build's existing policy;
+no dependency versions change. The [GitHub release](https://github.com/adamlow-wire/wire-team-bot/releases/tag/v1.0.0)
+records the final tag, build evidence and published container digest; publication follows successful
+packaging/CI verification. Staging remains pinned to its tested image and preserved volumes;
+creating this release does not deploy to production.
 
 ## 1. What we are building
 
@@ -417,10 +439,10 @@ audit remains unapproved and its existing findings remain recorded. No dependenc
 Adam authorised proceeding toward 1.0. Preserve the current feature scope and finish the existing
 acceptance sequence: pinned candidate → final Wire/human acceptance → five-working-day pilot →
 release decision against §5. Treat 1.0 as the version of this Wire JS SDK proof of concept, not
-a production-readiness claim. Package and lockfile versions remain `0.1.0` during acceptance;
-no 1.0 release tag has been created. Once accepted, update both version
-fields together, build the final immutable image, validate the packaged artifact with the existing
-checks and relevant journeys, and record its commit/digest, known limits and rollback instructions.
+a production-readiness claim. At that checkpoint package/lockfile versions remained `0.1.0`
+and no release tag existed. The [September 22 release authorisation](#10-release-authorisation--2026-09-22)
+supersedes that sequencing: publish the proof-of-concept release now, preserve existing evidence
+and pending manual checks, and verify the final versioned image without changing runtime behavior.
 Any functional/dependency fix returns through its focused reproduction and required regression
 checks before replacing the pinned candidate. Do not restart the whole implementation backlog.
 

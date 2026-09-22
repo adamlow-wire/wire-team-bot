@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
 
 permissions:
   contents: read
@@ -25,7 +27,7 @@ jobs:
       - name: Install
         # Mirrors the Dockerfile: npm 10's `npm ci` ignores better-sqlite3's
         # `gypfile: false` and tries to compile it; only Prisma needs its install hooks.
-        run: npm ci --ignore-scripts && npm rebuild prisma @prisma/client @prisma/engines
+        run: npm ci --ignore-scripts --no-audit && npm rebuild prisma @prisma/client @prisma/engines
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -69,8 +71,11 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
 
       - name: Build and push image
         uses: docker/build-push-action@v6

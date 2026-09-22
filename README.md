@@ -6,6 +6,9 @@ conversation, extract structured records, answer questions and generate catch-up
 The official `@wireapp/wire-apps-js-sdk` supplies encrypted messaging, structured mentions,
 native replies and reactions. This application supplies the AI integration, storage and workflow logic.
 
+**Release: [Wire Team Bot 1.0](https://github.com/adamlow-wire/wire-team-bot/releases/tag/v1.0.0).**
+The default Compose stack uses `ghcr.io/adamlow-wire/wire-team-bot:1.0.0`.
+
 This README covers capabilities, setup and operation. [PLAN.md](PLAN.md) tracks architecture,
 validation evidence and release progress. [AGENTS.md](AGENTS.md) contains contributor guidance.
 
@@ -72,6 +75,7 @@ privacy-validation limits; this is not a blanket guarantee about every storage l
 ```bash
 git clone https://github.com/adamlow-wire/wire-team-bot.git
 cd wire-team-bot
+git checkout v1.0.0
 cp .env.example .env
 # Edit .env using the template: Wire credentials, crypto key, model endpoint and model slots
 openssl rand -hex 32   # paste as WIRE_SDK_CRYPTO_KEY
