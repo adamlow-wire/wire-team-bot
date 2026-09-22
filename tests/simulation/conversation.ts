@@ -1,5 +1,5 @@
 /**
- * Simulation conversation fixture for Jeeves.
+ * Simulation conversation fixture for Wire Team Bot.
  *
  * A realistic 3-day engineering team channel transcript covering sprint
  * kickoff, implementation work, and a release day. It contains a mix of:
@@ -296,19 +296,19 @@ export const CONVERSATION: SimMessage[] = [
 
   {
     day: 3, time: "10:10", sender: "Alice",
-    text: "@jeeves list decisions",
+    text: "@Wire Team Bot list decisions",
     isQuery: true,
     note: "FINAL QUERY: full list of recorded decisions",
   },
   {
     day: 3, time: "10:11", sender: "Alice",
-    text: "@jeeves team actions",
+    text: "@Wire Team Bot team actions",
     isQuery: true,
     note: "FINAL QUERY: all open team actions",
   },
   {
     day: 3, time: "10:12", sender: "Alice",
-    text: "@jeeves what reminders do I have?",
+    text: "@Wire Team Bot what reminders do I have?",
     isQuery: true,
     note: "FINAL QUERY: scheduled reminders",
   },

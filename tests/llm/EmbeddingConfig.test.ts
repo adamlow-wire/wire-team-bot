@@ -7,14 +7,14 @@
  * and the no-op service the bot falls back to.
  */
 import { describe, it, expect, vi } from "vitest";
-import { resolveEmbeddingSettings, type JeevesLLMConfig } from "../../src/app/config";
+import { resolveEmbeddingSettings, type LLMConfig } from "../../src/app/config";
 import { DisabledEmbeddingService } from "../../src/infrastructure/llm/DisabledEmbeddingService";
 import { createEmbeddingService } from "../../src/infrastructure/llm/createEmbeddingService";
-import { JeevesEmbeddingAdapter } from "../../src/infrastructure/llm/JeevesEmbeddingAdapter";
+import { OpenAIEmbeddingAdapter } from "../../src/infrastructure/llm/OpenAIEmbeddingAdapter";
 
 const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn().mockReturnThis() };
 
-function llmConfig(embed: JeevesLLMConfig["embed"]): JeevesLLMConfig {
+function llmConfig(embed: LLMConfig["embed"]): LLMConfig {
   const slot = { model: "m", fallback: "m" };
   return {
     baseUrl: "https://api.anthropic.com/v1",
@@ -87,7 +87,7 @@ describe("createEmbeddingService", () => {
 
   it("returns the real adapter when enabled", () => {
     const svc = createEmbeddingService(llmConfig({ baseUrl: "http://ollama:11434/v1", apiKey: "", enabled: true }), logger);
-    expect(svc).toBeInstanceOf(JeevesEmbeddingAdapter);
+    expect(svc).toBeInstanceOf(OpenAIEmbeddingAdapter);
   });
 
   it("the real adapter calls the embedding endpoint, not the chat endpoint", async () => {

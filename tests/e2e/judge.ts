@@ -4,14 +4,14 @@
  * Sends the bot's response and a plain-English assertion to the configured
  * LLM endpoint and gets back a PASS/FAIL verdict with a one-line reason.
  *
- * Uses the same JEEVES_LLM_BASE_URL / JEEVES_LLM_API_KEY env vars as the bot.
- * Model is controlled by JEEVES_JUDGE_MODEL (defaults to JEEVES_MODEL_CLASSIFY).
+ * Uses the same WIRE_TEAM_BOT_LLM_BASE_URL / WIRE_TEAM_BOT_LLM_API_KEY env vars as the bot.
+ * Model is controlled by WIRE_TEAM_BOT_JUDGE_MODEL (defaults to WIRE_TEAM_BOT_MODEL_CLASSIFY).
  */
 
 import path from "path";
 import { config as loadDotenv } from "dotenv";
 
-// Load .env from repo root so JEEVES_* vars are available when running via tsx
+// Load .env from repo root so WIRE_TEAM_BOT_* vars are available when running via tsx
 loadDotenv({ path: path.resolve(__dirname, "../../.env") });
 
 export interface JudgeResult {
@@ -23,7 +23,7 @@ export interface JudgeResult {
   raw: string;
 }
 
-const SYSTEM_PROMPT = `You are a test evaluator for a team assistant bot called Wire Team Bot (legacy test assertions may call it Jeeves).
+const SYSTEM_PROMPT = `You are a test evaluator for a team assistant bot called Wire Team Bot.
 You will be given a bot response and an assertion describing what a correct response should contain or do.
 Evaluate whether the bot response satisfies the assertion. The assertion defines the required behaviour: when it gives an exact date, compare the response against that date rather than substituting your own interpretation.
 Date policy: a date-only weekday matching the scenario's local calendar day means that same day, including after its default noon time. "Next Friday" means the following Friday. Do not move "this Friday" to next week merely because the reference day is Friday. Use the supplied conversation timezone for the reference calendar day.
@@ -36,14 +36,14 @@ export interface EvaluationContext { referenceTime: string; timezone: string }
 async function judgeOnce(botResponse: string, assertion: string,
   context: EvaluationContext = { referenceTime: new Date().toISOString(), timezone: "UTC" },
 ): Promise<JudgeResult> {
-  const baseUrl = process.env.JEEVES_LLM_BASE_URL;
-  const apiKey  = process.env.JEEVES_LLM_API_KEY ?? "none";
-  const model   = process.env.JEEVES_JUDGE_MODEL
-               ?? process.env.JEEVES_MODEL_CLASSIFY
+  const baseUrl = process.env.WIRE_TEAM_BOT_LLM_BASE_URL;
+  const apiKey  = process.env.WIRE_TEAM_BOT_LLM_API_KEY ?? "none";
+  const model   = process.env.WIRE_TEAM_BOT_JUDGE_MODEL
+               ?? process.env.WIRE_TEAM_BOT_MODEL_CLASSIFY
                ?? "qwen3-2507:4b";
 
   if (!baseUrl) {
-    throw new Error("JEEVES_LLM_BASE_URL is not set — cannot run judge");
+    throw new Error("WIRE_TEAM_BOT_LLM_BASE_URL is not set — cannot run judge");
   }
 
   const body = {

@@ -353,8 +353,8 @@ async function main() {
     console.error(`     Build first:  npm run build\n`);
     process.exit(1);
   }
-  if (!process.env.JEEVES_LLM_BASE_URL) {
-    console.error(`\n  ✗  JEEVES_LLM_BASE_URL is not set`);
+  if (!process.env.WIRE_TEAM_BOT_LLM_BASE_URL) {
+    console.error(`\n  ✗  WIRE_TEAM_BOT_LLM_BASE_URL is not set`);
     console.error(`     Add it to your .env file — see AGENTS.md §2.4\n`);
     process.exit(1);
   }
@@ -436,7 +436,7 @@ async function main() {
   }
 
   if (jsonOut) {
-    console.log(JSON.stringify({ runId: suiteRunId, judgeModel: process.env.JEEVES_JUDGE_MODEL ?? process.env.JEEVES_MODEL_CLASSIFY, passed, failed, scenarios: jsonResults }, null, 2));
+    console.log(JSON.stringify({ runId: suiteRunId, judgeModel: process.env.WIRE_TEAM_BOT_JUDGE_MODEL ?? process.env.WIRE_TEAM_BOT_MODEL_CLASSIFY, passed, failed, scenarios: jsonResults }, null, 2));
   } else {
     console.log(`\n${"─".repeat(70)}`);
     console.log(`  ${passed} passed, ${failed} failed\n`);

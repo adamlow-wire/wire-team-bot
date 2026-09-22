@@ -688,7 +688,7 @@ describe("WireEventRouter contract: Phase 4 catch me up routing", () => {
     };
   }
 
-  it("'@Jeeves catch me up' → catchMeUpCommand.execute", async () => {
+  it("'@Wire Team Bot catch me up' → catchMeUpCommand.execute", async () => {
     const catchMeUpCommand = makeCatchMeUpCommand();
     const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
     const router = new WireEventRouter(deps);
@@ -699,7 +699,7 @@ describe("WireEventRouter contract: Phase 4 catch me up routing", () => {
     );
   });
 
-  it("'@Jeeves what did I miss' → catchMeUpCommand.execute", async () => {
+  it("'@Wire Team Bot what did I miss' → catchMeUpCommand.execute", async () => {
     const catchMeUpCommand = makeCatchMeUpCommand();
     const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
     const router = new WireEventRouter(deps);
@@ -707,7 +707,7 @@ describe("WireEventRouter contract: Phase 4 catch me up routing", () => {
     expect(catchMeUpCommand.execute).toHaveBeenCalledOnce();
   });
 
-  it("'@Jeeves what's new' → catchMeUpCommand.execute", async () => {
+  it("'@Wire Team Bot what's new' → catchMeUpCommand.execute", async () => {
     const catchMeUpCommand = makeCatchMeUpCommand();
     const deps = makeDeps({ catchMeUpCommand } as Partial<WireEventRouterDeps>);
     const router = new WireEventRouter(deps);
@@ -764,8 +764,8 @@ describe("privacy state contract", () => {
     const enqueue = vi.fn();
     const deps = makeDeps({ processingQueue: { enqueue } as never, pipeline: {} as never });
     const router = new WireEventRouter(deps);
-    await router.onTextMessageReceived(addressed("@Jeeves decision: use Postgres"));
-    await router.onTextMessageReceived(addressed("@Jeeves what did we decide?"));
+    await router.onTextMessageReceived(addressed("@Wire Team Bot decision: use Postgres"));
+    await router.onTextMessageReceived(addressed("@Wire Team Bot what did we decide?"));
     expect(deps.logDecision.execute).toHaveBeenCalledOnce();
     expect(enqueue).not.toHaveBeenCalled();
   });

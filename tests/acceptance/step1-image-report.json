@@ -220,7 +220,7 @@
   "failures": [
     {
       "level": "warn",
-      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
     },
     {
       "level": "warn",
@@ -236,5 +236,10 @@
     7518,
     10548
   ],
-  "unsolicitedMessages": 0
+  "unsolicitedMessages": 0,
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

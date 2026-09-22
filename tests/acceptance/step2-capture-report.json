@@ -879,7 +879,7 @@
     },
     {
       "eventId": "q1",
-      "text": "@Jeeves Which database did we choose for the ledger and why?",
+      "text": "@Wire Team Bot Which database did we choose for the ledger and why?",
       "answer": "Postgres; transactions are required",
       "replies": [
         "Postgres, because transactions are required.\n\n• **[DEC-0396] Use Postgres for the ledger**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Rationale:** Transactions are required\n\nThe related action is **[ACT-0453] Write the ledger migration**, owned by @Bob and still open."
@@ -889,7 +889,7 @@
     },
     {
       "eventId": "q2",
-      "text": "@Jeeves Who owns the ledger migration?",
+      "text": "@Wire Team Bot Who owns the ledger migration?",
       "answer": "Bob",
       "replies": [
         "@Bob owns it.\n\n• **[ACT-0453] Write the ledger migration**\n  **Owner:** @Bob | **Status:** open\n\nTo reassign, use `ACT-0453 reassign to <name>`; to close it, `ACT-0453 done`."
@@ -899,7 +899,7 @@
     },
     {
       "eventId": "q3",
-      "text": "@Jeeves What interface did we choose for the billing API?",
+      "text": "@Wire Team Bot What interface did we choose for the billing API?",
       "answer": "REST",
       "replies": [
         "REST.\n\n• **[DEC-0397] Use REST for the billing API**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale was captured with the record, and the decision makers aren't recorded.\n\nThe related action is **[ACT-0454] Review the billing API contract**, owned by @Carol and still open."
@@ -909,7 +909,7 @@
     },
     {
       "eventId": "q4",
-      "text": "@Jeeves Where are we deploying the dashboard?",
+      "text": "@Wire Team Bot Where are we deploying the dashboard?",
       "answer": "London region",
       "replies": [
         "London.\n\n• **[DEC-0398] Deploy the dashboard in the London region**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale was captured, and the decision makers aren't recorded.\n\nThe related action is **[ACT-0455] Prepare the dashboard rollout**, owned by @Dave and still open."
@@ -919,7 +919,7 @@
     },
     {
       "eventId": "q5",
-      "text": "@Jeeves How long do we keep backups?",
+      "text": "@Wire Team Bot How long do we keep backups?",
       "answer": "Thirty days",
       "replies": [
         "Thirty days.\n\n• **[DEC-0399] Retain backups for thirty days**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale was captured, and the decision makers aren't recorded.\n\nThe related action is **[ACT-0456] Test the backup restoration**, owned by @Bob and still open."
@@ -929,7 +929,7 @@
     },
     {
       "eventId": "q6",
-      "text": "@Jeeves How are we releasing the mobile app?",
+      "text": "@Wire Team Bot How are we releasing the mobile app?",
       "answer": "Behind a feature flag",
       "replies": [
         "Behind a feature flag.\n\n• **[DEC-0400] Release the mobile app behind a feature flag**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale was captured, and the decision makers aren't recorded.\n\nThe related action is **[ACT-0457] Document the mobile release process**, owned by @Carol and still open."
@@ -939,7 +939,7 @@
     },
     {
       "eventId": "q7",
-      "text": "@Jeeves What did we choose for the session cache?",
+      "text": "@Wire Team Bot What did we choose for the session cache?",
       "answer": "Redis",
       "replies": [
         "Redis.\n\n• **[DEC-0401] Adopt Redis as the session cache technology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching, redis*\n\nThe related action is **[ACT-0458] Configure monitoring for the session cache**, owned by @Bob and still open."
@@ -949,7 +949,7 @@
     },
     {
       "eventId": "q8",
-      "text": "@Jeeves What format are invoice exports?",
+      "text": "@Wire Team Bot What format are invoice exports?",
       "answer": "CSV",
       "replies": [
         "CSV.\n\n• **[DEC-0402] All invoice exports will be produced as CSV files**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: invoicing, data-export, format*\n\nThe related action is **[ACT-0460] Write the guide for invoice exports**, owned by @Carol and still open."
@@ -959,7 +959,7 @@
     },
     {
       "eventId": "q9",
-      "text": "@Jeeves Who will publish the support rota?",
+      "text": "@Wire Team Bot Who will publish the support rota?",
       "answer": "Alice",
       "replies": [
         "You will — the action sits with you.\n\n• **[ACT-0463] Publish the support rota**\n  **Owner:** @Alice | **Status:** open\n  *Tags: support, rota, publishing*\n\nThis follows **[DEC-0404] The support rota will operate on a weekly rotation**, recorded by you on 2026-09-18.\n\nTo mark it complete: `ACT-0463 done`. To hand it over: `ACT-0463 reassign to Bob`."
@@ -969,7 +969,7 @@
     },
     {
       "eventId": "q10",
-      "text": "@Jeeves How many reviewers do security changes require?",
+      "text": "@Wire Team Bot How many reviewers do security changes require?",
       "answer": "Two",
       "replies": [
         "Two.\n\n• **[DEC-0405] Security-related changes must be approved by two reviewers**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: security, code-review, process*\n\nThe related action is **[ACT-0464] Update the security review checklist**, owned by @Bob and still open."
@@ -979,7 +979,7 @@
     },
     {
       "eventId": "unknown",
-      "text": "@Jeeves What is the approved budget for the Mars office?",
+      "text": "@Wire Team Bot What is the approved budget for the Mars office?",
       "answer": "No record of that budget; must not invent an answer or a write",
       "replies": [
         "I'm afraid I have no record of a Mars office or any approved budget for it."
@@ -991,7 +991,7 @@
   "failures": [
     {
       "level": "warn",
-      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
     },
     {
       "level": "warn",
@@ -1025,5 +1025,10 @@
     7305,
     6279
   ],
-  "unsolicitedMessages": 0
+  "unsolicitedMessages": 0,
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

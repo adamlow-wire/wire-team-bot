@@ -73,7 +73,7 @@ negative cases and reject extra/duplicate records. The report retains all invent
 verdicts, including malformed attempts; a model PASS cannot override a deterministic failure.
 Before acceptance, run `node node_modules/ts-node/dist/bin.js --transpile-only tests/e2e/calibrateJudge.ts`
 with the judge override in PLAN.md. Both positive and deliberately wrong answers must calibrate.
-`JEEVES_JUDGE_MODEL` falls back to `JEEVES_MODEL_CLASSIFY`. Scenarios use isolated conversation
+`WIRE_TEAM_BOT_JUDGE_MODEL` falls back to `WIRE_TEAM_BOT_MODEL_CLASSIFY`. Scenarios use isolated conversation
 IDs (`e2e-<id>-<runId>`). `captureAs: "DEC" | "ACT" | "REM"` captures IDs for subsequent
 `{{DEC}}`, `{{ACT}}`, `{{REM}}` substitutions. Use the existing shared-process support for
 context-dependent follow-ups.

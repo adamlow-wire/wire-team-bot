@@ -21,7 +21,7 @@ async function main() {
       return { ...sample, result, validVerdict, correct: validVerdict && result.pass === sample.expectedPass };
     })));
   }
-  const report = { model: process.env.JEEVES_JUDGE_MODEL ?? process.env.JEEVES_MODEL_CLASSIFY,
+  const report = { model: process.env.WIRE_TEAM_BOT_JUDGE_MODEL ?? process.env.WIRE_TEAM_BOT_MODEL_CLASSIFY,
     passed: results.filter(r => r.correct).length, total: results.length, results };
   const output = process.env.JUDGE_CALIBRATION_REPORT;
   if (output) writeFileSync(output, JSON.stringify(report, null, 2) + "\n");

@@ -88,13 +88,13 @@ export function createContainer(config: Config, logger: Logger): Container {
   const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
   const scheduler = new InProcessScheduler(logger);
 
-  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.jeeves, logger), logger);
+  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.bot, logger), logger);
 
   // ── Phase 2: Intelligence pipeline ──────────────────────────────────────
-  const llmFactory = new LLMClientFactory(config.llm.jeeves, logger);
+  const llmFactory = new LLMClientFactory(config.llm.bot, logger);
   const classifier = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction = new OpenAIExtractionAdapter(llmFactory, logger);
-  const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
+  const embeddingService = createEmbeddingService(config.llm.bot, logger);
   const entityRepo = new PrismaEntityRepository();
   const embeddingRepo = new PrismaEmbeddingRepository(logger);
   const signalRepo = new PrismaConversationSignalRepository();
@@ -115,8 +115,8 @@ export function createContainer(config: Config, logger: Logger): Container {
     wireOutbound,
     llm: llmFactory,
     logger,
-    extractConfidenceMin: config.llm.jeeves.extractConfidenceMin,
-    contradictionThreshold: config.llm.jeeves.contradictionThreshold,
+    extractConfidenceMin: config.llm.bot.extractConfidenceMin,
+    contradictionThreshold: config.llm.bot.contradictionThreshold,
   });
 
   const processingQueue = new InMemoryProcessingQueue<MessageJob>(

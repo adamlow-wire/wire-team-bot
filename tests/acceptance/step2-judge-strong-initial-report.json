@@ -5,8 +5,8 @@
   "results": [
     {
       "id": "ttl-correct",
-      "reply": "Redis, for the session cache.\n\n\u2022 **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself \u2014 if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`.",
-      "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+      "reply": "Redis, for the session cache.\n\n• **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself — if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`.",
+      "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
       "expectedPass": true,
       "context": {
         "referenceTime": "2026-09-18T15:02:18.066Z",
@@ -23,7 +23,7 @@
     {
       "id": "ttl-wrong",
       "reply": "Redis, because it is cheaper. No other reason is known.",
-      "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+      "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
       "expectedPass": false,
       "context": {
         "referenceTime": "2026-09-18T15:02:18.066Z",
@@ -39,7 +39,7 @@
     },
     {
       "id": "readonly-correct",
-      "reply": "Here's the command \u2014 send it as a message yourself:\n\n`remind me in 2 hours to review the deployment checklist`\n\nAdjust the timing as needed (`tomorrow at 9am`, `in 30 minutes`, `on Friday at 14:00`).",
+      "reply": "Here's the command — send it as a message yourself:\n\n`remind me in 2 hours to review the deployment checklist`\n\nAdjust the timing as needed (`tomorrow at 9am`, `in 30 minutes`, `on Friday at 14:00`).",
       "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
       "expectedPass": true,
       "context": {
@@ -73,7 +73,7 @@
     },
     {
       "id": "requester-correct",
-      "reply": "You have one open action:\n\n\u2022 **[ACT-0514] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0515) sit with @Alice, with no deadline recorded.",
+      "reply": "You have one open action:\n\n• **[ACT-0514] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nThe retrospective slides (ACT-0515) sit with @Alice, with no deadline recorded.",
       "assertion": "The current requester is Bob. The answer says Bob (or you) owns the launch checklist action ACT-0514. It must not address Alice as the requester, say Bob has no assigned actions, or present Alice's retrospective-slides action as Bob's.",
       "expectedPass": true,
       "context": {
@@ -107,7 +107,7 @@
     },
     {
       "id": "deciders-correct",
-      "reply": "\u2022 **[DEC-0422] Use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale was captured with the record. To revoke it, use `revoke DEC-0422 <reason>`.",
+      "reply": "• **[DEC-0422] Use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nNo rationale was captured with the record. To revoke it, use `revoke DEC-0422 <reason>`.",
       "assertion": "The answer names both Carol and Dave as the Terraform decision makers and Alice as recorder. It must not identify Alice as a decision maker.",
       "expectedPass": true,
       "context": {
@@ -133,15 +133,15 @@
       },
       "result": {
         "pass": false,
-        "reason": "... wait \u2014 the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely.",
-        "raw": "PASS... wait \u2014 the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely."
+        "reason": "... wait — the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely.",
+        "raw": "PASS... wait — the response says Alice made the decision and Carol/Dave uninvolved, contradicting the assertion.\n\nFAIL: Names Alice as decision maker; omits Carol and Dave entirely."
       },
       "correct": false,
       "validVerdict": false
     },
     {
       "id": "unknown-maker-correct",
-      "reply": "DEC-0425 has no decision maker recorded, I'm afraid.\n\n\u2022 **[DEC-0425] We will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nYou recorded it, but that only tells us who logged it \u2014 not who made the call. The stored record doesn't identify the decision makers.",
+      "reply": "DEC-0425 has no decision maker recorded, I'm afraid.\n\n• **[DEC-0425] We will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nYou recorded it, but that only tells us who logged it — not who made the call. The stored record doesn't identify the decision makers.",
       "assertion": "Decision makers are not recorded or cannot be identified. Alice may be identified only as recorder, not as having made the decision.",
       "expectedPass": true,
       "context": {
@@ -209,5 +209,10 @@
     }
   ],
   "beforeProtocolValidationPassed": 12,
-  "note": "Reassessed with strict protocol validation: malformed output does not count as a correct rejection."
+  "note": "Reassessed with strict protocol validation: malformed output does not count as a correct rejection.",
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

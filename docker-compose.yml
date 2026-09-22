@@ -1,9 +1,9 @@
 services:
-  jeeves:
+  wire-team-bot:
     # Pull the latest image built by CI from GitHub Container Registry.
     # To build locally instead: replace `image:` with `build: .`
     image: ghcr.io/adamlow-wire/wire-team-bot:latest
-    container_name: jeeves
+    container_name: wire-team-bot
     restart: unless-stopped
     env_file:
       # Copy .env.example → .env on the server and fill in real values.
@@ -20,18 +20,18 @@ services:
       # Losing this means the bot loses all E2EE session state.
       # NOTE: a volume created by the pre-2026-09 fork-based image is not compatible;
       # start the official-SDK image on a fresh volume (see README.md, Official SDK cutover).
-      - jeeves-crypto:/app/storage
+      - wire-team-bot-crypto:/app/storage
 
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: jeeves-postgres
+    container_name: wire-team-bot-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: wirebot
       POSTGRES_PASSWORD: wirebot
       POSTGRES_DB: wire_team_bot
     volumes:
-      - jeeves-db:/var/lib/postgresql/data
+      - wire-team-bot-db:/var/lib/postgresql/data
     # Bind to localhost only — not reachable from outside the host.
     ports:
       - "127.0.0.1:5432:5432"
@@ -42,15 +42,15 @@ services:
       retries: 10
 
   # ── Optional: local Ollama for on-premises inference ─────────────────────
-  # Uncomment this service and set JEEVES_LLM_BASE_URL=http://ollama:11434/v1
+  # Uncomment this service and set WIRE_TEAM_BOT_LLM_BASE_URL=http://ollama:11434/v1
   # in your .env if you want all LLM calls to stay on the host.
   #
   # ollama:
   #   image: ollama/ollama:latest
-  #   container_name: jeeves-ollama
+  #   container_name: wire-team-bot-ollama
   #   restart: unless-stopped
   #   volumes:
-  #     - jeeves-ollama:/root/.ollama
+  #     - wire-team-bot-ollama:/root/.ollama
   #   ports:
   #     - "127.0.0.1:11434:11434"
   #   # NVIDIA GPU support — uncomment if available:
@@ -63,6 +63,6 @@ services:
   #   #           capabilities: [gpu]
 
 volumes:
-  jeeves-db:
-  jeeves-crypto:
-  # jeeves-ollama:
+  wire-team-bot-db:
+  wire-team-bot-crypto:
+  # wire-team-bot-ollama:

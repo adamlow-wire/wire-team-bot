@@ -29,7 +29,7 @@
           },
           {
             "eventId": "TC-PIPE-06-step-3",
-            "text": "@jeeves what are Alice's open actions?"
+            "text": "@Wire Team Bot what are Alice's open actions?"
           }
         ],
         "records": [
@@ -159,7 +159,7 @@
           },
           {
             "eventId": "TC-DEC-07-step-2",
-            "text": "@jeeves tell me about DEC-0383"
+            "text": "@Wire Team Bot tell me about DEC-0383"
           }
         ],
         "records": [

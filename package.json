@@ -19,7 +19,7 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "register-app": "node scripts/register-app.mjs",
     "staging:up": "docker compose -f docker-compose.staging.yml up --build -d",
-    "staging:logs": "docker compose -f docker-compose.staging.yml logs -f jeeves",
+    "staging:logs": "docker compose -f docker-compose.staging.yml logs -f wire-team-bot",
     "staging:down": "docker compose -f docker-compose.staging.yml down",
     "staging:up:embeddings": "docker compose -f docker-compose.staging.yml --profile embeddings up --build -d"
   },

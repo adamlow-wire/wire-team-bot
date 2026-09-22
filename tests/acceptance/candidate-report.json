@@ -823,7 +823,7 @@
     },
     {
       "eventId": "q1",
-      "text": "@Jeeves Which database did we choose for the ledger and why?",
+      "text": "@Wire Team Bot Which database did we choose for the ledger and why?",
       "answer": "Postgres; transactions are required",
       "replies": [
         "Postgres, because transactions are required.\n\n• **[DEC-0188] Use Postgres for the ledger because transactions are required**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nRelated open action: **[ACT-0187] write the ledger migration** — owner @Bob."
@@ -832,7 +832,7 @@
     },
     {
       "eventId": "q2",
-      "text": "@Jeeves Who owns the ledger migration?",
+      "text": "@Wire Team Bot Who owns the ledger migration?",
       "answer": "Bob",
       "replies": [
         "@Bob owns it.\n\n• **[ACT-0187] Write the ledger migration**\n  **Owner:** @Bob | **Status:** open"
@@ -841,7 +841,7 @@
     },
     {
       "eventId": "q3",
-      "text": "@Jeeves What interface did we choose for the billing API?",
+      "text": "@Wire Team Bot What interface did we choose for the billing API?",
       "answer": "REST",
       "replies": [
         "REST.\n\n• **[DEC-0189] Use REST for the billing API**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nRelated open action: **[ACT-0188] review the billing API contract** — owner @Carol."
@@ -850,7 +850,7 @@
     },
     {
       "eventId": "q4",
-      "text": "@Jeeves Where are we deploying the dashboard?",
+      "text": "@Wire Team Bot Where are we deploying the dashboard?",
       "answer": "London region",
       "replies": [
         "London region.\n\n• **[DEC-0190] Deploy the dashboard in the London region**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nRelated open actions: **[ACT-0189] prepare the dashboard rollout** — owner @Dave, and **[ACT-0194] build the service health dashboard** — also @Dave."
@@ -859,7 +859,7 @@
     },
     {
       "eventId": "q5",
-      "text": "@Jeeves How long do we keep backups?",
+      "text": "@Wire Team Bot How long do we keep backups?",
       "answer": "Thirty days",
       "replies": [
         "Thirty days.\n\n• **[DEC-0191] Retain backups for thirty days**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nRelated open action: **[ACT-0190] test the backup restoration** — owner @Bob."
@@ -868,7 +868,7 @@
     },
     {
       "eventId": "q6",
-      "text": "@Jeeves How are we releasing the mobile app?",
+      "text": "@Wire Team Bot How are we releasing the mobile app?",
       "answer": "Behind a feature flag",
       "replies": [
         "Behind a feature flag.\n\n• **[DEC-0192] Release the mobile app behind a feature flag**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n\nRelated open action: **[ACT-0191] document the mobile release process** — owner @Carol."
@@ -877,7 +877,7 @@
     },
     {
       "eventId": "q7",
-      "text": "@Jeeves What did we choose for the session cache?",
+      "text": "@Wire Team Bot What did we choose for the session cache?",
       "answer": "Redis",
       "replies": [
         "Redis.\n\n• **[DEC-0193] Adopt Redis as the session cache technology**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: infrastructure, caching, architecture*\n\nRelated open action: **[ACT-0192] configure monitoring for the session cache** — owner @Bob."
@@ -886,7 +886,7 @@
     },
     {
       "eventId": "q8",
-      "text": "@Jeeves What format are invoice exports?",
+      "text": "@Wire Team Bot What format are invoice exports?",
       "answer": "CSV",
       "replies": [
         "CSV.\n\n• **[DEC-0200] All invoice exports will be produced as CSV files**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: invoicing, data-export, format*\n\nRelated open action: **[ACT-0193] write the guide for invoice exports** — owner @Carol."
@@ -895,7 +895,7 @@
     },
     {
       "eventId": "q9",
-      "text": "@Jeeves Who will publish the support rota?",
+      "text": "@Wire Team Bot Who will publish the support rota?",
       "answer": "Alice",
       "replies": [
         "That one's yours.\n\n• **[ACT-0195] Publish the support rota**\n  **Owner:** @Alice | **Status:** open\n  *Tags: support, rota*\n\nRelated decision: **[DEC-0203] The support rota will rotate on a weekly basis** — decided 2026-09-16."
@@ -904,7 +904,7 @@
     },
     {
       "eventId": "q10",
-      "text": "@Jeeves How many reviewers do security changes require?",
+      "text": "@Wire Team Bot How many reviewers do security changes require?",
       "answer": "Two",
       "replies": [
         "Two.\n\n• **[DEC-0204] Security-related changes must be approved by two reviewers**\n  **Decided by:** @Alice | **Date:** 2026-09-16\n  *Tags: security, code-review, process*\n\nRelated open action: **[ACT-0197] update the security review checklist** — owner @Bob."
@@ -913,7 +913,7 @@
     },
     {
       "eventId": "unknown",
-      "text": "@Jeeves What is the approved budget for the Mars office?",
+      "text": "@Wire Team Bot What is the approved budget for the Mars office?",
       "answer": "No record of that budget; must not invent an answer or a write",
       "replies": [
         "I'm afraid I have no record of a Mars office budget — no decision or action in this channel covers it.\n\nIf a figure has been agreed elsewhere, you can log it with:\n\n`decision: the approved budget for the Mars office is <amount>`"
@@ -924,7 +924,7 @@
   "failures": [
     {
       "level": "warn",
-      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
     },
     {
       "level": "warn",
@@ -958,5 +958,10 @@
     9392,
     6934
   ],
-  "unsolicitedMessages": 0
+  "unsolicitedMessages": 0,
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

@@ -2,7 +2,7 @@
 
 This renders [the final candidate report](step2-final-capture-report.json) for human inspection. It is evidence, not a separate delivery plan. Acceptance criteria and the live Wire cases remain in [PLAN.md](../../PLAN.md#final-manual-qa-on-the-pinned-staging-candidate).
 
-**Review status: pending.** Automated matches do not constitute human approval. Runtime: `ae618ff`. The fixture uses synthetic Alice/Bob/Carol/Dave identities; legacy mention aliases below preserve the actual test inputs.
+**Review status: pending.** Automated matches do not constitute human approval. Runtime: `ae618ff`. The fixture uses synthetic Alice/Bob/Carol/Dave identities; product labels in this historical view have been normalised during the September 22 cleanup; original input/output text remains in Git snapshot `f0879c0`.
 
 ## Twenty source events and stored records
 
@@ -254,7 +254,7 @@ Check factual correctness, ownership, unsupported claims and usefulness. Human a
 
 ### q1
 
-Question: @Jeeves Which database did we choose for the ledger and why?
+Question: @Wire Team Bot Which database did we choose for the ledger and why?
 
 Elapsed including processing: 7698 ms.
 
@@ -269,7 +269,7 @@ Elapsed including processing: 7698 ms.
 
 ### q2
 
-Question: @Jeeves Who owns the ledger migration?
+Question: @Wire Team Bot Who owns the ledger migration?
 
 Elapsed including processing: 7796 ms.
 
@@ -282,7 +282,7 @@ Elapsed including processing: 7796 ms.
 
 ### q3
 
-Question: @Jeeves What interface did we choose for the billing API?
+Question: @Wire Team Bot What interface did we choose for the billing API?
 
 Elapsed including processing: 7613 ms.
 
@@ -297,7 +297,7 @@ Elapsed including processing: 7613 ms.
 
 ### q4
 
-Question: @Jeeves Where are we deploying the dashboard?
+Question: @Wire Team Bot Where are we deploying the dashboard?
 
 Elapsed including processing: 8131 ms.
 
@@ -312,7 +312,7 @@ Elapsed including processing: 8131 ms.
 
 ### q5
 
-Question: @Jeeves How long do we keep backups?
+Question: @Wire Team Bot How long do we keep backups?
 
 Elapsed including processing: 6967 ms.
 
@@ -327,7 +327,7 @@ Elapsed including processing: 6967 ms.
 
 ### q6
 
-Question: @Jeeves How are we releasing the mobile app?
+Question: @Wire Team Bot How are we releasing the mobile app?
 
 Elapsed including processing: 8600 ms.
 
@@ -342,7 +342,7 @@ Elapsed including processing: 8600 ms.
 
 ### q7
 
-Question: @Jeeves What did we choose for the session cache?
+Question: @Wire Team Bot What did we choose for the session cache?
 
 Elapsed including processing: 7803 ms.
 
@@ -359,7 +359,7 @@ Elapsed including processing: 7803 ms.
 
 ### q8
 
-Question: @Jeeves What format are invoice exports?
+Question: @Wire Team Bot What format are invoice exports?
 
 Elapsed including processing: 16084 ms.
 
@@ -376,7 +376,7 @@ Elapsed including processing: 16084 ms.
 
 ### q9
 
-Question: @Jeeves Who will publish the support rota?
+Question: @Wire Team Bot Who will publish the support rota?
 
 Elapsed including processing: 6641 ms.
 
@@ -390,7 +390,7 @@ Elapsed including processing: 6641 ms.
 
 ### q10
 
-Question: @Jeeves How many reviewers do security changes require?
+Question: @Wire Team Bot How many reviewers do security changes require?
 
 Elapsed including processing: 7183 ms.
 
@@ -407,7 +407,7 @@ Elapsed including processing: 7183 ms.
 
 ### unknown
 
-Question: @Jeeves What is the approved budget for the Mars office?
+Question: @Wire Team Bot What is the approved budget for the Mars office?
 
 Elapsed including processing: 7608 ms.
 

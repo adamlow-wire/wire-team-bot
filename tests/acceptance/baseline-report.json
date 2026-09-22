@@ -1086,7 +1086,7 @@
     },
     {
       "eventId": "q1",
-      "text": "@Jeeves Which database did we choose for the ledger and why?",
+      "text": "@Wire Team Bot Which database did we choose for the ledger and why?",
       "answer": "Postgres; transactions are required",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1095,7 +1095,7 @@
     },
     {
       "eventId": "q2",
-      "text": "@Jeeves Who owns the ledger migration?",
+      "text": "@Wire Team Bot Who owns the ledger migration?",
       "answer": "Bob",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1104,7 +1104,7 @@
     },
     {
       "eventId": "q3",
-      "text": "@Jeeves What interface did we choose for the billing API?",
+      "text": "@Wire Team Bot What interface did we choose for the billing API?",
       "answer": "REST",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1113,7 +1113,7 @@
     },
     {
       "eventId": "q4",
-      "text": "@Jeeves Where are we deploying the dashboard?",
+      "text": "@Wire Team Bot Where are we deploying the dashboard?",
       "answer": "London region",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1122,7 +1122,7 @@
     },
     {
       "eventId": "q5",
-      "text": "@Jeeves How long do we keep backups?",
+      "text": "@Wire Team Bot How long do we keep backups?",
       "answer": "Thirty days",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1131,7 +1131,7 @@
     },
     {
       "eventId": "q6",
-      "text": "@Jeeves How are we releasing the mobile app?",
+      "text": "@Wire Team Bot How are we releasing the mobile app?",
       "answer": "Behind a feature flag",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1140,7 +1140,7 @@
     },
     {
       "eventId": "q7",
-      "text": "@Jeeves What did we choose for the session cache?",
+      "text": "@Wire Team Bot What did we choose for the session cache?",
       "answer": "Redis",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1149,7 +1149,7 @@
     },
     {
       "eventId": "q8",
-      "text": "@Jeeves What format are invoice exports?",
+      "text": "@Wire Team Bot What format are invoice exports?",
       "answer": "CSV",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1158,7 +1158,7 @@
     },
     {
       "eventId": "q9",
-      "text": "@Jeeves Who will publish the support rota?",
+      "text": "@Wire Team Bot Who will publish the support rota?",
       "answer": "Alice",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1167,7 +1167,7 @@
     },
     {
       "eventId": "q10",
-      "text": "@Jeeves How many reviewers do security changes require?",
+      "text": "@Wire Team Bot How many reviewers do security changes require?",
       "answer": "Two",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1176,7 +1176,7 @@
     },
     {
       "eventId": "unknown",
-      "text": "@Jeeves What is the approved budget for the Mars office?",
+      "text": "@Wire Team Bot What is the approved budget for the Mars office?",
       "answer": "No record of that budget; must not invent an answer or a write",
       "replies": [
         "I wasn't able to generate a response just now."
@@ -1187,7 +1187,7 @@
   "failures": [
     {
       "level": "warn",
-      "msg": "Embeddings disabled: semantic retrieval, entity dedup and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+      "msg": "Embeddings disabled: semantic retrieval, entity dedup and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
     },
     {
       "level": "error",
@@ -1341,5 +1341,10 @@
     881,
     1188
   ],
-  "unsolicitedMessages": 0
+  "unsolicitedMessages": 0,
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

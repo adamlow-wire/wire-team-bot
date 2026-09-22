@@ -1,5 +1,5 @@
 /**
- * E2E scenarios for Jeeves.
+ * E2E scenarios for Wire Team Bot.
  *
  * Inputs are natural language — the way team members actually talk.
  * Assertions are plain English describing what a correct response looks like.
@@ -25,7 +25,7 @@ export const scenarios: Scenario[] = [
       {
         input: "decision: we will use PostgreSQL as our primary database",
         captureAs: "DEC",
-        assert: "Jeeves confirms the decision was recorded and includes a DEC- reference number",
+        assert: "Wire Team Bot confirms the decision was recorded and includes a DEC- reference number",
       },
     ],
   },
@@ -39,8 +39,8 @@ export const scenarios: Scenario[] = [
         captureAs: "DEC",
       },
       {
-        input: "@jeeves what have we decided about our sprint length?",
-        assert: "Jeeves describes a decision about two-week or fortnightly sprints",
+        input: "@Wire Team Bot what have we decided about our sprint length?",
+        assert: "Wire Team Bot describes a decision about two-week or fortnightly sprints",
       },
     ],
   },
@@ -55,7 +55,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "list decisions",
-        assert: "Jeeves lists decisions and includes {{DEC}}",
+        assert: "Wire Team Bot lists decisions and includes {{DEC}}",
       },
     ],
   },
@@ -74,7 +74,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "decision: we will never deploy on Fridays supersedes {{dec}}",
-        assert: "Jeeves confirms that the previous decision has been superseded and records the new one with a DEC- reference",
+        assert: "Wire Team Bot confirms that the previous decision has been superseded and records the new one with a DEC- reference",
       },
     ],
   },
@@ -90,7 +90,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "revoke {{dec}}",
-        assert: "Jeeves confirms that the decision has been revoked or removed",
+        assert: "Wire Team Bot confirms that the decision has been revoked or removed",
       },
     ],
   },
@@ -118,7 +118,7 @@ export const scenarios: Scenario[] = [
         captureAs: "DEC",
       },
       {
-        input: "@jeeves tell me about {{DEC}}",
+        input: "@Wire Team Bot tell me about {{DEC}}",
         assert: "Wire Team Bot describes the Terraform decision, names both Carol and Dave as its makers, and identifies Alice as the recorder. It must not label Alice as a decision maker.",
       },
     ],
@@ -126,7 +126,7 @@ export const scenarios: Scenario[] = [
 
   // ── Feature 1b: Pipeline extraction path ────────────────────────────────
   // Conversational statements → async pipeline classifies and extracts →
-  // @jeeves retrieves via structured or semantic path.
+  // @Wire Team Bot retrieves via structured or semantic path.
 
   {
     id: "TC-PIPE-01",
@@ -136,8 +136,8 @@ export const scenarios: Scenario[] = [
       "we've agreed to use TypeScript strict mode across the whole codebase",
       "that was the last open question on coding standards",
       {
-        input: "@jeeves what did we agree about TypeScript?",
-        assert: "Jeeves describes a decision or agreement about TypeScript strict mode",
+        input: "@Wire Team Bot what did we agree about TypeScript?",
+        assert: "Wire Team Bot describes a decision or agreement about TypeScript strict mode",
       },
     ],
   },
@@ -148,8 +148,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "Bob needs to update the deployment runbook before the next release",
       {
-        input: "@jeeves what actions are outstanding?",
-        assert: "Jeeves mentions Bob or the deployment runbook in the context of outstanding or open actions",
+        input: "@Wire Team Bot what actions are outstanding?",
+        assert: "Wire Team Bot mentions Bob or the deployment runbook in the context of outstanding or open actions",
       },
     ],
   },
@@ -178,9 +178,9 @@ export const scenarios: Scenario[] = [
         shareProcess: true,
       },
       {
-        input: "@jeeves what are Bob's open actions?",
+        input: "@Wire Team Bot what are Bob's open actions?",
         shareProcess: true,
-        assert: "Jeeves mentions an open action for Bob related to sending a contract or document to the supplier",
+        assert: "Wire Team Bot mentions an open action for Bob related to sending a contract or document to the supplier",
       },
     ],
   },
@@ -193,9 +193,9 @@ export const scenarios: Scenario[] = [
       { input: "Dave: the managed service costs more per month but you save on ops time and the SLA is better", shareProcess: true },
       { input: "Carol: fair point — given our team size I think managed is the right call, let's go with that", shareProcess: true },
       {
-        input: "@jeeves what did we decide about database hosting?",
+        input: "@Wire Team Bot what did we decide about database hosting?",
         shareProcess: true,
-        assert: "Jeeves describes a decision to use a managed Postgres service or managed database hosting",
+        assert: "Wire Team Bot describes a decision to use a managed Postgres service or managed database hosting",
       },
     ],
   },
@@ -213,7 +213,7 @@ export const scenarios: Scenario[] = [
         shareProcess: true,
       },
       {
-        input: "@jeeves what is Alice responsible for?",
+        input: "@Wire Team Bot what is Alice responsible for?",
         shareProcess: true,
         assert: "Alice is responsible for the GDPR data-retention audit. Any quarter-end deadline is conversational context, not a stored due date. Do not invent a calendar date for it or suggest a command containing an invented calendar date; a <date> placeholder is fine.",
       },
@@ -230,8 +230,8 @@ export const scenarios: Scenario[] = [
       "Alice: I will update the API documentation before the next sprint review",
       "Alice: just a reminder that I will update the API documentation before the next sprint review",
       {
-        input: "@jeeves what are Alice's open actions?",
-        assert: "Jeeves lists Alice's open actions and mentions the API documentation update — it does not list the same task twice or mention two separate API documentation actions",
+        input: "@Wire Team Bot what are Alice's open actions?",
+        assert: "Wire Team Bot lists Alice's open actions and mentions the API documentation update — it does not list the same task twice or mention two separate API documentation actions",
       },
     ],
   },
@@ -245,18 +245,18 @@ export const scenarios: Scenario[] = [
       { input: "Alice: I'll handle it — I'll email it over to them today", shareProcess: true },
       {
         // Pipeline should have extracted an action for Alice.
-        input: "@jeeves what are Alice's outstanding actions?",
+        input: "@Wire Team Bot what are Alice's outstanding actions?",
         shareProcess: true,
-        assert: "Jeeves mentions an open action for Alice related to the NDA or sending a document to the client",
+        assert: "Wire Team Bot mentions an open action for Alice related to the NDA or sending a document to the client",
       },
       // Stage 3: completion announced in natural language.
       // NOTE: this does NOT auto-close the action (pipeline cannot close via NL today).
       // The test verifies only that no *new* open action is created.
       { input: "Alice: update everyone — I've sent the NDA to the client and they've signed and returned it", shareProcess: true },
       {
-        input: "@jeeves team actions",
+        input: "@Wire Team Bot team actions",
         shareProcess: true,
-        assert: "Jeeves does not list a new open action about sending or receiving the NDA — the completion announcement should not have created an additional open action",
+        assert: "Wire Team Bot does not list a new open action about sending or receiving the NDA — the completion announcement should not have created an additional open action",
       },
     ],
   },
@@ -281,7 +281,7 @@ export const scenarios: Scenario[] = [
       {
         input: "action: write the database migration scripts",
         captureAs: "ACT",
-        assert: "Jeeves confirms the action was recorded and includes an ACT- reference number",
+        assert: "Wire Team Bot confirms the action was recorded and includes an ACT- reference number",
       },
     ],
   },
@@ -292,7 +292,7 @@ export const scenarios: Scenario[] = [
     steps: [
       {
         input: "action: review the open PR for Bob",
-        assert: "Jeeves confirms the action was recorded and mentions Bob as the assignee",
+        assert: "Wire Team Bot confirms the action was recorded and mentions Bob as the assignee",
       },
     ],
   },
@@ -322,7 +322,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "team actions",
-        assert: "Jeeves lists open team actions and includes {{ACT}}",
+        assert: "Wire Team Bot lists open team actions and includes {{ACT}}",
       },
     ],
   },
@@ -337,7 +337,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "{{ACT}} done",
-        assert: "Jeeves confirms the action has been marked as complete or done",
+        assert: "Wire Team Bot confirms the action has been marked as complete or done",
       },
     ],
   },
@@ -352,7 +352,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "{{ACT}} reassign to Bob",
-        assert: "Jeeves confirms the action has been reassigned to Bob",
+        assert: "Wire Team Bot confirms the action has been reassigned to Bob",
       },
     ],
   },
@@ -411,7 +411,7 @@ export const scenarios: Scenario[] = [
       {
         input: "action: Carol to write the API documentation by end of month",
         captureAs: "ACT",
-        assert: "Jeeves confirms the action was recorded with an ACT- reference, identifies Carol as the assignee, and mentions end of month or March as the deadline",
+        assert: "Wire Team Bot confirms the action was recorded with an ACT- reference, identifies Carol as the assignee, and mentions end of month or March as the deadline",
       },
     ],
   },
@@ -423,7 +423,7 @@ export const scenarios: Scenario[] = [
       {
         input: "action: Dave to complete the security audit by April 3rd",
         captureAs: "ACT",
-        assert: "Jeeves confirms the action was recorded with an ACT- reference, names Dave as the owner, and references April 3rd or a date close to that as the deadline",
+        assert: "Wire Team Bot confirms the action was recorded with an ACT- reference, names Dave as the owner, and references April 3rd or a date close to that as the deadline",
       },
     ],
   },
@@ -449,7 +449,7 @@ export const scenarios: Scenario[] = [
       },
       {
         // Query as Alice — should see her action, not Bob's
-        input: "@jeeves what are my open actions?",
+        input: "@Wire Team Bot what are my open actions?",
         assert: "The response is a list of open actions containing {{ACT}}; it does not mention Bob or payment module",
       },
     ],
@@ -467,8 +467,8 @@ export const scenarios: Scenario[] = [
         captureAs: "ACT",
       },
       {
-        input: "@jeeves what actions does Bob have?",
-        assert: "Jeeves lists Bob's open actions including {{ACT}} and does NOT include Alice's retrospective slides action",
+        input: "@Wire Team Bot what actions does Bob have?",
+        assert: "Wire Team Bot lists Bob's open actions including {{ACT}} and does NOT include Alice's retrospective slides action",
       },
     ],
   },
@@ -481,7 +481,7 @@ export const scenarios: Scenario[] = [
       {
         input: "Alice: decision: we will enforce semantic versioning for all internal packages",
         captureAs: "DEC",
-        assert: "Jeeves confirms the decision was recorded with a DEC- reference",
+        assert: "Wire Team Bot confirms the decision was recorded with a DEC- reference",
       },
       {
         input: "@Wire Team Bot who recorded {{DEC}}?",
@@ -502,7 +502,7 @@ export const scenarios: Scenario[] = [
         // Alice sets a reminder for herself
         input: "Alice: remind me on Thursday to chase the vendor invoice",
         captureAs: "REM",
-        assert: "Jeeves confirms the reminder was set with a REM- reference for Thursday",
+        assert: "Wire Team Bot confirms the reminder was set with a REM- reference for Thursday",
       },
       {
         // Bob sets a separate reminder for himself
@@ -510,8 +510,8 @@ export const scenarios: Scenario[] = [
       },
       {
         // Alice queries — should see only her own Thursday reminder
-        input: "@jeeves what reminders do I have?",
-        assert: "Jeeves lists Alice's reminders including {{REM}} for Thursday and does NOT include Bob's Friday report reminder",
+        input: "@Wire Team Bot what reminders do I have?",
+        assert: "Wire Team Bot lists Alice's reminders including {{REM}} for Thursday and does NOT include Bob's Friday report reminder",
       },
     ],
   },
@@ -528,8 +528,8 @@ export const scenarios: Scenario[] = [
         input: "Bob: action: Bob to set up the CI pipeline",
       },
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves lists open team actions including both Alice's API specification action ({{ACT}}) and Bob's CI pipeline action",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot lists open team actions including both Alice's API specification action ({{ACT}}) and Bob's CI pipeline action",
       },
     ],
   },
@@ -567,7 +567,7 @@ export const scenarios: Scenario[] = [
       {
         input: "remind me tomorrow to review the deployment checklist",
         captureAs: "REM",
-        assert: "Jeeves confirms a reminder has been set and includes a date or time for when it will fire",
+        assert: "Wire Team Bot confirms a reminder has been set and includes a date or time for when it will fire",
       },
     ],
   },
@@ -582,7 +582,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "what reminders do I have?",
-        assert: "Jeeves lists reminders and includes {{REM}}",
+        assert: "Wire Team Bot lists reminders and includes {{REM}}",
       },
     ],
   },
@@ -597,7 +597,7 @@ export const scenarios: Scenario[] = [
       },
       {
         input: "cancel {{REM}}",
-        assert: "Jeeves confirms the reminder has been cancelled or removed",
+        assert: "Wire Team Bot confirms the reminder has been cancelled or removed",
       },
     ],
   },
@@ -609,7 +609,7 @@ export const scenarios: Scenario[] = [
       {
         input: "remind me on April 5th to submit the quarterly report",
         captureAs: "REM",
-        assert: "Jeeves confirms a reminder was set with a REM- reference and mentions April 5th or a date matching April 5th as when it will fire",
+        assert: "Wire Team Bot confirms a reminder was set with a REM- reference and mentions April 5th or a date matching April 5th as when it will fire",
       },
     ],
   },
@@ -621,7 +621,7 @@ export const scenarios: Scenario[] = [
       {
         input: "remind me next Monday at 9am to prepare the sprint review slides",
         captureAs: "REM",
-        assert: "Jeeves confirms the reminder with a REM- reference and specifies both a day (Monday) and time (9am or 09:00) in the confirmation",
+        assert: "Wire Team Bot confirms the reminder with a REM- reference and specifies both a day (Monday) and time (9am or 09:00) in the confirmation",
       },
     ],
   },
@@ -636,9 +636,9 @@ export const scenarios: Scenario[] = [
       { input: "we decided to use Redis for the session cache", shareProcess: true },
       { input: "the main reason was that Redis supports TTL natively", shareProcess: true },
       {
-        input: "@jeeves what are we using for the session cache and why?",
+        input: "@Wire Team Bot what are we using for the session cache and why?",
         shareProcess: true,
-        assert: "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+        assert: "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
       },
     ],
   },
@@ -652,8 +652,8 @@ export const scenarios: Scenario[] = [
         captureAs: "DEC",
       },
       {
-        input: "@jeeves what format should our API responses use?",
-        assert: "Jeeves answers that API responses should use JSON:API format",
+        input: "@Wire Team Bot what format should our API responses use?",
+        assert: "Wire Team Bot answers that API responses should use JSON:API format",
       },
     ],
   },
@@ -663,8 +663,8 @@ export const scenarios: Scenario[] = [
     description: "General knowledge question — answered, not 'no record'",
     steps: [
       {
-        input: "@jeeves what is the difference between TCP and UDP?",
-        assert: "Jeeves gives a factual answer about TCP and UDP without saying it has no record of them",
+        input: "@Wire Team Bot what is the difference between TCP and UDP?",
+        assert: "Wire Team Bot gives a factual answer about TCP and UDP without saying it has no record of them",
       },
     ],
   },
@@ -674,8 +674,8 @@ export const scenarios: Scenario[] = [
     description: "Meta question — describes capabilities",
     steps: [
       {
-        input: "@jeeves what kind of information do you keep track of?",
-        assert: "Jeeves describes the types of things it tracks, such as decisions, actions, or reminders",
+        input: "@Wire Team Bot what kind of information do you keep track of?",
+        assert: "Wire Team Bot describes the types of things it tracks, such as decisions, actions, or reminders",
       },
     ],
   },
@@ -686,9 +686,9 @@ export const scenarios: Scenario[] = [
     stored: [],
     steps: [
       // Both steps share one CLI process so conversation context persists
-      { input: "@jeeves shall I create a reminder to review the deployment checklist?", shareProcess: true },
+      { input: "@Wire Team Bot shall I create a reminder to review the deployment checklist?", shareProcess: true },
       {
-        input: "@jeeves yes",
+        input: "@Wire Team Bot yes",
         shareProcess: true,
         assert: "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
       },
@@ -702,8 +702,8 @@ export const scenarios: Scenario[] = [
     description: "Pause — bot acknowledges and steps out",
     steps: [
       {
-        input: "@jeeves pause",
-        assert: "Jeeves acknowledges the pause instruction and indicates it will stop monitoring or step back",
+        input: "@Wire Team Bot pause",
+        assert: "Wire Team Bot acknowledges the pause instruction and indicates it will stop monitoring or step back",
       },
     ],
   },
@@ -712,10 +712,10 @@ export const scenarios: Scenario[] = [
     id: "TC-STATE-02",
     description: "Pause then resume — bot confirms it is active again",
     steps: [
-      "@jeeves pause",
+      "@Wire Team Bot pause",
       {
-        input: "@jeeves resume",
-        assert: "Jeeves confirms it has resumed and is active again",
+        input: "@Wire Team Bot resume",
+        assert: "Wire Team Bot confirms it has resumed and is active again",
       },
     ],
   },
@@ -726,7 +726,7 @@ export const scenarios: Scenario[] = [
     stored: [], channelState: "secure",
     steps: [
       {
-        input: "@jeeves secure mode",
+        input: "@Wire Team Bot secure mode",
         replyEquals: "Of course. I have cleared my short-term recollection of this channel and shall disregard all proceedings until further notice.",
       },
     ],
@@ -744,7 +744,7 @@ export const scenarios: Scenario[] = [
         captureAs: "DEC",
       },
       {
-        input: "@jeeves what did we decide about our methodology?",
+        input: "@Wire Team Bot what did we decide about our methodology?",
         assert: "Describe the recorded agile-methodology decision without exclamation marks. Alice is only the recorder; decision makers are unknown. Do not identify Alice or the requester as a maker, including introductory wording such as you decided or your decision. You may omit maker attribution or explicitly say it is not recorded.",
       },
     ],
@@ -755,8 +755,8 @@ export const scenarios: Scenario[] = [
     description: "No hollow opener — no 'Certainly', 'Of course', 'Great question'",
     steps: [
       {
-        input: "@jeeves what is continuous integration?",
-        assert: "Jeeves answers without starting with hollow affirmations like Certainly, Of course, Great question, or Absolutely",
+        input: "@Wire Team Bot what is continuous integration?",
+        assert: "Wire Team Bot answers without starting with hollow affirmations like Certainly, Of course, Great question, or Absolutely",
       },
     ],
   },
@@ -766,8 +766,8 @@ export const scenarios: Scenario[] = [
     description: "Error case uses 'I'm afraid' phrasing, not 'Sorry'",
     steps: [
       {
-        input: "@jeeves who attended the board meeting last Tuesday?",
-        assert: "Jeeves does not begin its response with 'Sorry' — it may use 'I'm afraid' or similar but not an apology opener",
+        input: "@Wire Team Bot who attended the board meeting last Tuesday?",
+        assert: "Wire Team Bot does not begin its response with 'Sorry' — it may use 'I'm afraid' or similar but not an apology opener",
       },
     ],
   },
@@ -783,8 +783,8 @@ export const scenarios: Scenario[] = [
       "we're considering switching to Kubernetes at some point, but nothing is confirmed yet",
       "it's just an idea on the table for now",
       {
-        input: "@jeeves have we made any decisions about Kubernetes?",
-        assert: "Jeeves indicates there is no confirmed decision about Kubernetes — it may acknowledge it came up as a discussion or idea but does not report it as a firm decision",
+        input: "@Wire Team Bot have we made any decisions about Kubernetes?",
+        assert: "Wire Team Bot indicates there is no confirmed decision about Kubernetes — it may acknowledge it came up as a discussion or idea but does not report it as a firm decision",
       },
     ],
   },
@@ -795,8 +795,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "should we use TypeScript or JavaScript for the new service? What does everyone think?",
       {
-        input: "@jeeves what did we decide about TypeScript versus JavaScript for the new service?",
-        assert: "Jeeves indicates no decision has been recorded about TypeScript versus JavaScript — it recognises this was a question, not a confirmed decision",
+        input: "@Wire Team Bot what did we decide about TypeScript versus JavaScript for the new service?",
+        assert: "Wire Team Bot indicates no decision has been recorded about TypeScript versus JavaScript — it recognises this was a question, not a confirmed decision",
       },
     ],
   },
@@ -807,8 +807,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "we deployed to production successfully this morning, no issues reported",
       {
-        input: "@jeeves list decisions",
-        assert: "Jeeves does not include the production deployment as a decision — a deployment status update is not a decision",
+        input: "@Wire Team Bot list decisions",
+        assert: "Wire Team Bot does not include the production deployment as a decision — a deployment status update is not a decision",
       },
     ],
   },
@@ -819,8 +819,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "the office will be closed on the 25th for a public holiday",
       {
-        input: "@jeeves list decisions",
-        assert: "Jeeves does not list the office closure announcement as a decision — an informational notice about a public holiday is not a decision",
+        input: "@Wire Team Bot list decisions",
+        assert: "Wire Team Bot does not list the office closure announcement as a decision — an informational notice about a public holiday is not a decision",
       },
     ],
   },
@@ -831,8 +831,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "Bob submitted the quarterly report last Tuesday, it's all done",
       {
-        input: "@jeeves what are Bob's open actions?",
-        assert: "Jeeves indicates Bob has no open actions from this exchange — a completed past activity is not an open action",
+        input: "@Wire Team Bot what are Bob's open actions?",
+        assert: "Wire Team Bot indicates Bob has no open actions from this exchange — a completed past activity is not an open action",
       },
     ],
   },
@@ -843,8 +843,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "it would be nice if someone eventually updated the wiki, no rush",
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves does not list a wiki update as an open action — a vague suggestion without a clear owner or commitment is not an action",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot does not list a wiki update as an open action — a vague suggestion without a clear owner or commitment is not an action",
       },
     ],
   },
@@ -856,8 +856,8 @@ export const scenarios: Scenario[] = [
       "morning everyone, hope you all had a good weekend!",
       "looking forward to the team lunch on Friday",
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves does not extract any actions from the social messages — casual greetings and social chat are not actions",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot does not extract any actions from the social messages — casual greetings and social chat are not actions",
       },
     ],
   },
@@ -868,8 +868,8 @@ export const scenarios: Scenario[] = [
     steps: [
       "I've been working on the auth refactor this week, making good progress",
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves does not list an auth refactor action from the general progress update — a status update is not a new action commitment",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot does not list an auth refactor action from the general progress update — a status update is not a new action commitment",
       },
     ],
   },
@@ -882,8 +882,8 @@ export const scenarios: Scenario[] = [
       "yeah it's pretty nice, though I haven't had time to dig into it",
       "same here, maybe we can look at it next week",
       {
-        input: "@jeeves list decisions",
-        assert: "Jeeves reports no decisions were recorded — a casual chat exchange about a tool is not a decision",
+        input: "@Wire Team Bot list decisions",
+        assert: "Wire Team Bot reports no decisions were recorded — a casual chat exchange about a tool is not a decision",
       },
     ],
   },
@@ -896,8 +896,8 @@ export const scenarios: Scenario[] = [
       "sure, let's go",
       "great, first let's go round the room with updates",
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves reports no actions were extracted from the meeting small-talk — procedural chat about starting a meeting is not an action",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot reports no actions were extracted from the meeting small-talk — procedural chat about starting a meeting is not an action",
       },
     ],
   },
@@ -909,8 +909,8 @@ export const scenarios: Scenario[] = [
       // Alice announces she has just finished something — this is a completion, not a new commitment.
       "Alice: I've just finished writing the technical specifications, they're in the shared folder now",
       {
-        input: "@jeeves what are Alice's open actions?",
-        assert: "Jeeves does not list an open action about writing technical specifications — a first-person announcement of completed work is not a new action",
+        input: "@Wire Team Bot what are Alice's open actions?",
+        assert: "Wire Team Bot does not list an open action about writing technical specifications — a first-person announcement of completed work is not a new action",
       },
     ],
   },
@@ -922,8 +922,8 @@ export const scenarios: Scenario[] = [
       // Collective past-tense completion — no ongoing commitment implied.
       "we signed the vendor contract yesterday, everything is all sorted",
       {
-        input: "@jeeves team actions",
-        assert: "Jeeves does not list an open action about signing a contract — a past-tense completion announcement is not a new open action",
+        input: "@Wire Team Bot team actions",
+        assert: "Wire Team Bot does not list an open action about signing a contract — a past-tense completion announcement is not a new open action",
       },
     ],
   },

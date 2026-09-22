@@ -30,7 +30,7 @@
           },
           {
             "eventId": "TC-PIPE-05-step-3",
-            "text": "@jeeves what is Alice responsible for?"
+            "text": "@Wire Team Bot what is Alice responsible for?"
           }
         ],
         "records": [
@@ -47,7 +47,7 @@
         "storedChecks": [],
         "judgements": [
           {
-            "step": "@jeeves what is Alice responsible for?",
+            "step": "@Wire Team Bot what is Alice responsible for?",
             "assertion": "Alice is responsible for the GDPR data-retention audit. Any quarter-end deadline is conversational context, not a stored due date. Do not invent a calendar date for it or suggest a command containing an invented calendar date; a <date> placeholder is fine.",
             "result": {
               "pass": true,
@@ -88,7 +88,7 @@
           },
           {
             "eventId": "TC-PERSONA-01-step-2",
-            "text": "@jeeves what did we decide about our methodology?"
+            "text": "@Wire Team Bot what did we decide about our methodology?"
           }
         ],
         "records": [
@@ -105,7 +105,7 @@
         "storedChecks": [],
         "judgements": [
           {
-            "step": "@jeeves what did we decide about our methodology?",
+            "step": "@Wire Team Bot what did we decide about our methodology?",
             "assertion": "Describe the recorded agile-methodology decision without exclamation marks. Alice is only the recorder; decision makers are unknown. Do not identify Alice or the requester as a maker, including introductory wording such as you decided or your decision. You may omit maker attribution or explicitly say it is not recorded.",
             "result": {
               "pass": true,

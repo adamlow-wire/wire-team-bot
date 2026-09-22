@@ -716,7 +716,7 @@
         {
           "messageId": "a6",
           "emojis": [
-            "\ud83d\udcdd"
+            "📝"
           ]
         }
       ],
@@ -752,7 +752,7 @@
         {
           "messageId": "a7",
           "emojis": [
-            "\ud83d\udcdd"
+            "📝"
           ]
         }
       ],
@@ -788,7 +788,7 @@
         {
           "messageId": "a8",
           "emojis": [
-            "\ud83d\udcdd"
+            "📝"
           ]
         }
       ],
@@ -824,7 +824,7 @@
         {
           "messageId": "a9",
           "emojis": [
-            "\ud83d\udcdd"
+            "📝"
           ]
         }
       ],
@@ -864,7 +864,7 @@
         {
           "messageId": "a10",
           "emojis": [
-            "\ud83d\udcdd"
+            "📝"
           ]
         }
       ],
@@ -879,107 +879,107 @@
     },
     {
       "eventId": "q1",
-      "text": "@Jeeves Which database did we choose for the ledger and why?",
+      "text": "@Wire Team Bot Which database did we choose for the ledger and why?",
       "answer": "Postgres; transactions are required",
       "replies": [
-        "Postgres, because transactions are required.\n\n\u2022 **[DEC-0469] use Postgres for the ledger because transactions are required**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThe decision makers aren't recorded on that entry \u2014 only that you logged it.\n\nRelated open action: **[ACT-0574] write the ledger migration** \u2014 **Owner:** @Bob | **Status:** open"
+        "Postgres, because transactions are required.\n\n• **[DEC-0469] use Postgres for the ledger because transactions are required**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThe decision makers aren't recorded on that entry — only that you logged it.\n\nRelated open action: **[ACT-0574] write the ledger migration** — **Owner:** @Bob | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 7698
     },
     {
       "eventId": "q2",
-      "text": "@Jeeves Who owns the ledger migration?",
+      "text": "@Wire Team Bot Who owns the ledger migration?",
       "answer": "Bob",
       "replies": [
-        "@Bob owns it.\n\n\u2022 **[ACT-0574] write the ledger migration**\n  **Owner:** @Bob | **Status:** open\n\nNo deadline is stored against it. To add one: `ACT-0574 due <date>`. To hand it to someone else: `ACT-0574 reassign to <name>`."
+        "@Bob owns it.\n\n• **[ACT-0574] write the ledger migration**\n  **Owner:** @Bob | **Status:** open\n\nNo deadline is stored against it. To add one: `ACT-0574 due <date>`. To hand it to someone else: `ACT-0574 reassign to <name>`."
       ],
       "reactions": [],
       "elapsedMs": 7796
     },
     {
       "eventId": "q3",
-      "text": "@Jeeves What interface did we choose for the billing API?",
+      "text": "@Wire Team Bot What interface did we choose for the billing API?",
       "answer": "REST",
       "replies": [
-        "REST.\n\n\u2022 **[DEC-0470] use REST for the billing API**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded \u2014 only that you logged it.\n\nRelated open action: **[ACT-0575] review the billing API contract** \u2014 **Owner:** @Carol | **Status:** open"
+        "REST.\n\n• **[DEC-0470] use REST for the billing API**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded — only that you logged it.\n\nRelated open action: **[ACT-0575] review the billing API contract** — **Owner:** @Carol | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 7613
     },
     {
       "eventId": "q4",
-      "text": "@Jeeves Where are we deploying the dashboard?",
+      "text": "@Wire Team Bot Where are we deploying the dashboard?",
       "answer": "London region",
       "replies": [
-        "The London region.\n\n\u2022 **[DEC-0471] deploy the dashboard in the London region**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded \u2014 only that you logged it.\n\nRelated open action: **[ACT-0576] prepare the dashboard rollout** \u2014 **Owner:** @Dave | **Status:** open"
+        "The London region.\n\n• **[DEC-0471] deploy the dashboard in the London region**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded — only that you logged it.\n\nRelated open action: **[ACT-0576] prepare the dashboard rollout** — **Owner:** @Dave | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 8131
     },
     {
       "eventId": "q5",
-      "text": "@Jeeves How long do we keep backups?",
+      "text": "@Wire Team Bot How long do we keep backups?",
       "answer": "Thirty days",
       "replies": [
-        "Thirty days.\n\n\u2022 **[DEC-0472] retain backups for thirty days**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded \u2014 only that you logged it.\n\nRelated open action: **[ACT-0577] test the backup restoration** \u2014 **Owner:** @Bob | **Status:** open"
+        "Thirty days.\n\n• **[DEC-0472] retain backups for thirty days**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded — only that you logged it.\n\nRelated open action: **[ACT-0577] test the backup restoration** — **Owner:** @Bob | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 6967
     },
     {
       "eventId": "q6",
-      "text": "@Jeeves How are we releasing the mobile app?",
+      "text": "@Wire Team Bot How are we releasing the mobile app?",
       "answer": "Behind a feature flag",
       "replies": [
-        "Behind a feature flag.\n\n\u2022 **[DEC-0473] release the mobile app behind a feature flag**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded \u2014 only that you logged it.\n\nRelated open action: **[ACT-0578] document the mobile release process** \u2014 **Owner:** @Carol | **Status:** open"
+        "Behind a feature flag.\n\n• **[DEC-0473] release the mobile app behind a feature flag**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNo rationale is stored against that entry, and the decision makers aren't recorded — only that you logged it.\n\nRelated open action: **[ACT-0578] document the mobile release process** — **Owner:** @Carol | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 8600
     },
     {
       "eventId": "q7",
-      "text": "@Jeeves What did we choose for the session cache?",
+      "text": "@Wire Team Bot What did we choose for the session cache?",
       "answer": "Redis",
       "replies": [
-        "Redis.\n\n\u2022 **[DEC-0475] Adopt Redis as the session cache technology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0579] Configure monitoring for the session cache** \u2014 **Owner:** @Bob | **Status:** open"
+        "Redis.\n\n• **[DEC-0475] Adopt Redis as the session cache technology**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0579] Configure monitoring for the session cache** — **Owner:** @Bob | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 7803
     },
     {
       "eventId": "q8",
-      "text": "@Jeeves What format are invoice exports?",
+      "text": "@Wire Team Bot What format are invoice exports?",
       "answer": "CSV",
       "replies": [
-        "CSV.\n\n\u2022 **[DEC-0480] All invoice exports will be produced as CSV files.**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: invoicing, data-format, exports*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0580] Write the invoice export guide** \u2014 **Owner:** @Carol | **Status:** open"
+        "CSV.\n\n• **[DEC-0480] All invoice exports will be produced as CSV files.**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: invoicing, data-format, exports*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0580] Write the invoice export guide** — **Owner:** @Carol | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 16084
     },
     {
       "eventId": "q9",
-      "text": "@Jeeves Who will publish the support rota?",
+      "text": "@Wire Team Bot Who will publish the support rota?",
       "answer": "Alice",
       "replies": [
-        "You will \u2014 it's assigned to you.\n\n\u2022 **[ACT-0582] Publish the support rota**\n  **Owner:** @Alice | **Status:** open\n  *Tags: support, rota*\n\nNo deadline is stored against it. To reassign, use `ACT-0582 reassign to <name>`; to add a deadline, `ACT-0582 due <date>`."
+        "You will — it's assigned to you.\n\n• **[ACT-0582] Publish the support rota**\n  **Owner:** @Alice | **Status:** open\n  *Tags: support, rota*\n\nNo deadline is stored against it. To reassign, use `ACT-0582 reassign to <name>`; to add a deadline, `ACT-0582 due <date>`."
       ],
       "reactions": [],
       "elapsedMs": 6641
     },
     {
       "eventId": "q10",
-      "text": "@Jeeves How many reviewers do security changes require?",
+      "text": "@Wire Team Bot How many reviewers do security changes require?",
       "answer": "Two",
       "replies": [
-        "Two.\n\n\u2022 **[DEC-0486] Security-related changes must be approved by two reviewers.**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: security, code-review, policy*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0583] Update the security review checklist** \u2014 **Owner:** @Bob | **Status:** open"
+        "Two.\n\n• **[DEC-0486] Security-related changes must be approved by two reviewers.**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: security, code-review, policy*\n\nNo rationale is stored against that entry.\n\nRelated open action: **[ACT-0583] Update the security review checklist** — **Owner:** @Bob | **Status:** open"
       ],
       "reactions": [],
       "elapsedMs": 7183
     },
     {
       "eventId": "unknown",
-      "text": "@Jeeves What is the approved budget for the Mars office?",
+      "text": "@Wire Team Bot What is the approved budget for the Mars office?",
       "answer": "No record of that budget; must not invent an answer or a write",
       "replies": [
         "I'm afraid I have no record of that particular matter. Nothing has been logged in this channel about a Mars office or any budget approval.\n\nIf a budget has been agreed elsewhere, you can record it with `decision: <the approved budget for the Mars office>`."
@@ -991,7 +991,7 @@
   "failures": [
     {
       "level": "warn",
-      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point JEEVES_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set JEEVES_EMBEDDINGS=on to force."
+      "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
     },
     {
       "level": "warn",
@@ -1021,5 +1021,10 @@
     7183,
     7608
   ],
-  "unsolicitedMessages": 0
+  "unsolicitedMessages": 0,
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

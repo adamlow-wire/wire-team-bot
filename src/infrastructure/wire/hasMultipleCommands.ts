@@ -30,7 +30,7 @@ export function hasMultipleCommands(text: string, mentions: readonly Mention[], 
   masked = masked.replace(/```[\s\S]*?(?:```|$)/g, "[code example]");
   const parts = masked.split(/\r?\n|;|\s+(?:and\s+then|then|and)\s+/i)
     .map(part => part.trim().replace(/^(?:[-*]\s+|\d+[.)]\s+)/, "")
-      .replace(/^@?(?:wire team bot|jeeves)\b(?:\s*\([^)]*\))?\s*[:,]?\s*/i, "")
+      .replace(/^@?(?:wire team bot)\b(?:\s*\([^)]*\))?\s*[:,]?\s*/i, "")
       .replace(/^`([^`\r\n]+)`(?=\s|$)/, "$1")
       .replace(/^`(?!`)/, "").trim())
     .filter(Boolean);

@@ -6,7 +6,7 @@
   "scenarios": [
     {
       "id": "TC-DEC-01",
-      "description": "Log a decision \u2014 gets a DEC reference back",
+      "description": "Log a decision — gets a DEC reference back",
       "passed": true,
       "elapsedMs": 3032,
       "outputs": [
@@ -37,7 +37,7 @@
       "judgements": [
         {
           "step": "decision: we will use PostgreSQL as our primary database",
-          "assertion": "Jeeves confirms the decision was recorded and includes a DEC- reference number",
+          "assertion": "Wire Team Bot confirms the decision was recorded and includes a DEC- reference number",
           "result": {
             "pass": true,
             "valid": true,
@@ -55,7 +55,7 @@
       "elapsedMs": 15407,
       "outputs": [
         "Decision **DEC-0434** logged: the team will move to two-week sprints",
-        "\u2022 **[DEC-0434] The team will move to two-week sprints**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThat's the only sprint-length decision on record. The decision makers weren't captured \u2014 only that you logged it."
+        "• **[DEC-0434] The team will move to two-week sprints**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nThat's the only sprint-length decision on record. The decision makers weren't captured — only that you logged it."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:20:29.109Z",
@@ -68,7 +68,7 @@
         },
         {
           "eventId": "TC-DEC-02-step-2",
-          "text": "@jeeves what have we decided about our sprint length?"
+          "text": "@Wire Team Bot what have we decided about our sprint length?"
         }
       ],
       "records": [
@@ -85,8 +85,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what have we decided about our sprint length?",
-          "assertion": "Jeeves describes a decision about two-week or fortnightly sprints",
+          "step": "@Wire Team Bot what have we decided about our sprint length?",
+          "assertion": "Wire Team Bot describes a decision about two-week or fortnightly sprints",
           "result": {
             "pass": true,
             "valid": true,
@@ -99,12 +99,12 @@
     },
     {
       "id": "TC-DEC-03",
-      "description": "List decisions \u2014 includes the previously logged decision",
+      "description": "List decisions — includes the previously logged decision",
       "passed": true,
       "elapsedMs": 3473,
       "outputs": [
         "Decision **DEC-0435** logged: we will standardise on kebab-case for all URL slugs",
-        "- **DEC-0435** \u2014 we will standardise on kebab-case for all URL slugs _(2026-09-18)_"
+        "- **DEC-0435** — we will standardise on kebab-case for all URL slugs _(2026-09-18)_"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:20:44.516Z",
@@ -135,7 +135,7 @@
       "judgements": [
         {
           "step": "list decisions",
-          "assertion": "Jeeves lists decisions and includes DEC-0435",
+          "assertion": "Wire Team Bot lists decisions and includes DEC-0435",
           "result": {
             "pass": true,
             "valid": true,
@@ -148,7 +148,7 @@
     },
     {
       "id": "TC-DEC-04",
-      "description": "Supersede a decision \u2014 old marked, new logged",
+      "description": "Supersede a decision — old marked, new logged",
       "passed": true,
       "elapsedMs": 3742,
       "outputs": [
@@ -192,7 +192,7 @@
       "judgements": [
         {
           "step": "decision: we will never deploy on Fridays supersedes DEC-0436",
-          "assertion": "Jeeves confirms that the previous decision has been superseded and records the new one with a DEC- reference",
+          "assertion": "Wire Team Bot confirms that the previous decision has been superseded and records the new one with a DEC- reference",
           "result": {
             "pass": true,
             "valid": true,
@@ -205,7 +205,7 @@
     },
     {
       "id": "TC-DEC-05",
-      "description": "Revoke a decision \u2014 confirmed",
+      "description": "Revoke a decision — confirmed",
       "passed": true,
       "elapsedMs": 3386,
       "outputs": [
@@ -241,7 +241,7 @@
       "judgements": [
         {
           "step": "revoke DEC-0438",
-          "assertion": "Jeeves confirms that the decision has been revoked or removed",
+          "assertion": "Wire Team Bot confirms that the decision has been revoked or removed",
           "result": {
             "pass": true,
             "valid": true,
@@ -254,7 +254,7 @@
     },
     {
       "id": "TC-DEC-06",
-      "description": "Decision with named participants \u2014 response references who decided",
+      "description": "Decision with named participants — response references who decided",
       "passed": true,
       "elapsedMs": 568,
       "outputs": [
@@ -287,12 +287,12 @@
     },
     {
       "id": "TC-DEC-07",
-      "description": "Retrieved decision \u2014 recorder and named decision makers stay distinct",
+      "description": "Retrieved decision — recorder and named decision makers stay distinct",
       "passed": true,
       "elapsedMs": 12195,
       "outputs": [
         "Decision **DEC-0440** logged: Carol and Dave agreed we will use Terraform for infrastructure provisioning",
-        "\u2022 **[DEC-0440] We will use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nYou recorded this one; the call itself was made by @Carol and @Dave. No rationale was captured alongside it."
+        "• **[DEC-0440] We will use Terraform for infrastructure provisioning**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n  **Decided by:** @Carol and @Dave\n\nYou recorded this one; the call itself was made by @Carol and @Dave. No rationale was captured alongside it."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:20:55.685Z",
@@ -305,7 +305,7 @@
         },
         {
           "eventId": "TC-DEC-07-step-2",
-          "text": "@jeeves tell me about DEC-0440"
+          "text": "@Wire Team Bot tell me about DEC-0440"
         }
       ],
       "records": [
@@ -322,7 +322,7 @@
       "storedChecks": [],
       "judgements": [
         {
-          "step": "@jeeves tell me about DEC-0440",
+          "step": "@Wire Team Bot tell me about DEC-0440",
           "assertion": "Wire Team Bot describes the Terraform decision, names both Carol and Dave as its makers, and identifies Alice as the recorder. It must not label Alice as a decision maker.",
           "result": {
             "pass": true,
@@ -342,7 +342,7 @@
       "outputs": [
         "",
         "",
-        "\u2022 **[DEC-0441] Adopt TypeScript strict mode across the entire codebase**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** Alice\n  *Tags: typescript, code-quality, standards*\n\nThat was your own decision, logged on 18 September."
+        "• **[DEC-0441] Adopt TypeScript strict mode across the entire codebase**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** Alice\n  *Tags: typescript, code-quality, standards*\n\nThat was your own decision, logged on 18 September."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:21:07.880Z",
@@ -359,7 +359,7 @@
         },
         {
           "eventId": "TC-PIPE-01-step-3",
-          "text": "@jeeves what did we agree about TypeScript?"
+          "text": "@Wire Team Bot what did we agree about TypeScript?"
         }
       ],
       "records": [
@@ -378,8 +378,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what did we agree about TypeScript?",
-          "assertion": "Jeeves describes a decision or agreement about TypeScript strict mode",
+          "step": "@Wire Team Bot what did we agree about TypeScript?",
+          "assertion": "Wire Team Bot describes a decision or agreement about TypeScript strict mode",
           "result": {
             "pass": true,
             "valid": true,
@@ -397,7 +397,7 @@
       "elapsedMs": 20299,
       "outputs": [
         "",
-        "One action is currently outstanding:\n\n\u2022 **[ACT-0519] Update the deployment runbook ahead of the next release**\n  **Owner:** @Bob | **Status:** open\n  *Tags: documentation, deployment, release*"
+        "One action is currently outstanding:\n\n• **[ACT-0519] Update the deployment runbook ahead of the next release**\n  **Owner:** @Bob | **Status:** open\n  *Tags: documentation, deployment, release*"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:21:31.796Z",
@@ -410,7 +410,7 @@
         },
         {
           "eventId": "TC-PIPE-02-step-2",
-          "text": "@jeeves what actions are outstanding?"
+          "text": "@Wire Team Bot what actions are outstanding?"
         }
       ],
       "records": [
@@ -427,8 +427,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what actions are outstanding?",
-          "assertion": "Jeeves mentions Bob or the deployment runbook in the context of outstanding or open actions",
+          "step": "@Wire Team Bot what actions are outstanding?",
+          "assertion": "Wire Team Bot mentions Bob or the deployment runbook in the context of outstanding or open actions",
           "result": {
             "pass": true,
             "valid": true,
@@ -441,13 +441,13 @@
     },
     {
       "id": "TC-PIPE-03",
-      "description": "Verbal commitment \u2014 action attributed to the person who committed",
+      "description": "Verbal commitment — action attributed to the person who committed",
       "passed": true,
       "elapsedMs": 24601,
       "outputs": [
         "",
         "",
-        "@Bob has one open action:\n\n\u2022 **[ACT-0520] Send the contract template to the new supplier**\n  **Owner:** Bob | **Status:** open | **Due:** 2026-09-18\n  *Tags: contracts, supplier-onboarding*\n\nThis matches what he committed to earlier in this conversation. Once it's sent, the command to close it is `ACT-0520 done`."
+        "@Bob has one open action:\n\n• **[ACT-0520] Send the contract template to the new supplier**\n  **Owner:** Bob | **Status:** open | **Due:** 2026-09-18\n  *Tags: contracts, supplier-onboarding*\n\nThis matches what he committed to earlier in this conversation. Once it's sent, the command to close it is `ACT-0520 done`."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:21:52.095Z",
@@ -464,7 +464,7 @@
         },
         {
           "eventId": "TC-PIPE-03-step-3",
-          "text": "@jeeves what are Bob's open actions?"
+          "text": "@Wire Team Bot what are Bob's open actions?"
         }
       ],
       "records": [
@@ -481,8 +481,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are Bob's open actions?",
-          "assertion": "Jeeves mentions an open action for Bob related to sending a contract or document to the supplier",
+          "step": "@Wire Team Bot what are Bob's open actions?",
+          "assertion": "Wire Team Bot mentions an open action for Bob related to sending a contract or document to the supplier",
           "result": {
             "pass": true,
             "valid": true,
@@ -502,7 +502,7 @@
         "",
         "",
         "",
-        "You settled on a managed Postgres service rather than self-hosting.\n\n\u2022 **[DEC-0442] Adopt a managed Postgres service rather than self-hosting the database**\n  **Recorded by:** @Carol | **Date:** 2026-09-18\n  **Decided by:** @Carol\n  **Rationale:** Team size makes the ops time saved and stronger SLA worth the higher monthly cost\n  *Tags: infrastructure, database, hosting*\n\nThis matches the discussion just above, where @Dave noted the better SLA and ops time saved offset the higher monthly cost."
+        "You settled on a managed Postgres service rather than self-hosting.\n\n• **[DEC-0442] Adopt a managed Postgres service rather than self-hosting the database**\n  **Recorded by:** @Carol | **Date:** 2026-09-18\n  **Decided by:** @Carol\n  **Rationale:** Team size makes the ops time saved and stronger SLA worth the higher monthly cost\n  *Tags: infrastructure, database, hosting*\n\nThis matches the discussion just above, where @Dave noted the better SLA and ops time saved offset the higher monthly cost."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:22:16.696Z",
@@ -519,11 +519,11 @@
         },
         {
           "eventId": "TC-PIPE-04-step-3",
-          "text": "Carol: fair point \u2014 given our team size I think managed is the right call, let's go with that"
+          "text": "Carol: fair point — given our team size I think managed is the right call, let's go with that"
         },
         {
           "eventId": "TC-PIPE-04-step-4",
-          "text": "@jeeves what did we decide about database hosting?"
+          "text": "@Wire Team Bot what did we decide about database hosting?"
         }
       ],
       "records": [
@@ -542,8 +542,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what did we decide about database hosting?",
-          "assertion": "Jeeves describes a decision to use a managed Postgres service or managed database hosting",
+          "step": "@Wire Team Bot what did we decide about database hosting?",
+          "assertion": "Wire Team Bot describes a decision to use a managed Postgres service or managed database hosting",
           "result": {
             "pass": true,
             "valid": true,
@@ -556,13 +556,13 @@
     },
     {
       "id": "TC-PIPE-05",
-      "description": "Pronoun resolution \u2014 'she'll handle it' attributed via sliding window",
+      "description": "Pronoun resolution — 'she'll handle it' attributed via sliding window",
       "passed": true,
       "elapsedMs": 24874,
       "outputs": [
         "",
         "",
-        "You're leading the GDPR data-retention audit, to be wrapped up before the end of the quarter.\n\n\u2022 **[ACT-0521] Lead the GDPR data-retention audit**\n  **Owner:** Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nNo deadline is recorded against it. To add the quarter-end date, use: `ACT-0521 due 2026-09-30`"
+        "You're leading the GDPR data-retention audit, to be wrapped up before the end of the quarter.\n\n• **[ACT-0521] Lead the GDPR data-retention audit**\n  **Owner:** Alice | **Status:** open\n  *Tags: gdpr, compliance, audit*\n\nNo deadline is recorded against it. To add the quarter-end date, use: `ACT-0521 due 2026-09-30`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:22:38.065Z",
@@ -579,7 +579,7 @@
         },
         {
           "eventId": "TC-PIPE-05-step-3",
-          "text": "@jeeves what is Alice responsible for?"
+          "text": "@Wire Team Bot what is Alice responsible for?"
         }
       ],
       "records": [
@@ -596,8 +596,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what is Alice responsible for?",
-          "assertion": "Jeeves mentions the GDPR data-retention audit or similar as something Alice is responsible for or working on",
+          "step": "@Wire Team Bot what is Alice responsible for?",
+          "assertion": "Wire Team Bot mentions the GDPR data-retention audit or similar as something Alice is responsible for or working on",
           "result": {
             "pass": true,
             "valid": true,
@@ -610,13 +610,13 @@
     },
     {
       "id": "TC-PIPE-06",
-      "description": "Action dedup \u2014 an explicit personal commitment restated produces one action",
+      "description": "Action dedup — an explicit personal commitment restated produces one action",
       "passed": true,
       "elapsedMs": 24662,
       "outputs": [
         "",
         "",
-        "You have one open action:\n\n\u2022 **[ACT-0522] Update the API documentation ahead of the next sprint review**\n  **Owner:** Alice | **Status:** open\n  *Tags: documentation, api*\n\nTo close it, use `ACT-0522 done`."
+        "You have one open action:\n\n• **[ACT-0522] Update the API documentation ahead of the next sprint review**\n  **Owner:** Alice | **Status:** open\n  *Tags: documentation, api*\n\nTo close it, use `ACT-0522 done`."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:23:02.939Z",
@@ -633,7 +633,7 @@
         },
         {
           "eventId": "TC-PIPE-06-step-3",
-          "text": "@jeeves what are Alice's open actions?"
+          "text": "@Wire Team Bot what are Alice's open actions?"
         }
       ],
       "records": [
@@ -650,8 +650,8 @@
       "storedChecks": [],
       "judgements": [
         {
-          "step": "@jeeves what are Alice's open actions?",
-          "assertion": "Jeeves lists Alice's open actions and mentions the API documentation update \u2014 it does not list the same task twice or mention two separate API documentation actions",
+          "step": "@Wire Team Bot what are Alice's open actions?",
+          "assertion": "Wire Team Bot lists Alice's open actions and mentions the API documentation update — it does not list the same task twice or mention two separate API documentation actions",
           "result": {
             "pass": true,
             "valid": true,
@@ -664,13 +664,13 @@
     },
     {
       "id": "TC-PIPE-07",
-      "description": "NDA lifecycle \u2014 verbal commitment \u2192 confirmation \u2192 completion announcement does not duplicate",
+      "description": "NDA lifecycle — verbal commitment → confirmation → completion announcement does not duplicate",
       "passed": true,
       "elapsedMs": 24159,
       "outputs": [
         "",
         "",
-        "You have one outstanding action:\n\n\u2022 **[ACT-0523] Email the NDA to the client**\n  **Owner:** Alice | **Status:** open | **Due:** 2026-09-18\n  *Tags: nda, client, legal*\n\nThis matches what you committed to earlier in this conversation. Once it's sent, mark it off with `ACT-0523 done`.",
+        "You have one outstanding action:\n\n• **[ACT-0523] Email the NDA to the client**\n  **Owner:** Alice | **Status:** open | **Due:** 2026-09-18\n  *Tags: nda, client, legal*\n\nThis matches what you committed to earlier in this conversation. Once it's sent, mark it off with `ACT-0523 done`.",
         "",
         "No open actions in this conversation."
       ],
@@ -685,19 +685,19 @@
         },
         {
           "eventId": "TC-PIPE-07-step-2",
-          "text": "Alice: I'll handle it \u2014 I'll email it over to them today"
+          "text": "Alice: I'll handle it — I'll email it over to them today"
         },
         {
           "eventId": "TC-PIPE-07-step-3",
-          "text": "@jeeves what are Alice's outstanding actions?"
+          "text": "@Wire Team Bot what are Alice's outstanding actions?"
         },
         {
           "eventId": "TC-PIPE-07-step-4",
-          "text": "Alice: update everyone \u2014 I've sent the NDA to the client and they've signed and returned it"
+          "text": "Alice: update everyone — I've sent the NDA to the client and they've signed and returned it"
         },
         {
           "eventId": "TC-PIPE-07-step-5",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [
@@ -714,8 +714,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are Alice's outstanding actions?",
-          "assertion": "Jeeves mentions an open action for Alice related to the NDA or sending a document to the client",
+          "step": "@Wire Team Bot what are Alice's outstanding actions?",
+          "assertion": "Wire Team Bot mentions an open action for Alice related to the NDA or sending a document to the client",
           "result": {
             "pass": true,
             "valid": true,
@@ -724,8 +724,8 @@
           }
         },
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves does not list a new open action about sending or receiving the NDA \u2014 the completion announcement should not have created an additional open action",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot does not list a new open action about sending or receiving the NDA — the completion announcement should not have created an additional open action",
           "result": {
             "pass": true,
             "valid": true,
@@ -783,7 +783,7 @@
     },
     {
       "id": "TC-ACT-01",
-      "description": "Log an action \u2014 gets an ACT reference back",
+      "description": "Log an action — gets an ACT reference back",
       "passed": true,
       "elapsedMs": 3052,
       "outputs": [
@@ -814,7 +814,7 @@
       "judgements": [
         {
           "step": "action: write the database migration scripts",
-          "assertion": "Jeeves confirms the action was recorded and includes an ACT- reference number",
+          "assertion": "Wire Team Bot confirms the action was recorded and includes an ACT- reference number",
           "result": {
             "pass": true,
             "valid": true,
@@ -858,7 +858,7 @@
       "judgements": [
         {
           "step": "action: review the open PR for Bob",
-          "assertion": "Jeeves confirms the action was recorded and mentions Bob as the assignee",
+          "assertion": "Wire Team Bot confirms the action was recorded and mentions Bob as the assignee",
           "result": {
             "pass": true,
             "valid": true,
@@ -871,12 +871,12 @@
     },
     {
       "id": "TC-ACT-03",
-      "description": "List my actions \u2014 includes the previously logged action",
+      "description": "List my actions — includes the previously logged action",
       "passed": true,
       "elapsedMs": 3401,
       "outputs": [
         "Action **ACT-0526** created for **Alice**: update the runbook",
-        "- **ACT-0526** `open` \u2014 update the runbook"
+        "- **ACT-0526** `open` — update the runbook"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:24:19.614Z",
@@ -920,12 +920,12 @@
     },
     {
       "id": "TC-ACT-04",
-      "description": "List team actions \u2014 includes the previously logged action",
+      "description": "List team actions — includes the previously logged action",
       "passed": true,
       "elapsedMs": 3357,
       "outputs": [
         "Action **ACT-0527** created for **Alice**: review the infrastructure cost report",
-        "**Alice**\n- **ACT-0527** `open` \u2014 review the infrastructure cost report"
+        "**Alice**\n- **ACT-0527** `open` — review the infrastructure cost report"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:24:23.015Z",
@@ -956,7 +956,7 @@
       "judgements": [
         {
           "step": "team actions",
-          "assertion": "Jeeves lists open team actions and includes ACT-0527",
+          "assertion": "Wire Team Bot lists open team actions and includes ACT-0527",
           "result": {
             "pass": true,
             "valid": true,
@@ -969,7 +969,7 @@
     },
     {
       "id": "TC-ACT-05",
-      "description": "Mark action done \u2014 confirmed",
+      "description": "Mark action done — confirmed",
       "passed": true,
       "elapsedMs": 3750,
       "outputs": [
@@ -1005,7 +1005,7 @@
       "judgements": [
         {
           "step": "ACT-0528 done",
-          "assertion": "Jeeves confirms the action has been marked as complete or done",
+          "assertion": "Wire Team Bot confirms the action has been marked as complete or done",
           "result": {
             "pass": true,
             "valid": true,
@@ -1054,7 +1054,7 @@
       "judgements": [
         {
           "step": "ACT-0529 reassign to Bob",
-          "assertion": "Jeeves confirms the action has been reassigned to Bob",
+          "assertion": "Wire Team Bot confirms the action has been reassigned to Bob",
           "result": {
             "pass": true,
             "valid": true,
@@ -1075,7 +1075,7 @@
         "**ACT-0530** reassigned from **Alice** to **@Bob**.",
         "**ACT-0530** deadline set to **19 Sept 2026, 15:00**.",
         "**ACT-0530** marked as `done`.",
-        "\u2022 **[ACT-0530] review the formatting smoke checklist**\n  **Owner:** @Bob | **Status:** done | **Due:** 2026-09-19\n\nIt's already marked done, with you as the owner."
+        "• **[ACT-0530] review the formatting smoke checklist**\n  **Owner:** @Bob | **Status:** done | **Due:** 2026-09-19\n\nIt's already marked done, with you as the owner."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:00:00.000Z",
@@ -1166,7 +1166,7 @@
       "elapsedMs": 1177,
       "outputs": [
         "Action **ACT-0531** created for **@Bob**: prepare the slide deck (due this Friday: 18 Sept 2026, 12:00)",
-        "**@Bob**\n- **ACT-0531** `open` \u2014 prepare the slide deck _(due 2026-09-18)_"
+        "**@Bob**\n- **ACT-0531** `open` — prepare the slide deck _(due 2026-09-18)_"
       ],
       "context": {
         "referenceTime": "2026-09-18T09:00:00.000Z",
@@ -1204,7 +1204,7 @@
       "elapsedMs": 1179,
       "outputs": [
         "Action **ACT-0532** created for **@Bob**: prepare the deck (due this Friday: 18 Sept 2026, 12:00)",
-        "**@Bob**\n- **ACT-0532** `open` \u2014 prepare the deck _(due 2026-09-18)_"
+        "**@Bob**\n- **ACT-0532** `open` — prepare the deck _(due 2026-09-18)_"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:00:00.000Z",
@@ -1328,7 +1328,7 @@
     },
     {
       "id": "TC-ACT-07",
-      "description": "Action with owner and due date \u2014 both present in response",
+      "description": "Action with owner and due date — both present in response",
       "passed": true,
       "elapsedMs": 3478,
       "outputs": [
@@ -1359,7 +1359,7 @@
       "judgements": [
         {
           "step": "action: Carol to write the API documentation by end of month",
-          "assertion": "Jeeves confirms the action was recorded with an ACT- reference, identifies Carol as the assignee, and mentions end of month or March as the deadline",
+          "assertion": "Wire Team Bot confirms the action was recorded with an ACT- reference, identifies Carol as the assignee, and mentions end of month or March as the deadline",
           "result": {
             "pass": true,
             "valid": true,
@@ -1372,7 +1372,7 @@
     },
     {
       "id": "TC-ACT-08",
-      "description": "Action with specific date \u2014 deadline is correct in response",
+      "description": "Action with specific date — deadline is correct in response",
       "passed": true,
       "elapsedMs": 3895,
       "outputs": [
@@ -1403,7 +1403,7 @@
       "judgements": [
         {
           "step": "action: Dave to complete the security audit by April 3rd",
-          "assertion": "Jeeves confirms the action was recorded with an ACT- reference, names Dave as the owner, and references April 3rd or a date close to that as the deadline",
+          "assertion": "Wire Team Bot confirms the action was recorded with an ACT- reference, names Dave as the owner, and references April 3rd or a date close to that as the deadline",
           "result": {
             "pass": true,
             "valid": true,
@@ -1416,13 +1416,13 @@
     },
     {
       "id": "TC-ID-01",
-      "description": "My actions returns caller's actions only \u2014 not other members'",
+      "description": "My actions returns caller's actions only — not other members'",
       "passed": true,
       "elapsedMs": 3838,
       "outputs": [
         "Action **ACT-0537** created for **Alice**: update the security documentation",
         "Action **ACT-0538** created for **Bob**: refactor the payment module",
-        "- **ACT-0537** `open` \u2014 update the security documentation"
+        "- **ACT-0537** `open` — update the security documentation"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:25:14.090Z",
@@ -1439,7 +1439,7 @@
         },
         {
           "eventId": "TC-ID-01-step-3",
-          "text": "@jeeves what are my open actions?"
+          "text": "@Wire Team Bot what are my open actions?"
         }
       ],
       "records": [
@@ -1464,7 +1464,7 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are my open actions?",
+          "step": "@Wire Team Bot what are my open actions?",
           "assertion": "The response is a list of open actions containing ACT-0537; it does not mention Bob or payment module",
           "result": {
             "pass": true,
@@ -1484,7 +1484,7 @@
       "outputs": [
         "Action **ACT-0539** created for **Alice**: prepare the sprint retrospective slides",
         "Action **ACT-0540** created for **Bob**: deploy the hotfix to staging",
-        "@Bob has one open action:\n\n\u2022 **[ACT-0540] deploy the hotfix to staging**\n  **Owner:** Bob | **Status:** open"
+        "@Bob has one open action:\n\n• **[ACT-0540] deploy the hotfix to staging**\n  **Owner:** Bob | **Status:** open"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:25:17.929Z",
@@ -1501,7 +1501,7 @@
         },
         {
           "eventId": "TC-ID-02-step-3",
-          "text": "@jeeves what actions does Bob have?"
+          "text": "@Wire Team Bot what actions does Bob have?"
         }
       ],
       "records": [
@@ -1526,8 +1526,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what actions does Bob have?",
-          "assertion": "Jeeves lists Bob's open actions including ACT-0540 and does NOT include Alice's retrospective slides action",
+          "step": "@Wire Team Bot what actions does Bob have?",
+          "assertion": "Wire Team Bot lists Bob's open actions including ACT-0540 and does NOT include Alice's retrospective slides action",
           "result": {
             "pass": true,
             "valid": true,
@@ -1545,8 +1545,8 @@
       "elapsedMs": 27567,
       "outputs": [
         "Decision **DEC-0443** logged: we will enforce semantic versioning for all internal packages",
-        "You did \u2014 DEC-0443 was recorded by you on 18 September 2026, covering the enforcement of semantic versioning for all internal packages. The record doesn't specify who made the decision, only who logged it.",
-        "The decision makers for DEC-0443 aren't recorded, I'm afraid.\n\n\u2022 **[DEC-0443] we will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNote that \"recorded by\" only identifies who logged the record \u2014 it doesn't establish who made the call. If you know who agreed it, you can re-log the decision with the attribution included, e.g. `decision: Bob and Carol agreed to enforce semantic versioning for all internal packages`, and revoke the original with `revoke DEC-0443 superseded by corrected attribution`."
+        "You did — DEC-0443 was recorded by you on 18 September 2026, covering the enforcement of semantic versioning for all internal packages. The record doesn't specify who made the decision, only who logged it.",
+        "The decision makers for DEC-0443 aren't recorded, I'm afraid.\n\n• **[DEC-0443] we will enforce semantic versioning for all internal packages**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nNote that \"recorded by\" only identifies who logged the record — it doesn't establish who made the call. If you know who agreed it, you can re-log the decision with the attribution included, e.g. `decision: Bob and Carol agreed to enforce semantic versioning for all internal packages`, and revoke the original with `revoke DEC-0443 superseded by corrected attribution`."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:25:28.428Z",
@@ -1581,7 +1581,7 @@
       "judgements": [
         {
           "step": "Alice: decision: we will enforce semantic versioning for all internal packages",
-          "assertion": "Jeeves confirms the decision was recorded with a DEC- reference",
+          "assertion": "Wire Team Bot confirms the decision was recorded with a DEC- reference",
           "result": {
             "pass": true,
             "valid": true,
@@ -1614,13 +1614,13 @@
     },
     {
       "id": "TC-ID-04",
-      "description": "My reminders returns only the caller's reminders \u2014 not others'",
+      "description": "My reminders returns only the caller's reminders — not others'",
       "passed": false,
       "elapsedMs": 11369,
       "outputs": [
         "Reminder **REM-0179** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice",
         "Reminder **REM-0180** set for **Friday, 18 Sept 2026, 12:00**: send the weekly report",
-        "- **REM-0179** \u2014 chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
+        "- **REM-0179** — chase the vendor invoice _(Thursday, 24 Sept 2026, 12:00)_"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:25:55.995Z",
@@ -1637,7 +1637,7 @@
         },
         {
           "eventId": "TC-ID-04-step-3",
-          "text": "@jeeves what reminders do I have?"
+          "text": "@Wire Team Bot what reminders do I have?"
         }
       ],
       "records": [
@@ -1663,7 +1663,7 @@
       "judgements": [
         {
           "step": "Alice: remind me on Thursday to chase the vendor invoice",
-          "assertion": "Jeeves confirms the reminder was set with a REM- reference for Thursday",
+          "assertion": "Wire Team Bot confirms the reminder was set with a REM- reference for Thursday",
           "result": {
             "pass": false,
             "valid": false,
@@ -1676,8 +1676,8 @@
           }
         },
         {
-          "step": "@jeeves what reminders do I have?",
-          "assertion": "Jeeves lists Alice's reminders including REM-0179 for Thursday and does NOT include Bob's Friday report reminder",
+          "step": "@Wire Team Bot what reminders do I have?",
+          "assertion": "Wire Team Bot lists Alice's reminders including REM-0179 for Thursday and does NOT include Bob's Friday report reminder",
           "result": {
             "pass": true,
             "valid": true,
@@ -1689,7 +1689,7 @@
       "failures": [
         {
           "step": "Alice: remind me on Thursday to chase the vendor invoice",
-          "assertion": "Jeeves confirms the reminder was set with a REM- reference for Thursday",
+          "assertion": "Wire Team Bot confirms the reminder was set with a REM- reference for Thursday",
           "judgeReason": "Invalid judge verdict format",
           "botOutput": "Reminder **REM-0179** set for **Thursday, 24 Sept 2026, 12:00**: chase the vendor invoice"
         }
@@ -1697,13 +1697,13 @@
     },
     {
       "id": "TC-ID-05",
-      "description": "Team actions lists all members' actions \u2014 not just the caller's",
+      "description": "Team actions lists all members' actions — not just the caller's",
       "passed": true,
       "elapsedMs": 4717,
       "outputs": [
         "Action **ACT-0541** created for **Alice**: write the API specification",
         "Action **ACT-0542** created for **Bob**: set up the CI pipeline",
-        "**Bob**\n- **ACT-0542** `open` \u2014 set up the CI pipeline\n**Alice**\n- **ACT-0541** `open` \u2014 write the API specification"
+        "**Bob**\n- **ACT-0542** `open` — set up the CI pipeline\n**Alice**\n- **ACT-0541** `open` — write the API specification"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:26:07.364Z",
@@ -1720,7 +1720,7 @@
         },
         {
           "eventId": "TC-ID-05-step-3",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [
@@ -1745,8 +1745,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves lists open team actions including both Alice's API specification action (ACT-0541) and Bob's CI pipeline action",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot lists open team actions including both Alice's API specification action (ACT-0541) and Bob's CI pipeline action",
           "result": {
             "pass": true,
             "valid": true,
@@ -1764,7 +1764,7 @@
       "elapsedMs": 13675,
       "outputs": [
         "Reminder **REM-0181** set for **Friday, 18 Sept 2026, 15:28**: check the formatting smoke reminder",
-        "- **REM-0181** \u2014 check the formatting smoke reminder _(Friday, 18 Sept 2026, 15:28)_",
+        "- **REM-0181** — check the formatting smoke reminder _(Friday, 18 Sept 2026, 15:28)_",
         "**REM-0181** snoozed until **18 Sept 2026, 16:26**.",
         "**REM-0181** cancelled."
       ],
@@ -1848,7 +1848,7 @@
     },
     {
       "id": "TC-REM-01",
-      "description": "Create a reminder \u2014 confirmed",
+      "description": "Create a reminder — confirmed",
       "passed": true,
       "elapsedMs": 3258,
       "outputs": [
@@ -1879,7 +1879,7 @@
       "judgements": [
         {
           "step": "remind me tomorrow to review the deployment checklist",
-          "assertion": "Jeeves confirms a reminder has been set and includes a date or time for when it will fire",
+          "assertion": "Wire Team Bot confirms a reminder has been set and includes a date or time for when it will fire",
           "result": {
             "pass": true,
             "valid": true,
@@ -1892,12 +1892,12 @@
     },
     {
       "id": "TC-REM-02",
-      "description": "List reminders \u2014 includes the previously created reminder",
+      "description": "List reminders — includes the previously created reminder",
       "passed": true,
       "elapsedMs": 3718,
       "outputs": [
         "Reminder **REM-0183** set for **Tuesday, 22 Sept 2026, 12:00**: send the weekly status report",
-        "- **REM-0183** \u2014 send the weekly status report _(Tuesday, 22 Sept 2026, 12:00)_"
+        "- **REM-0183** — send the weekly status report _(Tuesday, 22 Sept 2026, 12:00)_"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:26:29.016Z",
@@ -1928,7 +1928,7 @@
       "judgements": [
         {
           "step": "what reminders do I have?",
-          "assertion": "Jeeves lists reminders and includes REM-0183",
+          "assertion": "Wire Team Bot lists reminders and includes REM-0183",
           "result": {
             "pass": true,
             "valid": true,
@@ -1941,7 +1941,7 @@
     },
     {
       "id": "TC-REM-03",
-      "description": "Cancel a reminder \u2014 confirmed",
+      "description": "Cancel a reminder — confirmed",
       "passed": true,
       "elapsedMs": 3899,
       "outputs": [
@@ -1977,7 +1977,7 @@
       "judgements": [
         {
           "step": "cancel REM-0184",
-          "assertion": "Jeeves confirms the reminder has been cancelled or removed",
+          "assertion": "Wire Team Bot confirms the reminder has been cancelled or removed",
           "result": {
             "pass": true,
             "valid": true,
@@ -1990,7 +1990,7 @@
     },
     {
       "id": "TC-REM-04",
-      "description": "Reminder with specific date \u2014 date is accurate in confirmation",
+      "description": "Reminder with specific date — date is accurate in confirmation",
       "passed": true,
       "elapsedMs": 3756,
       "outputs": [
@@ -2021,7 +2021,7 @@
       "judgements": [
         {
           "step": "remind me on April 5th to submit the quarterly report",
-          "assertion": "Jeeves confirms a reminder was set with a REM- reference and mentions April 5th or a date matching April 5th as when it will fire",
+          "assertion": "Wire Team Bot confirms a reminder was set with a REM- reference and mentions April 5th or a date matching April 5th as when it will fire",
           "result": {
             "pass": true,
             "valid": true,
@@ -2034,7 +2034,7 @@
     },
     {
       "id": "TC-REM-05",
-      "description": "Reminder with day and time \u2014 both preserved in confirmation",
+      "description": "Reminder with day and time — both preserved in confirmation",
       "passed": true,
       "elapsedMs": 3422,
       "outputs": [
@@ -2065,7 +2065,7 @@
       "judgements": [
         {
           "step": "remind me next Monday at 9am to prepare the sprint review slides",
-          "assertion": "Jeeves confirms the reminder with a REM- reference and specifies both a day (Monday) and time (9am or 09:00) in the confirmation",
+          "assertion": "Wire Team Bot confirms the reminder with a REM- reference and specifies both a day (Monday) and time (9am or 09:00) in the confirmation",
           "result": {
             "pass": true,
             "valid": true,
@@ -2084,7 +2084,7 @@
       "outputs": [
         "",
         "",
-        "Redis, for the session cache \u2014 the deciding factor being its native TTL support, as you noted a moment ago.\n\n\u2022 **[DEC-0444] Redis will be used for the session cache**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nRelated context also has the session cache recorded as depending on Redis."
+        "Redis, for the session cache — the deciding factor being its native TTL support, as you noted a moment ago.\n\n• **[DEC-0444] Redis will be used for the session cache**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nRelated context also has the session cache recorded as depending on Redis."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:26:43.811Z",
@@ -2101,7 +2101,7 @@
         },
         {
           "eventId": "TC-QA-01-step-3",
-          "text": "@jeeves what are we using for the session cache and why?"
+          "text": "@Wire Team Bot what are we using for the session cache and why?"
         }
       ],
       "records": [
@@ -2120,8 +2120,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are we using for the session cache and why?",
-          "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+          "step": "@Wire Team Bot what are we using for the session cache and why?",
+          "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
           "result": {
             "pass": true,
             "valid": true,
@@ -2139,7 +2139,7 @@
       "elapsedMs": 12224,
       "outputs": [
         "Decision **DEC-0445** logged: all API responses must use JSON:API format",
-        "All API responses must use JSON:API format.\n\n\u2022 **[DEC-0445] All API responses must use JSON:API format**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nDecision makers aren't recorded on this one \u2014 only that you logged it."
+        "All API responses must use JSON:API format.\n\n• **[DEC-0445] All API responses must use JSON:API format**\n  **Recorded by:** @Alice | **Date:** 2026-09-18\n\nDecision makers aren't recorded on this one — only that you logged it."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:27:01.523Z",
@@ -2152,7 +2152,7 @@
         },
         {
           "eventId": "TC-QA-02-step-2",
-          "text": "@jeeves what format should our API responses use?"
+          "text": "@Wire Team Bot what format should our API responses use?"
         }
       ],
       "records": [
@@ -2169,8 +2169,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what format should our API responses use?",
-          "assertion": "Jeeves answers that API responses should use JSON:API format",
+          "step": "@Wire Team Bot what format should our API responses use?",
+          "assertion": "Wire Team Bot answers that API responses should use JSON:API format",
           "result": {
             "pass": true,
             "valid": true,
@@ -2183,11 +2183,11 @@
     },
     {
       "id": "TC-QA-03",
-      "description": "General knowledge question \u2014 answered, not 'no record'",
+      "description": "General knowledge question — answered, not 'no record'",
       "passed": true,
       "elapsedMs": 12693,
       "outputs": [
-        "Both are transport-layer protocols, but they trade off reliability against speed.\n\n**TCP** (Transmission Control Protocol)\n- Connection-oriented \u2014 requires a handshake before data flows\n- Guarantees delivery, ordering, and de-duplication; retransmits lost packets\n- Includes flow control and congestion control\n- Higher overhead (20+ byte header, acknowledgements)\n- Used for HTTP/HTTPS, SSH, email, file transfer\n\n**UDP** (User Datagram Protocol)\n- Connectionless \u2014 packets are simply sent\n- No delivery guarantee, no ordering, no retransmission\n- No flow or congestion control\n- Minimal overhead (8 byte header), lower latency\n- Used for DNS, VoIP, video streaming, gaming, QUIC\n\nThe practical rule: choose TCP when every byte must arrive correctly, and UDP when timeliness matters more than completeness, or when you want to implement your own reliability logic on top."
+        "Both are transport-layer protocols, but they trade off reliability against speed.\n\n**TCP** (Transmission Control Protocol)\n- Connection-oriented — requires a handshake before data flows\n- Guarantees delivery, ordering, and de-duplication; retransmits lost packets\n- Includes flow control and congestion control\n- Higher overhead (20+ byte header, acknowledgements)\n- Used for HTTP/HTTPS, SSH, email, file transfer\n\n**UDP** (User Datagram Protocol)\n- Connectionless — packets are simply sent\n- No delivery guarantee, no ordering, no retransmission\n- No flow or congestion control\n- Minimal overhead (8 byte header), lower latency\n- Used for DNS, VoIP, video streaming, gaming, QUIC\n\nThe practical rule: choose TCP when every byte must arrive correctly, and UDP when timeliness matters more than completeness, or when you want to implement your own reliability logic on top."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:27:13.747Z",
@@ -2196,7 +2196,7 @@
       "events": [
         {
           "eventId": "TC-QA-03-step-1",
-          "text": "@jeeves what is the difference between TCP and UDP?"
+          "text": "@Wire Team Bot what is the difference between TCP and UDP?"
         }
       ],
       "records": [],
@@ -2204,8 +2204,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what is the difference between TCP and UDP?",
-          "assertion": "Jeeves gives a factual answer about TCP and UDP without saying it has no record of them",
+          "step": "@Wire Team Bot what is the difference between TCP and UDP?",
+          "assertion": "Wire Team Bot gives a factual answer about TCP and UDP without saying it has no record of them",
           "result": {
             "pass": true,
             "valid": true,
@@ -2218,11 +2218,11 @@
     },
     {
       "id": "TC-QA-04",
-      "description": "Meta question \u2014 describes capabilities",
+      "description": "Meta question — describes capabilities",
       "passed": true,
       "elapsedMs": 11522,
       "outputs": [
-        "I track three things for this channel:\n\n- **Decisions** \u2014 what was agreed, who agreed it, and the reasoning behind it\n- **Actions** \u2014 tasks with an owner, status, and due date\n- **Reminders** \u2014 time-based nudges\n\nI also answer questions using the channel's conversation history alongside those records.\n\nNothing has been recorded here yet \u2014 no decisions, no actions. To start, you can use commands like:\n\n- `decision: use Postgres`\n- `action: review the contract for Bob`\n- `remind me in 2 hours to review the checklist`"
+        "I track three things for this channel:\n\n- **Decisions** — what was agreed, who agreed it, and the reasoning behind it\n- **Actions** — tasks with an owner, status, and due date\n- **Reminders** — time-based nudges\n\nI also answer questions using the channel's conversation history alongside those records.\n\nNothing has been recorded here yet — no decisions, no actions. To start, you can use commands like:\n\n- `decision: use Postgres`\n- `action: review the contract for Bob`\n- `remind me in 2 hours to review the checklist`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:27:26.440Z",
@@ -2231,7 +2231,7 @@
       "events": [
         {
           "eventId": "TC-QA-04-step-1",
-          "text": "@jeeves what kind of information do you keep track of?"
+          "text": "@Wire Team Bot what kind of information do you keep track of?"
         }
       ],
       "records": [],
@@ -2239,8 +2239,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what kind of information do you keep track of?",
-          "assertion": "Jeeves describes the types of things it tracks, such as decisions, actions, or reminders",
+          "step": "@Wire Team Bot what kind of information do you keep track of?",
+          "assertion": "Wire Team Bot describes the types of things it tracks, such as decisions, actions, or reminders",
           "result": {
             "pass": true,
             "valid": true,
@@ -2258,7 +2258,7 @@
       "elapsedMs": 21809,
       "outputs": [
         "That's yours to call, though a reminder is sensible if the review has a deadline attached. This path can't create it for you, but the command is straightforward:\n\n`remind me in 2 hours to review the deployment checklist`\n\nOr with a specific time, e.g. `remind me tomorrow at 9am to review the deployment checklist`. Just swap in whichever timing suits.",
-        "Right \u2014 the timing is the only missing piece. Send whichever fits:\n\n- `remind me in 2 hours to review the deployment checklist`\n- `remind me tomorrow at 9am to review the deployment checklist`\n\nIf you tell me when you want it, I'll give you the exact command to send."
+        "Right — the timing is the only missing piece. Send whichever fits:\n\n- `remind me in 2 hours to review the deployment checklist`\n- `remind me tomorrow at 9am to review the deployment checklist`\n\nIf you tell me when you want it, I'll give you the exact command to send."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:27:37.962Z",
@@ -2267,11 +2267,11 @@
       "events": [
         {
           "eventId": "TC-QA-05-step-1",
-          "text": "@jeeves shall I create a reminder to review the deployment checklist?"
+          "text": "@Wire Team Bot shall I create a reminder to review the deployment checklist?"
         },
         {
           "eventId": "TC-QA-05-step-2",
-          "text": "@jeeves yes"
+          "text": "@Wire Team Bot yes"
         }
       ],
       "records": [],
@@ -2279,7 +2279,7 @@
       "storedChecks": [],
       "judgements": [
         {
-          "step": "@jeeves yes",
+          "step": "@Wire Team Bot yes",
           "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
           "result": {
             "pass": true,
@@ -2293,7 +2293,7 @@
     },
     {
       "id": "TC-STATE-01",
-      "description": "Pause \u2014 bot acknowledges and steps out",
+      "description": "Pause — bot acknowledges and steps out",
       "passed": true,
       "elapsedMs": 3063,
       "outputs": [
@@ -2306,7 +2306,7 @@
       "events": [
         {
           "eventId": "TC-STATE-01-step-1",
-          "text": "@jeeves pause"
+          "text": "@Wire Team Bot pause"
         }
       ],
       "records": [],
@@ -2314,8 +2314,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves pause",
-          "assertion": "Jeeves acknowledges the pause instruction and indicates it will stop monitoring or step back",
+          "step": "@Wire Team Bot pause",
+          "assertion": "Wire Team Bot acknowledges the pause instruction and indicates it will stop monitoring or step back",
           "result": {
             "pass": true,
             "valid": true,
@@ -2328,7 +2328,7 @@
     },
     {
       "id": "TC-STATE-02",
-      "description": "Pause then resume \u2014 bot confirms it is active again",
+      "description": "Pause then resume — bot confirms it is active again",
       "passed": true,
       "elapsedMs": 3424,
       "outputs": [
@@ -2342,11 +2342,11 @@
       "events": [
         {
           "eventId": "TC-STATE-02-step-1",
-          "text": "@jeeves pause"
+          "text": "@Wire Team Bot pause"
         },
         {
           "eventId": "TC-STATE-02-step-2",
-          "text": "@jeeves resume"
+          "text": "@Wire Team Bot resume"
         }
       ],
       "records": [],
@@ -2354,8 +2354,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves resume",
-          "assertion": "Jeeves confirms it has resumed and is active again",
+          "step": "@Wire Team Bot resume",
+          "assertion": "Wire Team Bot confirms it has resumed and is active again",
           "result": {
             "pass": true,
             "valid": true,
@@ -2368,7 +2368,7 @@
     },
     {
       "id": "TC-STATE-03",
-      "description": "Secure mode \u2014 acknowledgement matches the persisted state",
+      "description": "Secure mode — acknowledgement matches the persisted state",
       "passed": true,
       "elapsedMs": 573,
       "outputs": [
@@ -2381,7 +2381,7 @@
       "events": [
         {
           "eventId": "TC-STATE-03-step-1",
-          "text": "@jeeves secure mode"
+          "text": "@Wire Team Bot secure mode"
         }
       ],
       "records": [],
@@ -2397,7 +2397,7 @@
       "elapsedMs": 12939,
       "outputs": [
         "Decision **DEC-0446** logged: we will adopt agile methodology",
-        "\u2022 **[DEC-0446] We will adopt agile methodology**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n\nThe record doesn't capture who made that call or the rationale behind it \u2014 only that you logged it."
+        "• **[DEC-0446] We will adopt agile methodology**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n\nThe record doesn't capture who made that call or the rationale behind it — only that you logged it."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:28:06.833Z",
@@ -2410,7 +2410,7 @@
         },
         {
           "eventId": "TC-PERSONA-01-step-2",
-          "text": "@jeeves what did we decide about our methodology?"
+          "text": "@Wire Team Bot what did we decide about our methodology?"
         }
       ],
       "records": [
@@ -2427,8 +2427,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what did we decide about our methodology?",
-          "assertion": "Jeeves responds without using any exclamation marks",
+          "step": "@Wire Team Bot what did we decide about our methodology?",
+          "assertion": "Wire Team Bot responds without using any exclamation marks",
           "result": {
             "pass": true,
             "valid": true,
@@ -2441,11 +2441,11 @@
     },
     {
       "id": "TC-PERSONA-02",
-      "description": "No hollow opener \u2014 no 'Certainly', 'Of course', 'Great question'",
+      "description": "No hollow opener — no 'Certainly', 'Of course', 'Great question'",
       "passed": true,
       "elapsedMs": 15823,
       "outputs": [
-        "Continuous integration (CI) is the practice of merging developers' work into a shared main branch frequently \u2014 typically several times a day \u2014 with each merge automatically verified by a build and test suite.\n\nThe core mechanics:\n\n- **Shared mainline** \u2014 everyone integrates against the same branch rather than working in long-lived isolation\n- **Automated build** \u2014 every commit triggers a build, ideally in a clean environment\n- **Automated tests** \u2014 unit and integration tests run on each build; a failing build is treated as the top priority\n- **Fast feedback** \u2014 pipelines are kept short so problems surface within minutes of the commit that caused them\n\nThe point is to avoid \"integration hell\": the painful, unpredictable merge work that accumulates when branches diverge for weeks. Small, frequent integrations make each conflict trivial and pinpoint the commit responsible for any regression.\n\nCI is distinct from, but a prerequisite for, continuous delivery (every build is deployable) and continuous deployment (every passing build is deployed automatically). Common tooling includes GitHub Actions, GitLab CI, Jenkins, CircleCI and Buildkite."
+        "Continuous integration (CI) is the practice of merging developers' work into a shared main branch frequently — typically several times a day — with each merge automatically verified by a build and test suite.\n\nThe core mechanics:\n\n- **Shared mainline** — everyone integrates against the same branch rather than working in long-lived isolation\n- **Automated build** — every commit triggers a build, ideally in a clean environment\n- **Automated tests** — unit and integration tests run on each build; a failing build is treated as the top priority\n- **Fast feedback** — pipelines are kept short so problems surface within minutes of the commit that caused them\n\nThe point is to avoid \"integration hell\": the painful, unpredictable merge work that accumulates when branches diverge for weeks. Small, frequent integrations make each conflict trivial and pinpoint the commit responsible for any regression.\n\nCI is distinct from, but a prerequisite for, continuous delivery (every build is deployable) and continuous deployment (every passing build is deployed automatically). Common tooling includes GitHub Actions, GitLab CI, Jenkins, CircleCI and Buildkite."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:28:19.772Z",
@@ -2454,7 +2454,7 @@
       "events": [
         {
           "eventId": "TC-PERSONA-02-step-1",
-          "text": "@jeeves what is continuous integration?"
+          "text": "@Wire Team Bot what is continuous integration?"
         }
       ],
       "records": [],
@@ -2462,8 +2462,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what is continuous integration?",
-          "assertion": "Jeeves answers without starting with hollow affirmations like Certainly, Of course, Great question, or Absolutely",
+          "step": "@Wire Team Bot what is continuous integration?",
+          "assertion": "Wire Team Bot answers without starting with hollow affirmations like Certainly, Of course, Great question, or Absolutely",
           "result": {
             "pass": true,
             "valid": true,
@@ -2480,7 +2480,7 @@
       "passed": true,
       "elapsedMs": 12191,
       "outputs": [
-        "I'm afraid I have no record of a board meeting last Tuesday, nor any attendance details for it. Nothing has been logged in this channel.\n\nIf you'd like the attendance captured, the details can be recorded as a decision or action \u2014 for example:\n\n- `decision: board meeting attendees were Alice, Bob and Carol`\n- `action: circulate board meeting minutes for Bob`"
+        "I'm afraid I have no record of a board meeting last Tuesday, nor any attendance details for it. Nothing has been logged in this channel.\n\nIf you'd like the attendance captured, the details can be recorded as a decision or action — for example:\n\n- `decision: board meeting attendees were Alice, Bob and Carol`\n- `action: circulate board meeting minutes for Bob`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:28:35.595Z",
@@ -2489,7 +2489,7 @@
       "events": [
         {
           "eventId": "TC-PERSONA-03-step-1",
-          "text": "@jeeves who attended the board meeting last Tuesday?"
+          "text": "@Wire Team Bot who attended the board meeting last Tuesday?"
         }
       ],
       "records": [],
@@ -2497,8 +2497,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves who attended the board meeting last Tuesday?",
-          "assertion": "Jeeves does not begin its response with 'Sorry' \u2014 it may use 'I'm afraid' or similar but not an apology opener",
+          "step": "@Wire Team Bot who attended the board meeting last Tuesday?",
+          "assertion": "Wire Team Bot does not begin its response with 'Sorry' — it may use 'I'm afraid' or similar but not an apology opener",
           "result": {
             "pass": true,
             "valid": true,
@@ -2517,7 +2517,7 @@
       "outputs": [
         "",
         "",
-        "No decisions have been recorded in this channel yet \u2014 on Kubernetes or anything else.\n\nIf you'd like to log one, use:\n\n`decision: <summary>`"
+        "No decisions have been recorded in this channel yet — on Kubernetes or anything else.\n\nIf you'd like to log one, use:\n\n`decision: <summary>`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:28:47.786Z",
@@ -2534,7 +2534,7 @@
         },
         {
           "eventId": "TC-NEG-DEC-01-step-3",
-          "text": "@jeeves have we made any decisions about Kubernetes?"
+          "text": "@Wire Team Bot have we made any decisions about Kubernetes?"
         }
       ],
       "records": [],
@@ -2542,8 +2542,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves have we made any decisions about Kubernetes?",
-          "assertion": "Jeeves indicates there is no confirmed decision about Kubernetes \u2014 it may acknowledge it came up as a discussion or idea but does not report it as a firm decision",
+          "step": "@Wire Team Bot have we made any decisions about Kubernetes?",
+          "assertion": "Wire Team Bot indicates there is no confirmed decision about Kubernetes — it may acknowledge it came up as a discussion or idea but does not report it as a firm decision",
           "result": {
             "pass": true,
             "valid": true,
@@ -2561,7 +2561,7 @@
       "elapsedMs": 11957,
       "outputs": [
         "",
-        "I'm afraid there's no decision recorded about TypeScript versus JavaScript \u2014 no decisions have been logged in this channel yet.\n\nIf the call has been made, you can record it with:\n\n`decision: use TypeScript for the new service`"
+        "I'm afraid there's no decision recorded about TypeScript versus JavaScript — no decisions have been logged in this channel yet.\n\nIf the call has been made, you can record it with:\n\n`decision: use TypeScript for the new service`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:29:01.499Z",
@@ -2574,7 +2574,7 @@
         },
         {
           "eventId": "TC-NEG-DEC-02-step-2",
-          "text": "@jeeves what did we decide about TypeScript versus JavaScript for the new service?"
+          "text": "@Wire Team Bot what did we decide about TypeScript versus JavaScript for the new service?"
         }
       ],
       "records": [],
@@ -2582,8 +2582,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what did we decide about TypeScript versus JavaScript for the new service?",
-          "assertion": "Jeeves indicates no decision has been recorded about TypeScript versus JavaScript \u2014 it recognises this was a question, not a confirmed decision",
+          "step": "@Wire Team Bot what did we decide about TypeScript versus JavaScript for the new service?",
+          "assertion": "Wire Team Bot indicates no decision has been recorded about TypeScript versus JavaScript — it recognises this was a question, not a confirmed decision",
           "result": {
             "pass": true,
             "valid": true,
@@ -2614,7 +2614,7 @@
         },
         {
           "eventId": "TC-NEG-DEC-03-step-2",
-          "text": "@jeeves list decisions"
+          "text": "@Wire Team Bot list decisions"
         }
       ],
       "records": [],
@@ -2622,8 +2622,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves list decisions",
-          "assertion": "Jeeves does not include the production deployment as a decision \u2014 a deployment status update is not a decision",
+          "step": "@Wire Team Bot list decisions",
+          "assertion": "Wire Team Bot does not include the production deployment as a decision — a deployment status update is not a decision",
           "result": {
             "pass": true,
             "valid": true,
@@ -2654,7 +2654,7 @@
         },
         {
           "eventId": "TC-NEG-DEC-04-step-2",
-          "text": "@jeeves list decisions"
+          "text": "@Wire Team Bot list decisions"
         }
       ],
       "records": [],
@@ -2662,8 +2662,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves list decisions",
-          "assertion": "Jeeves does not list the office closure announcement as a decision \u2014 an informational notice about a public holiday is not a decision",
+          "step": "@Wire Team Bot list decisions",
+          "assertion": "Wire Team Bot does not list the office closure announcement as a decision — an informational notice about a public holiday is not a decision",
           "result": {
             "pass": true,
             "valid": true,
@@ -2681,7 +2681,7 @@
       "elapsedMs": 16887,
       "outputs": [
         "",
-        "No actions have been recorded in this channel yet \u2014 so there's nothing open against @Bob or anyone else.\n\nTo log one:\n\n`action: review the contract for Bob`"
+        "No actions have been recorded in this channel yet — so there's nothing open against @Bob or anyone else.\n\nTo log one:\n\n`action: review the contract for Bob`"
       ],
       "context": {
         "referenceTime": "2026-09-18T15:29:26.212Z",
@@ -2694,7 +2694,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-01-step-2",
-          "text": "@jeeves what are Bob's open actions?"
+          "text": "@Wire Team Bot what are Bob's open actions?"
         }
       ],
       "records": [],
@@ -2702,8 +2702,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are Bob's open actions?",
-          "assertion": "Jeeves indicates Bob has no open actions from this exchange \u2014 a completed past activity is not an open action",
+          "step": "@Wire Team Bot what are Bob's open actions?",
+          "assertion": "Wire Team Bot indicates Bob has no open actions from this exchange — a completed past activity is not an open action",
           "result": {
             "pass": true,
             "valid": true,
@@ -2734,7 +2734,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-02-step-2",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [],
@@ -2742,8 +2742,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves does not list a wiki update as an open action \u2014 a vague suggestion without a clear owner or commitment is not an action",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot does not list a wiki update as an open action — a vague suggestion without a clear owner or commitment is not an action",
           "result": {
             "pass": true,
             "valid": true,
@@ -2779,7 +2779,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-03-step-3",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [],
@@ -2787,8 +2787,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves does not extract any actions from the social messages \u2014 casual greetings and social chat are not actions",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot does not extract any actions from the social messages — casual greetings and social chat are not actions",
           "result": {
             "pass": true,
             "valid": true,
@@ -2819,7 +2819,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-04-step-2",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [],
@@ -2827,8 +2827,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves does not list an auth refactor action from the general progress update \u2014 a status update is not a new action commitment",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot does not list an auth refactor action from the general progress update — a status update is not a new action commitment",
           "result": {
             "pass": true,
             "valid": true,
@@ -2869,7 +2869,7 @@
         },
         {
           "eventId": "TC-NEG-CHAT-01-step-4",
-          "text": "@jeeves list decisions"
+          "text": "@Wire Team Bot list decisions"
         }
       ],
       "records": [],
@@ -2877,8 +2877,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves list decisions",
-          "assertion": "Jeeves reports no decisions were recorded \u2014 a casual chat exchange about a tool is not a decision",
+          "step": "@Wire Team Bot list decisions",
+          "assertion": "Wire Team Bot reports no decisions were recorded — a casual chat exchange about a tool is not a decision",
           "result": {
             "pass": true,
             "valid": true,
@@ -2919,7 +2919,7 @@
         },
         {
           "eventId": "TC-NEG-CHAT-02-step-4",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [],
@@ -2927,8 +2927,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves reports no actions were extracted from the meeting small-talk \u2014 procedural chat about starting a meeting is not an action",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot reports no actions were extracted from the meeting small-talk — procedural chat about starting a meeting is not an action",
           "result": {
             "pass": true,
             "valid": true,
@@ -2946,7 +2946,7 @@
       "elapsedMs": 18159,
       "outputs": [
         "",
-        "I'm afraid there are no actions recorded in this channel yet \u2014 nothing open against your name or anyone else's.\n\nTo log one: `action: <description> for Alice`, optionally with a deadline."
+        "I'm afraid there are no actions recorded in this channel yet — nothing open against your name or anyone else's.\n\nTo log one: `action: <description> for Alice`, optionally with a deadline."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:30:20.689Z",
@@ -2959,7 +2959,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-05-step-2",
-          "text": "@jeeves what are Alice's open actions?"
+          "text": "@Wire Team Bot what are Alice's open actions?"
         }
       ],
       "records": [],
@@ -2967,8 +2967,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves what are Alice's open actions?",
-          "assertion": "Jeeves does not list an open action about writing technical specifications \u2014 a first-person announcement of completed work is not a new action",
+          "step": "@Wire Team Bot what are Alice's open actions?",
+          "assertion": "Wire Team Bot does not list an open action about writing technical specifications — a first-person announcement of completed work is not a new action",
           "result": {
             "pass": true,
             "valid": true,
@@ -2999,7 +2999,7 @@
         },
         {
           "eventId": "TC-NEG-ACT-06-step-2",
-          "text": "@jeeves team actions"
+          "text": "@Wire Team Bot team actions"
         }
       ],
       "records": [],
@@ -3007,8 +3007,8 @@
       "storedChecks": null,
       "judgements": [
         {
-          "step": "@jeeves team actions",
-          "assertion": "Jeeves does not list an open action about signing a contract \u2014 a past-tense completion announcement is not a new open action",
+          "step": "@Wire Team Bot team actions",
+          "assertion": "Wire Team Bot does not list an open action about signing a contract — a past-tense completion announcement is not a new open action",
           "result": {
             "pass": true,
             "valid": true,
@@ -3027,8 +3027,8 @@
       "outputs": [
         "Action **ACT-0543** created for **Bob**: review the launch checklist (due Friday: 18 Sept 2026, 12:00)",
         "Action **ACT-0544** created for **Alice**: prepare the retrospective slides",
-        "You own one open item:\n\n\u2022 **[ACT-0544] prepare the retrospective slides**\n  **Owner:** @Alice | **Status:** open\n\nNo deadline is recorded against it. To add one, use `ACT-0544 due Friday`.\n\nFor reference, ACT-0543 (review the launch checklist) sits with @Bob, due 18 September 2026.",
-        "You own one open item:\n\n\u2022 **[ACT-0543] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nOnce it's complete, mark it with `ACT-0543 done`.\n\nFor reference, ACT-0544 (prepare the retrospective slides) sits with @Alice and has no deadline recorded."
+        "You own one open item:\n\n• **[ACT-0544] prepare the retrospective slides**\n  **Owner:** @Alice | **Status:** open\n\nNo deadline is recorded against it. To add one, use `ACT-0544 due Friday`.\n\nFor reference, ACT-0543 (review the launch checklist) sits with @Bob, due 18 September 2026.",
+        "You own one open item:\n\n• **[ACT-0543] review the launch checklist**\n  **Owner:** @Bob | **Status:** open | **Due:** 18 September 2026\n\nOnce it's complete, mark it with `ACT-0543 done`.\n\nFor reference, ACT-0544 (prepare the retrospective slides) sits with @Alice and has no deadline recorded."
       ],
       "context": {
         "referenceTime": "2026-09-18T15:00:00.000Z",
@@ -3086,5 +3086,10 @@
       ],
       "failures": []
     }
-  ]
+  ],
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

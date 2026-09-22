@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Register (or re-authenticate) Jeeves as a Wire *application* on a Wire backend
+ * Register (or re-authenticate) Wire Team Bot as a Wire *application* on a Wire backend
  * and emit the WIRE_SDK_* environment block the bot needs.
  *
  * The Wire Apps SDK authenticates with an app token, which is the `zuid` cookie the
@@ -10,7 +10,7 @@
  * Usage:
  *   node scripts/register-app.mjs versions  --host URL
  *   node scripts/register-app.mjs send-code --host URL --email ADMIN_EMAIL
- *   node scripts/register-app.mjs create    --host URL --email ADMIN_EMAIL [--name Jeeves] [--category other]
+ *   node scripts/register-app.mjs create    --host URL --email ADMIN_EMAIL [--name "Wire Team Bot"] [--category other]
  *                                           [--description TEXT] [--code 2FA_CODE] [--out .env.staging] [--force]
  *   node scripts/register-app.mjs refresh   --host URL --email ADMIN_EMAIL --app-id UUID [--code 2FA_CODE] [--out FILE]
  *   node scripts/register-app.mjs list      --host URL --email ADMIN_EMAIL [--code 2FA_CODE]
@@ -59,7 +59,7 @@ function usage() {
   stdout.write(`Usage:
   node scripts/register-app.mjs versions  --host URL
   node scripts/register-app.mjs send-code --host URL --email ADMIN_EMAIL
-  node scripts/register-app.mjs create    --host URL --email ADMIN_EMAIL [--name Jeeves] [--category other]
+  node scripts/register-app.mjs create    --host URL --email ADMIN_EMAIL [--name "Wire Team Bot"] [--category other]
                                           [--description TEXT] [--code 2FA_CODE] [--out FILE] [--force] [--print-token]
   node scripts/register-app.mjs refresh   --host URL --email ADMIN_EMAIL --app-id UUID [--code 2FA_CODE] [--out FILE] [--force] [--print-token]
   node scripts/register-app.mjs list      --host URL --email ADMIN_EMAIL [--code 2FA_CODE]
@@ -124,7 +124,7 @@ async function negotiateVersion(host) {
 }
 
 async function login(host, v, email, password, code) {
-  const body = { email, password, label: "jeeves-register-app" };
+  const body = { email, password, label: "wire-team-bot-register-app" };
   if (code) body.verification_code = String(code);
   try {
     const { data } = await api(host, `/${v}/login?persist=false`, { method: "POST", body });
@@ -224,11 +224,11 @@ async function cmdSendCode(host, opts) {
 
 async function cmdCreate(host, opts) {
   const a = await withAdmin(host, opts);
-  const name = opts.name ?? "Jeeves";
+  const name = opts.name ?? "Wire Team Bot";
   const body = {
     name,
     category: opts.category ?? "other",
-    description: (opts.description ?? "Jeeves — team assistant bot (decisions, actions, reminders, Q&A).").slice(0, 300),
+    description: (opts.description ?? "Wire Team Bot — team assistant bot (decisions, actions, reminders, Q&A).").slice(0, 300),
     password: a.password,
   };
   let created;

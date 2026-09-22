@@ -62,7 +62,7 @@ try {
   const records = [...decisions.map(d => ({ type: 'decision', source: d.rawMessageId, content: d.summary, context: d.context, author: d.authorName, rationale: d.rationale, status: d.status })),
     ...actions.map(a => ({ type: 'action', source: a.rawMessageId, content: a.description, owner: a.assigneeId, ownerName: a.assigneeName, status: a.status, deadline: a.deadline }))];
   const expected = fixture.events.filter(e => e.expected);
-  const config = loadConfig().llm.jeeves;
+  const config = loadConfig().llm.bot;
   const report = { runAt: new Date().toISOString(), commit: process.env.EVALUATION_COMMIT ?? 'working-tree (set EVALUATION_COMMIT for release evidence)',
     channel, privacyMarkers, configuration: { slots: config.slots, embeddings: config.embed }, reviewStatus: fixture.reviewStatus,
     reminders: retained[1].map(r => ({ type: "reminder", source: r.rawMessageId, content: r.description, owner: r.targetId, status: r.status, triggerAt: r.triggerAt })),

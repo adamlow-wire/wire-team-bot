@@ -58,7 +58,7 @@
         "events": [
           {
             "eventId": "TC-STATE-03-step-1",
-            "text": "@jeeves secure mode"
+            "text": "@Wire Team Bot secure mode"
           }
         ],
         "records": [],

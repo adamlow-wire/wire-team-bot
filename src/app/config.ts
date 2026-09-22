@@ -1,14 +1,14 @@
 /**
  * Strongly-typed runtime configuration. Built from environment variables.
- * All LLM configuration uses the JEEVES_* env var family.
- * Set JEEVES_LLM_BASE_URL to a local Ollama endpoint to keep all inference on-premises.
+ * All LLM configuration uses the WIRE_TEAM_BOT_* env var family.
+ * Set WIRE_TEAM_BOT_LLM_BASE_URL to a local Ollama endpoint to keep all inference on-premises.
  */
 
 /**
  * Per-slot model config for the seven-slot LLM architecture.
  * Each slot has a primary model and a fallback; all share one provider endpoint.
  */
-export interface JeevesModelSlot {
+export interface ModelSlot {
   model: string;
   fallback: string;
 }
@@ -16,10 +16,10 @@ export interface JeevesModelSlot {
 /**
  * Embedding endpoint settings. Chat and embeddings may come from different providers:
  * Anthropic's OpenAI-compatible endpoint serves chat completions but has no /embeddings,
- * so a Claude deployment points JEEVES_EMBED_BASE_URL at Ollama/OpenAI/etc. or runs with
+ * so a Claude deployment points WIRE_TEAM_BOT_EMBED_BASE_URL at Ollama/OpenAI/etc. or runs with
  * embeddings disabled (semantic retrieval, entity dedup and contradiction detection off).
  */
-export interface JeevesEmbeddingConfig {
+export interface EmbeddingConfig {
   baseUrl: string;
   apiKey: string;
   enabled: boolean;
@@ -30,12 +30,12 @@ export type EmbeddingsMode = "on" | "off" | "auto";
 /** Hostname of Anthropic's API; it exposes chat completions but no /embeddings endpoint. */
 export const ANTHROPIC_API_HOST = "api.anthropic.com";
 
-export interface JeevesLLMConfig {
+export interface LLMConfig {
   /** Chat-completions provider endpoint shared by all six chat slots. */
   baseUrl: string;
   apiKey: string;
   /** Embedding provider; defaults to the chat provider unless overridden. */
-  embed: JeevesEmbeddingConfig;
+  embed: EmbeddingConfig;
   timeoutMs: number;
   /** Complexity score above which the respond slot escalates to complexSynthesis. */
   complexityThreshold: number;
@@ -48,13 +48,13 @@ export interface JeevesLLMConfig {
   /** Vector dimensions for embedding model output. */
   embedDims: number;
   slots: {
-    classify: JeevesModelSlot;
-    extract: JeevesModelSlot;
-    embed: JeevesModelSlot;
-    summarise: JeevesModelSlot;
-    queryAnalyse: JeevesModelSlot;
-    respond: JeevesModelSlot;
-    complexSynthesis: JeevesModelSlot;
+    classify: ModelSlot;
+    extract: ModelSlot;
+    embed: ModelSlot;
+    summarise: ModelSlot;
+    queryAnalyse: ModelSlot;
+    respond: ModelSlot;
+    complexSynthesis: ModelSlot;
   };
 }
 
@@ -79,7 +79,7 @@ export interface Config {
     secretModeInactivityMs: number;
   };
   llm: {
-    jeeves: JeevesLLMConfig;
+    bot: LLMConfig;
   };
 }
 
@@ -140,7 +140,7 @@ export function resolveEmbeddingSettings(input: {
   embedBaseUrl?: string;
   embedApiKey?: string;
   mode: EmbeddingsMode;
-}): JeevesEmbeddingConfig {
+}): EmbeddingConfig {
   const baseUrl = (input.embedBaseUrl?.trim() || input.llmBaseUrl).replace(/\/+$/, "");
   const apiKey = input.embedApiKey !== undefined ? input.embedApiKey : input.llmApiKey;
   const enabled =
@@ -156,17 +156,17 @@ function envEmbeddingsMode(name: string): EmbeddingsMode {
   throw new Error(`${name} must be one of: on, off, auto`);
 }
 
-function loadJeevesConfig(): JeevesLLMConfig {
-  const baseUrl = envStr("JEEVES_LLM_BASE_URL", "http://localhost:11434/v1").replace(/\/+$/, "");
-  const apiKey = envStr("JEEVES_LLM_API_KEY", "");
+function loadLLMConfig(): LLMConfig {
+  const baseUrl = envStr("WIRE_TEAM_BOT_LLM_BASE_URL", "http://localhost:11434/v1").replace(/\/+$/, "");
+  const apiKey = envStr("WIRE_TEAM_BOT_LLM_API_KEY", "");
   const embed = resolveEmbeddingSettings({
     llmBaseUrl: baseUrl,
     llmApiKey: apiKey,
-    embedBaseUrl: process.env.JEEVES_EMBED_BASE_URL,
-    embedApiKey: process.env.JEEVES_EMBED_API_KEY,
-    mode: envEmbeddingsMode("JEEVES_EMBEDDINGS"),
+    embedBaseUrl: process.env.WIRE_TEAM_BOT_EMBED_BASE_URL,
+    embedApiKey: process.env.WIRE_TEAM_BOT_EMBED_API_KEY,
+    mode: envEmbeddingsMode("WIRE_TEAM_BOT_EMBEDDINGS"),
   });
-  const slot = (modelEnv: string, fallbackEnv: string, defaultModel: string, defaultFallback: string): JeevesModelSlot => ({
+  const slot = (modelEnv: string, fallbackEnv: string, defaultModel: string, defaultFallback: string): ModelSlot => ({
     model: envStr(modelEnv, defaultModel),
     fallback: envStr(fallbackEnv, defaultFallback),
   });
@@ -174,20 +174,20 @@ function loadJeevesConfig(): JeevesLLMConfig {
     baseUrl,
     apiKey,
     embed,
-    timeoutMs: envInt("JEEVES_LLM_TIMEOUT_MS", 60_000),
-    complexityThreshold: envFloat("JEEVES_COMPLEXITY_THRESHOLD", 0.7),
-    extractConfidenceMin: envFloat("JEEVES_EXTRACT_CONFIDENCE_MIN", 0.6),
-    entityDedupThreshold: envFloat("JEEVES_ENTITY_DEDUP_THRESHOLD", 0.92),
-    contradictionThreshold: envFloat("JEEVES_CONTRADICTION_THRESHOLD", 0.78),
-    embedDims: envInt("JEEVES_EMBED_DIMS", 2560),
+    timeoutMs: envInt("WIRE_TEAM_BOT_LLM_TIMEOUT_MS", 60_000),
+    complexityThreshold: envFloat("WIRE_TEAM_BOT_COMPLEXITY_THRESHOLD", 0.7),
+    extractConfidenceMin: envFloat("WIRE_TEAM_BOT_EXTRACT_CONFIDENCE_MIN", 0.6),
+    entityDedupThreshold: envFloat("WIRE_TEAM_BOT_ENTITY_DEDUP_THRESHOLD", 0.92),
+    contradictionThreshold: envFloat("WIRE_TEAM_BOT_CONTRADICTION_THRESHOLD", 0.78),
+    embedDims: envInt("WIRE_TEAM_BOT_EMBED_DIMS", 2560),
     slots: {
-      classify:        slot("JEEVES_MODEL_CLASSIFY",       "JEEVES_FALLBACK_CLASSIFY",       "qwen3-next:80b",       "qwen3-next:80b"),
-      extract:         slot("JEEVES_MODEL_EXTRACT",        "JEEVES_FALLBACK_EXTRACT",        "qwen3-next:80b",       "qwen3-next:80b"),
-      embed:           slot("JEEVES_MODEL_EMBED",          "JEEVES_FALLBACK_EMBED",          "qwen3-embedding:4b",   "qwen3-embedding:4b"),
-      summarise:       slot("JEEVES_MODEL_SUMMARISE",      "JEEVES_FALLBACK_SUMMARISE",      "qwen3-next:80b",       "qwen3-next:80b"),
-      queryAnalyse:    slot("JEEVES_MODEL_QUERY_ANALYSE",  "JEEVES_FALLBACK_QUERY_ANALYSE",  "qwen3-next:80b",       "qwen3-next:80b"),
-      respond:         slot("JEEVES_MODEL_RESPOND",        "JEEVES_FALLBACK_RESPOND",        "qwen3-next:80b",       "qwen3-next:80b"),
-      complexSynthesis:slot("JEEVES_MODEL_COMPLEX",        "JEEVES_FALLBACK_COMPLEX",        "gpt-oss:120b",         "qwen3-next:80b"),
+      classify:        slot("WIRE_TEAM_BOT_MODEL_CLASSIFY",       "WIRE_TEAM_BOT_FALLBACK_CLASSIFY",       "qwen3-next:80b",       "qwen3-next:80b"),
+      extract:         slot("WIRE_TEAM_BOT_MODEL_EXTRACT",        "WIRE_TEAM_BOT_FALLBACK_EXTRACT",        "qwen3-next:80b",       "qwen3-next:80b"),
+      embed:           slot("WIRE_TEAM_BOT_MODEL_EMBED",          "WIRE_TEAM_BOT_FALLBACK_EMBED",          "qwen3-embedding:4b",   "qwen3-embedding:4b"),
+      summarise:       slot("WIRE_TEAM_BOT_MODEL_SUMMARISE",      "WIRE_TEAM_BOT_FALLBACK_SUMMARISE",      "qwen3-next:80b",       "qwen3-next:80b"),
+      queryAnalyse:    slot("WIRE_TEAM_BOT_MODEL_QUERY_ANALYSE",  "WIRE_TEAM_BOT_FALLBACK_QUERY_ANALYSE",  "qwen3-next:80b",       "qwen3-next:80b"),
+      respond:         slot("WIRE_TEAM_BOT_MODEL_RESPOND",        "WIRE_TEAM_BOT_FALLBACK_RESPOND",        "qwen3-next:80b",       "qwen3-next:80b"),
+      complexSynthesis:slot("WIRE_TEAM_BOT_MODEL_COMPLEX",        "WIRE_TEAM_BOT_FALLBACK_COMPLEX",        "gpt-oss:120b",         "qwen3-next:80b"),
     },
   };
 }
@@ -212,12 +212,12 @@ export function loadConfig(): Config {
   );
   const secretModeInactivityMs = Math.max(60_000, parseInt(process.env.SECRET_MODE_INACTIVITY_MS ?? "1800000", 10));
 
-  const jeeves = loadJeevesConfig();
+  const bot = loadLLMConfig();
 
   return {
     wire,
     database,
     app: { logLevel, messageBufferSize, secretModeInactivityMs },
-    llm: { jeeves },
+    llm: { bot },
   };
 }

@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-21. Staging runtime/image: `2dbc0fd` (timezone fix; baseline `e35428b`). Latest tested QA runtime: `2dbc0fd`.
+Updated: 2026-09-22. Staging runtime/image: `2dbc0fd` (timezone fix; baseline `e35428b`). Latest tested QA runtime: `2dbc0fd`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -76,7 +76,7 @@ production dependency is required by this plan.
   multi-path boost, recency and confidence, within an approximate 7,000-token budget.
   Graph traversal is bounded to depth three. Temporal/institutional queries add summaries.
 - Commands are currently pattern-based in `WireEventRouter`. The old foreground
-  `OpenAIConversationIntelligenceAdapter` is absent. Configuration now reads `JEEVES_*`;
+  `OpenAIConversationIntelligenceAdapter` is absent. Configuration now reads `WIRE_TEAM_BOT_*`;
   the old `LLM_PASSIVE_*` / `LLM_CAPABLE_*` variables are not read by `config.ts` and do not
   power a second router. The compatibility `ConversationConfigRepository`
   still reads from `channel_config`.
@@ -131,6 +131,25 @@ The official SDK migration keeps CommonJS, the `node:22-trixie-slim` image and a
 Preserve the existing crypto key and store across ordinary restarts. See the
 [cutover runbook](README.md#official-sdk-cutover) for migration from the old fork.
 
+### Canonical naming cleanup — 2026-09-22
+
+Adam requested removal of all former product-name references from the current repository.
+Use **Wire Team Bot** in prose, **wire-team-bot** for resource identifiers and
+**WIRE_TEAM_BOT_** for model environment variables. This supersedes the earlier compatibility
+alias policy; actual structured Wire mentions and supported text commands/record IDs remain.
+Runtime model config types and the embedding adapter use generic descriptive names.
+
+Tracked historical report branding is normalised with an explicit annotation; facts, source
+IDs, assertions and recorded outcomes retain their original meaning and are not fresh results.
+Unmodified evidence and the original baseline instrumentation patch remain recoverable from
+Git snapshot `f0879c0`. The patch is retired from the current tree rather than altered into an
+invalid historical diff. Git-history rewriting is a separate pending scope question.
+
+Configuration migration and a verified backup/copy of existing staging DB/crypto state must
+precede activation under renamed Compose resources. Never initialise an empty replacement
+identity or reset shared databases. Source cleanup, regression validation, isolated model runs
+and safe staging migration are in progress; do not claim activation complete yet.
+
 ## 3. Current delivery state
 
 **Implemented** means code is present, not that it is proven in a real team. **Reported** means
@@ -148,7 +167,7 @@ The old v2 phases 1a, 1b, 2, 3 and 4 describe delivered components, not a comple
 | Embeddings optional/separate provider | Implemented; embedding configuration tests present | Smoke test selected configuration and dimensions |
 | Buttons and contradiction follow-through | Dead decision buttons removed; old clicks and contradiction notices give text commands; Q&A prompt explicitly read-only | Human/Wire review of actual interactions pending |
 | Test harness and simulation | Event-framed CLI, post-drain DB inventory and fact/source scoring implemented; simulation now sends the fixture’s actual members | `golden.json` still has no human review; no human-approved quality claim |
-| Product name | User-facing name is Wire Team Bot; old text prefix and `JEEVES_*` environment keys remain compatibility aliases | Verify registered Wire app display name in smoke test; generic name configuration remains deferred |
+| Product name | Full branding cleanup in progress: canonical display name, identifiers, environment keys and deployment resources | Verify registered Wire app display name in smoke test; generic name configuration remains deferred |
 | Documentation consolidation | Complete in this revision | Maintain this plan as work lands |
 
 Historical validation: SDK migration notes reported 141 passing unit tests, clean lint, an
@@ -321,7 +340,7 @@ To roll back only the bot, retaining current DB/crypto state:
 ```bash
 docker compose -f docker-compose.staging.yml \
   -f /home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz/rollback.override.yml \
-  up -d --no-deps --no-build --pull never jeeves
+  up -d --no-deps --no-build --pull never wire-team-bot
 ```
 
 **Wire follow-up — September 21:** Adam confirms the lowercase-ID retest worked on the
@@ -414,7 +433,7 @@ recreated; production and the staging database container were untouched.
   `sha256:4faa5df2a11d540e20659d89cb439755715060cb859f6db264a2c038bdb5abd0`.
   Previous image `wire-team-bot:v3-rc-4bc7e1f` remains available for rollback.
 - Effective environment, credentials, Prisma schema and migration files match the previous
-  service. Existing `jeeves-staging_jeeves-staging-crypto` and database volumes were retained.
+  service. Existing `wire-team-bot-staging_wire-team-bot-staging-crypto` and database volumes were retained.
   No tokens/keys were refreshed and no database was reset or restored.
 - Old bot stopped cleanly at **16:19:38 UTC**. Private backups are in
   `/home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/`, outside Git, with protected
@@ -439,7 +458,7 @@ To reapply the candidate without rebuilding or changing volumes:
 ```bash
 docker compose -f docker-compose.staging.yml \
   -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/candidate.override.yml \
-  up -d --no-deps --no-build --pull never jeeves
+  up -d --no-deps --no-build --pull never wire-team-bot
 ```
 
 Rollback the image while retaining current data and crypto state:
@@ -447,7 +466,7 @@ Rollback the image while retaining current data and crypto state:
 ```bash
 docker compose -f docker-compose.staging.yml \
   -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/rollback.override.yml \
-  up -d --no-deps --no-build --pull never jeeves
+  up -d --no-deps --no-build --pull never wire-team-bot
 ```
 
 Do not restore the pre-upgrade crypto snapshot for an ordinary image rollback: the live store
@@ -657,7 +676,7 @@ To restore the preceding bot image while retaining current DB/crypto state:
 ```bash
 docker compose -f docker-compose.staging.yml \
   -f /home/sysop/wire/wire-team-bot-backups/timezone-ngs69pir/rollback.override.yml \
-  up -d --no-deps --no-build --pull never jeeves
+  up -d --no-deps --no-build --pull never wire-team-bot
 ```
 
 **UI retest passed — September 21, 13:07 UTC:** the operator screenshot shows explicit UTC
@@ -804,7 +823,7 @@ Evaluator calibration follow-up:
   the e2e report. Network/format errors remain failures.
 - With that protocol, the stronger configured model passes [12/12 calibration cases](tests/acceptance/step2-judge-strong-report.json),
   including all six negative controls. Acceptance runs explicitly set
-  `JEEVES_JUDGE_MODEL=claude-opus-5`; application model slots and the default judge fallback remain
+  `WIRE_TEAM_BOT_JUDGE_MODEL=claude-opus-5`; application model slots and the default judge fallback remain
   unchanged. This is evaluator calibration using an existing model, not an application provider
   migration. Initial calibration encountered an explicit unsupported-temperature HTTP 400 before
   the compatibility fix; provider bodies/credentials were not logged.
@@ -887,9 +906,9 @@ must already be running and migrated):
 
 ```bash
 docker run --rm --network host --user "$(id -u):$(id -g)" \
-  --env-file .env.staging -e JEEVES_JUDGE_MODEL=claude-opus-5 \
+  --env-file .env.staging -e WIRE_TEAM_BOT_JUDGE_MODEL=claude-opus-5 \
   -e DATABASE_URL=postgresql://wirebot:synthetic-only@127.0.0.1:55439/wire_team_bot_test \
-  -e JEEVES_EMBEDDINGS=off -e NODE_PATH=/validation/node_modules \
+  -e WIRE_TEAM_BOT_EMBEDDINGS=off -e NODE_PATH=/validation/node_modules \
   -v "$PWD/tests":/app/tests:ro \
   -v "$PWD/node_modules":/validation/node_modules:ro \
   -v "$PWD/tsconfig.json":/validation/tsconfig.json:ro \
@@ -1150,7 +1169,7 @@ to the operator and can be used for assignment/attribution checks. This identifi
 location and accounts; it is not a completed candidate smoke test. Human reviewer remains
 to be identified.
 
-Initial staging activation (2026-09-16 16:11 UTC): the `jeeves-staging` container used
+Initial staging activation (2026-09-16 16:11 UTC): the `wire-team-bot-staging` container used
 `wire-team-bot:v3-rc-bde0d0a` with the tested digest and existing identity/volumes. Only the
 designated conversation was present and no reminders were pending before the switch. Models
 match the accepted synthetic configuration; embeddings are off. Startup hydrated one conversation
@@ -1166,8 +1185,8 @@ remains an operational naming check.
 
 Rollback snapshots (private, outside Git): `/tmp/wire-v3-staging-backup-kcqACp/database.dump`
 and `crypto-store.tar.gz`; both were checked readable. The candidate override is in that same
-directory as `candidate.override.yml`. The old `jeeves:staging` image was retained. If rollback
-is needed, use `docker compose -f docker-compose.staging.yml up -d --no-deps --no-build jeeves`;
+directory as `candidate.override.yml`. The old `wire-team-bot:staging` image was retained. If rollback
+is needed, use `docker compose -f docker-compose.staging.yml up -d --no-deps --no-build wire-team-bot`;
 retain the current database and crypto volume. Do not reset or restore identity storage for an
 ordinary image rollback.
 
@@ -1188,7 +1207,7 @@ confirms a post-restart round trip and correct persisted assignment for `ACT-000
 @adamlow_wire, creator @adamhuman, deadline `2026-09-18T12:00:00.000Z`, one audit entry.
 The `my actions` reply incorrectly addressed the previous speaker; caller-specific acceptance
 failed and requires the repair below. To roll back this update to the previous candidate:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-staging-backup-kcqACp/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-staging-backup-kcqACp/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 Keep current volumes; no database or crypto reset is required.
 
 Caller fix and staging update (2026-09-16 17:04 UTC): `2ba7a1f` routes a leading actual Wire
@@ -1208,7 +1227,7 @@ The Q&A identifies Adam Low as the current requester, with no incorrect Adam (Hu
 Caller-specific list/Q&A and post-restart receive/decrypt/reply now pass on this image. This
 does not yet verify reassignment, deadline changes, completion, reminders or privacy-state restart.
 Rollback to the preceding image while keeping current volumes:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-owner-backup-QFDF2p/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-owner-backup-QFDF2p/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 
 Pasted-command fix and staging update (2026-09-16 18:27 UTC): `a51a7af` accepts a leading
 single-line inline-code span around an ACT ID, command prefix or whole command, after stripping
@@ -1233,7 +1252,7 @@ deadline `2026-09-18T09:45:44.790Z`, status `done`, version 4 and four audit ent
 attributed to Adam Low. The core action journey now passes on Wire; unknown/ambiguous-owner
 refusal and the remaining reminder/privacy/correction journeys still need Wire acceptance.
 Rollback, retaining volumes:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-caller-backup-tbxaea25/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-caller-backup-tbxaea25/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 
 Reminder formatting fix and staging update (2026-09-17 10:03 UTC): `f3b2eed` removes the
 ACT-only restriction on leading inline-code normalization. Existing text-command matching now
@@ -1258,7 +1277,7 @@ This retry shows a plain command; inline-code reminder routing remains verified 
 Cancellation, snooze and overdue-during-downtime recovery still need Wire acceptance;
 restart recovery is covered below.
 Rollback, retaining volumes:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-format-backup-xy3x0138/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-format-backup-xy3x0138/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 
 Pending-reminder restart check (2026-09-17 11:36 UTC): the operator created `REM-0002`
 using a code-formatted command, confirming the inline-code creation fix on Wire. Scoped DB
@@ -1297,7 +1316,7 @@ At 15:05 UTC staging was updated to `wire-team-bot:v3-rc-17b8e42`, preserving da
 Readable snapshots and override: `/tmp/wire-v3-assignment-backup-vcoikohf/`. No reminders were
 pending before the switch. Startup connected, hydrated two conversations and reported zero
 SDK errors. The subsequent operator replay exposed the structured-mention regression below. Previous rollback command:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 
 Structured mention regression (2026-09-17): the next demo used `@member really needs to`.
 Three before-fix contract cases fail: routing dropped the qualified mention ID, and the adverb
@@ -1373,7 +1392,7 @@ Staging started the pinned image at 08:57:46.917 UTC, preserved existing volumes
 conversations and connected with zero SDK errors. Fresh readable database/crypto backups and
 override: `/tmp/wire-v3-reactions-backup-i3egzaxn/`. No reminders were pending before the switch.
 Rollback with current volumes:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-mention-backup-8fiicc11/candidate.override.yml up -d --no-deps --no-build jeeves`.
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-mention-backup-8fiicc11/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
 
 Native reply request (2026-09-18): direct responses carried source IDs through the use cases,
 but the outbound adapter ignored them. Runtime `4bc7e1f` uses the SDK's native quote ID and
@@ -1390,7 +1409,7 @@ confirms the native quote of Adam Low’s “my actions please?” question, inc
 text/author. The answer shows ACT-0005/4 and omits completed emoji-checklist ACT-0006. Native
 reply display and open-list removal pass; live two-message correlation remains pending.
 Rollback with existing volumes:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reactions-backup-i3egzaxn/candidate.override.yml up -d --no-deps --no-build jeeves`. No extractor/classifier/pipeline change; quality and simulation results
+`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reactions-backup-i3egzaxn/candidate.override.yml up -d --no-deps --no-build wire-team-bot`. No extractor/classifier/pipeline change; quality and simulation results
 above remain attributed to `7384b39`, not reported as fresh runs for this transport-only change.
 
 Remaining entry checks, in order:

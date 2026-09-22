@@ -5,7 +5,7 @@
  *   npm run cli
  *
  * Usage (scripted — for agents and automated tests):
- *   printf "decision: we use Postgres\n@jeeves what decisions have we made?\n" | npm run cli
+ *   printf "decision: we use Postgres\n@Wire Team Bot what decisions have we made?\n" | npm run cli
  *
  * Message format:
  *   <message>                    — sent as the default user (Alice)
@@ -87,7 +87,7 @@ const CHANNEL_ID_RAW: QualifiedId = {
   id: process.env.E2E_CHANNEL_ID ?? "cli-channel",
   domain: DOMAIN,
 };
-const BOT_ID: QualifiedId = { id: "jeeves", domain: DOMAIN };
+const BOT_ID: QualifiedId = { id: "wire-team-bot", domain: DOMAIN };
 
 /** Seeded roster — members available to send messages as. */
 const MEMBERS: Array<{ name: string; id: QualifiedId }> = [
@@ -129,7 +129,7 @@ function createCliOutbound(): WireOutboundPort {
 // ── Fake TextMessage builder ──────────────────────────────────────────────────
 
 function buildMessage(text: string, sender: QualifiedId): object {
-  const botMentionPattern = /^@(?:wire team bot|jeeves)\b/i;
+  const botMentionPattern = /^@(?:wire team bot)\b/i;
   const mentions = botMentionPattern.test(text.trim())
     ? [{ userId: BOT_ID, offset: text.indexOf("@"), length: text.trim().match(botMentionPattern)![0].length }]
     : [];
@@ -183,7 +183,7 @@ async function main() {
   new Intl.DateTimeFormat("en-GB", { timeZone: timezone });
   const dateTimeService = new SystemDateTimeService(referenceTime ? () => new Date(referenceTime) : undefined);
   const scheduler       = new InProcessScheduler(logger);
-  const llmFactory      = new LLMClientFactory(config.llm.jeeves, logger);
+  const llmFactory      = new LLMClientFactory(config.llm.bot, logger);
 
   // Seed member cache with the CLI roster + bot
   const channelId = toChannelId(CHANNEL_ID_RAW);
@@ -215,7 +215,7 @@ async function main() {
   // Pipeline
   const classifier       = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction       = new OpenAIExtractionAdapter(llmFactory, logger);
-  const embeddingService = createEmbeddingService(config.llm.jeeves, logger);
+  const embeddingService = createEmbeddingService(config.llm.bot, logger);
   const pipeline         = new ProcessingPipeline({
     auditLog: auditLogRepo,
     userResolution: userResolution, dateTimeService,
@@ -224,8 +224,8 @@ async function main() {
     decisionRepo: decisionsRepo, actionRepo: actionsRepo,
     channelConfig: channelConfigRepo, slidingWindow, wireOutbound, llm: llmFactory,
     logger,
-    extractConfidenceMin:   config.llm.jeeves.extractConfidenceMin,
-    contradictionThreshold: config.llm.jeeves.contradictionThreshold,
+    extractConfidenceMin:   config.llm.bot.extractConfidenceMin,
+    contradictionThreshold: config.llm.bot.contradictionThreshold,
   });
   const processingQueue = new InMemoryProcessingQueue<MessageJob>((msg, meta) => logger.warn(msg, meta));
   processingQueue.setWorker(job => pipeline.process(job.payload, job.signal));

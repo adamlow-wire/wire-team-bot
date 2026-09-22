@@ -1029,7 +1029,7 @@ export class WireEventRouter extends WireEventsHandler {
   // ─────────────────────────────────────────────────────────────────────────
 
   private startsWithBotName(lowered: string): boolean {
-    return /^@?(?:wire team bot|jeeves)\b/i.test(lowered);
+    return /^@?(?:wire team bot)\b/i.test(lowered);
   }
 
   private stripAddressedBotPrefix(text: string, message: TextMessage): string {
@@ -1048,7 +1048,7 @@ export class WireEventRouter extends WireEventsHandler {
   private stripBotPrefix(lowered: string): string {
     // Strip @Wire Team Bot or Wire Team Bot, optionally followed by a parenthetical display-name
     // suffix like (DEV) or (Staging), then any trailing comma/colon and whitespace.
-    return lowered.replace(/^@?(?:wire team bot|jeeves)(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
+    return lowered.replace(/^@?(?:wire team bot)(?:\s+\([^)]+\))?[,:]?\s*/i, "").trim();
   }
 
   private matchesPauseCommand(lowered: string): boolean {

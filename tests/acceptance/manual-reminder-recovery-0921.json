@@ -8,7 +8,7 @@
   "containerId": "96b39b861502fc66e3016db0f9a972f6b2ddab2047bab34530770b05f5c054d1",
   "volumes": [
     {
-      "Name": "jeeves-staging_jeeves-staging-crypto",
+      "Name": "wire-team-bot-staging_wire-team-bot-staging-crypto",
       "Destination": "/app/storage"
     }
   ],
@@ -76,5 +76,10 @@
     ]
   },
   "automatedRecoveryPassed": true,
-  "operatorReceipt": "Accepted 2026-09-21 at Adam\u2019s instruction to assume confirmation: REM-0011 arrived exactly once. No new screenshot or instrumented receipt evidence supplied."
+  "operatorReceipt": "Accepted 2026-09-21 at Adam’s instruction to assume confirmation: REM-0011 arrived exactly once. No new screenshot or instrumented receipt evidence supplied.",
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

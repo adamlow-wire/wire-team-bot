@@ -30,7 +30,7 @@
           },
           {
             "eventId": "TC-QA-01-step-3",
-            "text": "@jeeves what are we using for the session cache and why?"
+            "text": "@Wire Team Bot what are we using for the session cache and why?"
           }
         ],
         "records": [
@@ -49,8 +49,8 @@
         "storedChecks": null,
         "judgements": [
           {
-            "step": "@jeeves what are we using for the session cache and why?",
-            "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+            "step": "@Wire Team Bot what are we using for the session cache and why?",
+            "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
             "result": {
               "pass": true,
               "valid": true,
@@ -85,11 +85,11 @@
         "events": [
           {
             "eventId": "TC-QA-05-step-1",
-            "text": "@jeeves shall I create a reminder to review the deployment checklist?"
+            "text": "@Wire Team Bot shall I create a reminder to review the deployment checklist?"
           },
           {
             "eventId": "TC-QA-05-step-2",
-            "text": "@jeeves yes"
+            "text": "@Wire Team Bot yes"
           }
         ],
         "records": [],
@@ -97,7 +97,7 @@
         "storedChecks": [],
         "judgements": [
           {
-            "step": "@jeeves yes",
+            "step": "@Wire Team Bot yes",
             "assertion": "Continue the deployment-checklist reminder conversation by supplying a supported reminder command or asking for missing timing. Do not claim a reminder was scheduled or say there is no record of the conversation.",
             "result": {
               "pass": true,

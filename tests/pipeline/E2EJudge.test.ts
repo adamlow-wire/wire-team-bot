@@ -6,8 +6,8 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers();
 it("supplies the evaluation date without changing the deadline assertion", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-16T12:00:00Z"));
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
-  vi.stubEnv("JEEVES_LLM_API_KEY", "synthetic");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_API_KEY", "synthetic");
   const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "PASS: Tomorrow is September 17." } }] }) });
   vi.stubGlobal("fetch", fetch);
   const assertion = "The deadline was updated to tomorrow.";
@@ -18,7 +18,7 @@ it("supplies the evaluation date without changing the deadline assertion", async
 });
 
 it("uses the scenario clock and timezone even when the judge runs on another day", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "PASS: Correct calendar date." } }] }) });
   vi.stubGlobal("fetch", fetch);
   const assertion = "Due Friday 18 September, not Friday 25 September.";
@@ -30,7 +30,7 @@ it("uses the scenario clock and timezone even when the judge runs on another day
 });
 
 it("retries an explicit unsupported-temperature rejection without changing the assertion", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const fetch = vi.fn()
     .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: { message: "temperature is not supported" } }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: { content: "FAIL: Wrong owner." } }] }) });
@@ -45,7 +45,7 @@ it("retries an explicit unsupported-temperature rejection without changing the a
 });
 
 it("does not retry unrelated client errors or expose the provider body", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const fetch = vi.fn().mockResolvedValue({ ok: false, status: 400,
     json: async () => ({ error: { message: "PRIVATE_PROVIDER_BODY: bad request" } }) });
   vi.stubGlobal("fetch", fetch);
@@ -54,7 +54,7 @@ it("does not retry unrelated client errors or expose the provider body", async (
 });
 
 it("retries a conflicting multiline verdict once and preserves it", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const invalid = "PASS: Looks right.\nFAIL: Actually wrong owner.";
   const fetch = vi.fn()
     .mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: { content: invalid } }] }) })
@@ -65,7 +65,7 @@ it("retries a conflicting multiline verdict once and preserves it", async () => 
 });
 
 it("fails closed when both verdicts are malformed", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "Probably correct" } }] }) });
   vi.stubGlobal("fetch", fetch);
   expect(await judge("answer", "assertion")).toMatchObject({ pass: false, valid: false, invalidAttempts: ["Probably correct", "Probably correct"] });
@@ -74,7 +74,7 @@ it("fails closed when both verdicts are malformed", async () => {
 
 
 it("retains provider truncation metadata and bounds the verdict budget", async () => {
-  vi.stubEnv("JEEVES_LLM_BASE_URL", "https://model.invalid/v1");
+  vi.stubEnv("WIRE_TEAM_BOT_LLM_BASE_URL", "https://model.invalid/v1");
   const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({
     choices: [{ message: { content: "" }, finish_reason: "length" }],
   }) });

@@ -38,7 +38,7 @@
     "status": "running",
     "startedAt": "2026-09-18T16:20:45.159830561Z",
     "restartCount": 0,
-    "cryptoVolume": "jeeves-staging_jeeves-staging-crypto",
+    "cryptoVolume": "wire-team-bot-staging_wire-team-bot-staging-crypto",
     "levels": {
       "info": 34,
       "warn": 2,
@@ -118,5 +118,10 @@
       "warn": 12
     }
   },
-  "warnings": "Embeddings intentionally disabled; SDK diagnostics retain severity only. Warning cause is not inferred; operator round trip remains pending."
+  "warnings": "Embeddings intentionally disabled; SDK diagnostics retain severity only. Warning cause is not inferred; operator round trip remains pending.",
+  "_brandingNormalization": {
+    "date": "2026-09-22",
+    "scope": "Product labels, environment keys and deployment-name strings normalised to current branding. This historical report is not a fresh run; original bytes remain in the preceding Git revision.",
+    "originalRevision": "f0879c0"
+  }
 }

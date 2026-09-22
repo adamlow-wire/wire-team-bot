@@ -7,14 +7,14 @@
  *   - Both attempts are logged.
  *
  * Usage:
- *   const factory = new LLMClientFactory(config.llm.jeeves, logger);
+ *   const factory = new LLMClientFactory(config.llm.bot, logger);
  *   const result = await factory.chatCompletion("classify", messages, { max_tokens: 200 });
  */
 
-import type { JeevesLLMConfig, JeevesModelSlot } from "../../app/config";
+import type { LLMConfig, ModelSlot } from "../../app/config";
 import type { Logger } from "../../application/ports/Logger";
 
-export type SlotName = keyof JeevesLLMConfig["slots"];
+export type SlotName = keyof LLMConfig["slots"];
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -45,7 +45,7 @@ export class LLMClientFactory {
   private readonly headers: Record<string, string>;
 
   constructor(
-    private readonly config: JeevesLLMConfig,
+    private readonly config: LLMConfig,
     private readonly logger: Logger,
   ) {
     this.url = `${config.baseUrl}/chat/completions`;
@@ -69,7 +69,7 @@ export class LLMClientFactory {
         ? (options.escalateToSlot ?? "complexSynthesis" as SlotName)
         : slot;
 
-    const slotCfg: JeevesModelSlot = this.config.slots[effectiveSlot];
+    const slotCfg: ModelSlot = this.config.slots[effectiveSlot];
 
     // Primary attempt
     try {

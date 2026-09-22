@@ -162,6 +162,23 @@ The SDK stores its SQLite database and keystore under `./storage` relative to th
 |---|---|---|
 | `DATABASE_URL` | `postgres://wirebot:wirebot@localhost:5432/wire_team_bot` | PostgreSQL (with pgvector) connection string. The docker-compose stack overrides this to `postgres:5432` automatically. |
 
+### Upgrading an existing deployment after the naming cleanup
+
+Model configuration now uses the `WIRE_TEAM_BOT_` prefix. Rename each previous model key to
+that prefix, retaining its suffix and value, including primary/fallback models, API settings,
+embedding mode/dimensions and evaluator overrides. Compare with [.env.example](.env.example)
+and [config.ts](src/app/config.ts); do not rotate Wire credentials or the crypto key.
+The old environment prefix and former plain-text bot-name alias are no longer supported.
+Actual Wire mentions still use the bot's qualified identity, irrespective of its display label.
+
+Compose service/project/container/volume identifiers now use `wire-team-bot`. **For an existing
+installation, do not simply run the renamed Compose file against empty volumes.** Stop the
+old bot and database cleanly, back up configuration/Postgres/crypto state, and copy the stopped
+volumes into the new names. Verify their contents before starting the renamed stack with the
+same image lineage, credentials and identity. Keep the prior stack and backups available until
+hydration, decryption and durable records have been verified. Production migration is an
+operator action; the staging migration evidence and exact rollback procedure belong in PLAN.md.
+
 ### Model configuration
 
 [.env.example](.env.example) lists the accepted environment keys;
@@ -255,7 +272,7 @@ reminders, decisions, actions and addressed privacy controls; code blocks and pr
 are not treated as direct commands. Actual person mentions carry their qualified user identity through action creation and
 reassignment, with membership checked in this conversation. Plain-text assignees require an
 unambiguous full name or handle. The addressed named-task variant also accepts `@Bob really needs to …`.
-Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. Runtime configuration remains compatible with existing deployments; use the keys in the linked template.
+Decision button offers have been removed; clicks on old buttons give text guidance. Mention the bot with `resume` while paused or secure. Existing deployments must migrate their model environment keys and Compose resources using the upgrade guidance above.
 
 ## Development
 
@@ -412,15 +429,14 @@ scores; the evaluator still matches every stored record against expected facts/s
 Actual Wire client display requires a new unmentioned commitment and completion in the test
 conversation; existing records do not receive retroactive reactions.
 
-The original `e35428b` baseline was built in a separate archived checkout with only
-[baseline-cli.patch](tests/acceptance/baseline-cli.patch) applied. That patch adds stable input IDs,
-framed replies and per-event drain to its CLI; it does not change routing, model prompts or writes.
-Historical IDs in reports and image tags describe the original runs. Resolve `e35428b` through
-[the commit mapping](tests/acceptance/history-map.json) before archiving its rewritten commit
-into a temporary directory. Apply the patch with `patch -p1`, use the same locked dependencies
-and build it. Run the evaluator with `EVALUATION_ROOT` pointing to that checkout,
-`EVALUATION_COMMIT=<mapped-baseline-commit>` and a separate `EVALUATION_REPORT` output path.
-Use the same isolated DB and model slots listed in the baseline report.
+The original `e35428b` baseline was built in a separate archived checkout with CLI instrumentation.
+Original baseline tooling and unmodified report text remain in the pre-cleanup Git snapshot
+`f0879c0`. To reproduce that historical run, use its tooling and configuration contract, together
+with [the commit mapping](tests/acceptance/history-map.json), in a separate checkout and isolated
+DB. The historical patch can be recovered with
+`git show f0879c0:tests/acceptance/baseline-cli.patch > /tmp/baseline-cli.patch`.
+Current tracked historical reports have branding normalised and carry an explicit annotation;
+this does not represent rerunning their tests or changing their recorded pass/fail results.
 
 Before an acceptance run, use the calibrated judge model and environment override recorded in
 [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance). The application model slots stay
@@ -443,8 +459,8 @@ question answer. Records match by expected fact, source event and owner; generat
 are not scoring keys. Precision counts duplicate/wrong captures in its denominator, and recall
 counts all expected events. The report includes marker occurrences in stored records and
 stderr, elapsed event times, failures and unsolicited-message counts. Times include processing
-and queue drain; they are not a first-token benchmark. Legacy prefixes in fixtures deliberately
-exercise command compatibility.
+and queue drain; they are not a first-token benchmark. Current fixtures use the canonical bot name; historical report text is explicitly normalised
+for branding, with original evidence retained in Git.
 
 Simulation inventory is written to `tests/simulation/simulation-report.json`; it is synthetic,
 local and gitignored. Its `expected: 0` means **unreviewed**, not perfect recall. Review the actual

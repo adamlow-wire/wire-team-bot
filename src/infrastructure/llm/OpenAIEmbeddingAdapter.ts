@@ -1,6 +1,6 @@
 /**
  * Embedding adapter for the Phase 2 pipeline.
- * Uses the `embed` model slot from JeevesLLMConfig (JEEVES_MODEL_EMBED / JEEVES_FALLBACK_EMBED).
+ * Uses the `embed` model slot from LLMConfig (WIRE_TEAM_BOT_MODEL_EMBED / WIRE_TEAM_BOT_FALLBACK_EMBED).
  * Calls the OpenAI-compatible /embeddings endpoint at config.embed.baseUrl, which may be a
  * different provider from the chat slots (see createEmbeddingService for the disabled case).
  *
@@ -8,13 +8,13 @@
  */
 
 import type { EmbeddingService } from "../../application/ports/EmbeddingPort";
-import type { JeevesLLMConfig } from "../../app/config";
+import type { LLMConfig } from "../../app/config";
 import type { Logger } from "../../application/ports/Logger";
 
 const CIRCUIT_OPEN_MS = 5 * 60 * 1000; // 5 minutes cooldown before retrying
 const CIRCUIT_OPEN_AFTER = 3;           // consecutive 503s before opening
 
-export class JeevesEmbeddingAdapter implements EmbeddingService {
+export class OpenAIEmbeddingAdapter implements EmbeddingService {
   private readonly url: string;
   private readonly headers: Record<string, string>;
   private readonly model: string;
@@ -25,7 +25,7 @@ export class JeevesEmbeddingAdapter implements EmbeddingService {
   private circuitOpenedAt: number | null = null;
 
   constructor(
-    private readonly config: JeevesLLMConfig,
+    private readonly config: LLMConfig,
     private readonly logger: Logger,
   ) {
     this.url = `${config.embed.baseUrl.replace(/\/$/, "")}/embeddings`;

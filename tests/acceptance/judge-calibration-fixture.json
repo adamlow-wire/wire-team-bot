@@ -2,7 +2,7 @@
   {
     "id": "ttl-correct",
     "reply": "Redis, for the session cache.\n\n\u2022 **[DEC-0426] Redis will be used for the session cache.**\n  **Recorded by:** Alice | **Date:** 2026-09-18\n  **Decided by:** @Alice\n  *Tags: infrastructure, caching*\n\nThe reason, as you mentioned a moment ago, was native TTL support in Redis. That rationale isn't captured on the record itself \u2014 if you want it stored, log an updated decision with `decision: Redis will be used for the session cache because it supports TTL natively`.",
-    "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+    "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
     "expectedPass": true,
     "context": {
       "referenceTime": "2026-09-18T15:02:18.066Z",
@@ -12,7 +12,7 @@
   {
     "id": "ttl-wrong",
     "reply": "Redis, because it is cheaper. No other reason is known.",
-    "assertion": "Jeeves answers that Redis is being used for the session cache and mentions TTL as a reason",
+    "assertion": "Wire Team Bot answers that Redis is being used for the session cache and mentions TTL as a reason",
     "expectedPass": false,
     "context": {
       "referenceTime": "2026-09-18T15:02:18.066Z",
