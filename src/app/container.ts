@@ -88,10 +88,10 @@ export function createContainer(config: Config, logger: Logger): Container {
   const messageBuffer = new ConversationMessageBuffer(config.app.messageBufferSize);
   const scheduler = new InProcessScheduler(logger);
 
-  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(new LLMClientFactory(config.llm.bot, logger), logger);
-
   // ── Phase 2: Intelligence pipeline ──────────────────────────────────────
   const llmFactory = new LLMClientFactory(config.llm.bot, logger);
+  // One factory for every adapter, so models that reject temperature are learned once.
+  const generalAnswerAdapter = new OpenAIGeneralAnswerAdapter(llmFactory, logger);
   const classifier = new OpenAIClassifierAdapter(llmFactory, logger);
   const extraction = new OpenAIExtractionAdapter(llmFactory, logger);
   const embeddingService = createEmbeddingService(config.llm.bot, logger);
