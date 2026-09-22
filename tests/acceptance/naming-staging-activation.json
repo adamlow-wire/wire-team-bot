@@ -1,0 +1,44 @@
+{
+  "date": "2026-09-22",
+  "runtimeCommit": "4a2f003",
+  "image": "wire-team-bot:v3-rc-4a2f003",
+  "imageId": "sha256:04538ecbf1d4e651207b10a90e0ecb6c118fbac81d0ac6e5eb55bcada7c0af69",
+  "activatedAt": "2026-09-22T09:21:24Z",
+  "privateBackupDirectory": "/home/sysop/wire/wire-team-bot-backups/name-cleanup-_5wehzhj",
+  "preservation": {
+    "logicalPostgresDump": "pg_restore --list passed",
+    "stoppedPhysicalArchives": "DB and crypto tar archives validated",
+    "copiedVolumeContentsOwnershipModes": "identical manifests before startup",
+    "durableTableFingerprints": {
+      "matched": 12,
+      "total": 12
+    },
+    "wireCredentialsAndCryptoKey": "unchanged",
+    "modelSettings": "all values preserved under canonical keys",
+    "oldStack": "stopped and retained for recovery; never run both copies of the Wire identity"
+  },
+  "currentContainers": [
+    "wire-team-bot-staging",
+    "wire-team-bot-staging-postgres"
+  ],
+  "currentVolumes": [
+    "wire-team-bot-staging_wire-team-bot-staging-db",
+    "wire-team-bot-staging_wire-team-bot-staging-crypto"
+  ],
+  "startup": {
+    "running": true,
+    "restartCount": 0,
+    "wireConnected": true,
+    "memberCacheHydrated": true,
+    "hydrationCounts": {
+      "conversations": 3
+    },
+    "errors": 0,
+    "warnings": [
+      "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
+    ]
+  },
+  "rollback": "Use current docker-compose.staging.yml plus private rollback.override.yml, up -d --no-deps --no-build --pull never wire-team-bot. This selects the previous image/configuration on CURRENT renamed volumes, preserving subsequent writes and MLS state. Do not restart the old duplicate stack or restore snapshots for an ordinary rollback.",
+  "wireUiRoundTrip": "pending operator status check on this renamed stack",
+  "productionTouched": false
+}

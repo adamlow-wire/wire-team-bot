@@ -1,0 +1,119 @@
+{
+  "date": "2026-09-22",
+  "runtimeCommit": "4a2f003",
+  "image": "wire-team-bot:v3-rc-4a2f003",
+  "imageId": "sha256:04538ecbf1d4e651207b10a90e0ecb6c118fbac81d0ac6e5eb55bcada7c0af69",
+  "scope": "Canonical project naming across current tracked code, configuration, Compose, tooling, fixtures and documentation; no Git-history rewrite.",
+  "environment": {
+    "node": "22.23.2",
+    "base": "node:22-trixie-slim",
+    "database": "Isolated PostgreSQL 16 + pgvector on localhost:55439; no shared reset",
+    "configuration": {
+      "slots": {
+        "classify": {
+          "model": "claude-haiku-4-5",
+          "fallback": "claude-haiku-4-5"
+        },
+        "extract": {
+          "model": "claude-opus-5",
+          "fallback": "claude-opus-5"
+        },
+        "embed": {
+          "model": "qwen3-embedding:4b",
+          "fallback": "qwen3-embedding:4b"
+        },
+        "summarise": {
+          "model": "claude-opus-5",
+          "fallback": "claude-opus-5"
+        },
+        "queryAnalyse": {
+          "model": "claude-opus-5",
+          "fallback": "claude-opus-5"
+        },
+        "respond": {
+          "model": "claude-opus-5",
+          "fallback": "claude-opus-5"
+        },
+        "complexSynthesis": {
+          "model": "claude-opus-5",
+          "fallback": "claude-opus-5"
+        }
+      },
+      "embeddings": {
+        "enabled": false,
+        "dimensions": 2560
+      }
+    },
+    "judgeModel": "claude-opus-5"
+  },
+  "checks": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "unitContractIntegration": {
+      "passed": 394,
+      "files": 45,
+      "isolatedDbTests": 6
+    },
+    "strictHarnessAndConfigTestTypecheck": "passed",
+    "registrationScriptSyntax": "passed",
+    "composeCandidateAndRollbackSchema": "passed",
+    "documentationLocalLinks": "passed",
+    "trackedContentAndPathNameMatches": 0
+  },
+  "initialFailure": "First unit/integration run had 387 passes and six DB failures because the isolated test DB was stopped. Started that existing container; no reset. Final run including the new config test passed 394 tests.",
+  "calibration": {
+    "first": {
+      "passed": 11,
+      "total": 12,
+      "report": "naming-calibration-initial.json",
+      "failure": "deciders-wrong returned malformed output on both bounded attempts; correctly rejected by strict format validation."
+    },
+    "recheck": {
+      "passed": 12,
+      "total": 12,
+      "report": "naming-calibration-recheck.json"
+    },
+    "assertionsRelaxed": false
+  },
+  "storedCapture": {
+    "report": "naming-capture-report.json",
+    "correct": 20,
+    "captured": 20,
+    "expected": 20,
+    "duplicates": 0,
+    "precision": 1,
+    "recall": 1,
+    "privacyMarkers": {
+      "storedOccurrences": 0,
+      "diagnosticOccurrences": 0
+    },
+    "warnings": [
+      {
+        "level": "warn",
+        "msg": "Embeddings disabled: semantic retrieval and contradiction detection are off. Point WIRE_TEAM_BOT_EMBED_BASE_URL at an OpenAI-compatible /embeddings provider, or set WIRE_TEAM_BOT_EMBEDDINGS=on to force."
+      },
+      {
+        "level": "warn",
+        "msg": "QueryAnalysisAdapter: malformed JSON, using default plan"
+      }
+    ],
+    "independentHumanReview": "pending"
+  },
+  "simulation": "Not rerun: classifier/extractor/pipeline logic and prompts are unchanged. Fresh fixed stored-capture evaluation rerun because CLI fixture addressing/config keys changed.",
+  "historicalArtifacts": "Former branding normalised with annotations, including saved outputs; original evidence remains recoverable at f0879c0. Retired baseline instrumentation patch is recoverable from the same snapshot.",
+  "limits": [
+    "Existing installations must migrate model environment prefixes and copy stopped Compose volumes before activation.",
+    "Registered Wire app profile metadata is external to source defaults and still needs an administrator UI check.",
+    "Historical Git objects and private rollback backups retain original bytes.",
+    "No new production or human-pilot acceptance is claimed."
+  ],
+  "e2e": {
+    "passed": 64,
+    "failed": 0,
+    "mandatoryStoredStateChecks": 18,
+    "report": "naming-e2e-report.json",
+    "invalidJudgeAttempts": 0
+  },
+  "stagingActivation": "naming-staging-activation.json"
+}

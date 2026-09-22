@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-22. Staging runtime/image: `2dbc0fd` (timezone fix; baseline `e35428b`). Latest tested QA runtime: `2dbc0fd`.
+Updated: 2026-09-22. Staging runtime/image: `4a2f003` (canonical naming; baseline `e35428b`). Latest tested QA runtime: `4a2f003`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -143,12 +143,73 @@ Tracked historical report branding is normalised with an explicit annotation; fa
 IDs, assertions and recorded outcomes retain their original meaning and are not fresh results.
 Unmodified evidence and the original baseline instrumentation patch remain recoverable from
 Git snapshot `f0879c0`. The patch is retired from the current tree rather than altered into an
-invalid historical diff. Git-history rewriting is a separate pending scope question.
+invalid historical diff. Git history is preserved; rewriting historical commits/tags requires separate explicit approval.
 
-Configuration migration and a verified backup/copy of existing staging DB/crypto state must
-precede activation under renamed Compose resources. Never initialise an empty replacement
-identity or reset shared databases. Source cleanup, regression validation, isolated model runs
-and safe staging migration are in progress; do not claim activation complete yet.
+Code commit `4a2f003` has zero case-insensitive former-name matches in tracked contents or
+paths. Fresh build, type-check, lint and **394 tests in 45 files** pass, including six isolated
+DB tests and a new canonical-config test. Registration-script syntax, strict harness/test typing,
+Compose candidate/rollback schemas, JSON parsing and local documentation links pass. The first
+DB run failed because the isolated database was stopped; starting that existing container fixed
+the infrastructure failure without resetting data. See [validation](tests/acceptance/naming-validation.json).
+
+The first [evaluator calibration](tests/acceptance/naming-calibration-initial.json) was **11/12**:
+one deliberately wrong answer produced malformed verdicts on both attempts. Strict validation
+rejected them. The unchanged [recheck](tests/acceptance/naming-calibration-recheck.json) passed
+**12/12**; both attempts are retained. The fresh [stored-record sample](tests/acceptance/naming-capture-report.json)
+matched **20/20 facts** by source event after processing drained, including silent captures:
+10 decisions, 10 actions, zero duplicates, precision/recall 100%, zero privacy-marker occurrences
+in retained records or diagnostics. One malformed query-analysis result used its existing fallback;
+embeddings remain disabled. Independent human quality review remains pending. This naming change
+does not change classifier/extractor/pipeline logic or prompts; the multi-day simulation was not rerun.
+
+Validation uses Node 22.23.2/trixie, isolated Postgres 16 + pgvector on port 55439, unchanged
+staging model values under renamed keys, and `WIRE_TEAM_BOT_JUDGE_MODEL=claude-opus-5`.
+Credentials and endpoints are excluded from reports. Existing installations must migrate all
+model keys and copy stopped DB/crypto volumes before using the renamed Compose resources.
+The [full real-model regression](tests/acceptance/naming-e2e-report.json) passes **64/64**, including
+**18 mandatory post-exit stored/state checks**; no malformed judge attempts occurred in that run.
+Never initialise an empty replacement Wire identity or reset shared databases.
+
+[Staging activation](tests/acceptance/naming-staging-activation.json) completed at **09:21:24 UTC**:
+`wire-team-bot:v3-rc-4a2f003`, image
+`sha256:04538ecbf1d4e651207b10a90e0ecb6c118fbac81d0ac6e5eb55bcada7c0af69`.
+All 12 durable table counts/fingerprints matched; copied DB/crypto file contents, ownership and
+modes matched before startup. Logical and physical backups are validated. Wire credentials,
+crypto key and model values are unchanged; `.env.staging` now uses canonical keys. Current
+containers are `wire-team-bot-staging` and `wire-team-bot-staging-postgres`. Startup hydrated three
+conversations, connected to Wire, and reported zero errors and one expected embeddings-disabled
+warning. The previous stack is stopped and retained for recovery; do not run duplicate copies
+of the same Wire identity. No production action occurred.
+
+Private backups and overrides: `/home/sysop/wire/wire-team-bot-backups/name-cleanup-_5wehzhj`.
+Reapply this tested image without rebuilding:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/name-cleanup-_5wehzhj/candidate.override.yml \
+  up -d --no-deps --no-build --pull never wire-team-bot
+```
+
+Rollback only the bot image/configuration, keeping the **current renamed volumes**, including
+any subsequent database writes and advanced MLS state:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/name-cleanup-_5wehzhj/rollback.override.yml \
+  up -d --no-deps --no-build --pull never wire-team-bot
+```
+
+Do not restore pre-migration snapshots or restart the previous duplicate stack for an ordinary
+image rollback. Earlier command snippets/overrides are historical and must not be combined with
+the renamed Compose file; their originals are preserved at `f0879c0`.
+
+The current tracked tree and local generated outputs/configuration have no former-name matches.
+Git history, third-party dependencies and private rollback resources retain original bytes.
+Registered Wire app display-name/description metadata is external to this repository: registration
+defaults are corrected, but an administrator must check/update the existing app profile.
+Final transport check on this renamed stack: mention the bot with `status` in **Wire Team Bot
+Testing**, and verify its native reply. Startup connectivity is observed; a fresh UI round trip
+and the remaining independent human quality/pilot review are not claimed here.
 
 ## 3. Current delivery state
 
@@ -167,7 +228,7 @@ The old v2 phases 1a, 1b, 2, 3 and 4 describe delivered components, not a comple
 | Embeddings optional/separate provider | Implemented; embedding configuration tests present | Smoke test selected configuration and dimensions |
 | Buttons and contradiction follow-through | Dead decision buttons removed; old clicks and contradiction notices give text commands; Q&A prompt explicitly read-only | Human/Wire review of actual interactions pending |
 | Test harness and simulation | Event-framed CLI, post-drain DB inventory and fact/source scoring implemented; simulation now sends the fixture’s actual members | `golden.json` still has no human review; no human-approved quality claim |
-| Product name | Full branding cleanup in progress: canonical display name, identifiers, environment keys and deployment resources | Verify registered Wire app display name in smoke test; generic name configuration remains deferred |
+| Product name | Canonical naming complete in current repository and active staging configuration/resources; zero former-name matches in tracked contents/paths | Administrator check/update of existing registered Wire app profile; final staging UI round trip; generic name configuration remains deferred |
 | Documentation consolidation | Complete in this revision | Maintain this plan as work lands |
 
 Historical validation: SDK migration notes reported 141 passing unit tests, clean lint, an
@@ -337,11 +398,8 @@ Backups and image overrides are private under
 `/home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz`.
 To roll back only the bot, retaining current DB/crypto state:
 
-```bash
-docker compose -f docker-compose.staging.yml \
-  -f /home/sysop/wire/wire-team-bot-backups/case-ids-rn6r9wgz/rollback.override.yml \
-  up -d --no-deps --no-build --pull never wire-team-bot
-```
+The historical command is retained in Git snapshot `f0879c0`. For the renamed deployment,
+use the [current rollback procedure](#canonical-naming-cleanup--2026-09-22).
 
 **Wire follow-up — September 21:** Adam confirms the lowercase-ID retest worked on the
 replacement candidate. This is operator confirmation; no new record ID or screenshot was
@@ -455,19 +513,13 @@ recreated; production and the staging database container were untouched.
 
 To reapply the candidate without rebuilding or changing volumes:
 
-```bash
-docker compose -f docker-compose.staging.yml \
-  -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/candidate.override.yml \
-  up -d --no-deps --no-build --pull never wire-team-bot
-```
+The historical command is retained in Git snapshot `f0879c0`. For the renamed deployment,
+use the [current activation/rollback procedure](#canonical-naming-cleanup--2026-09-22).
 
 Rollback the image while retaining current data and crypto state:
 
-```bash
-docker compose -f docker-compose.staging.yml \
-  -f /home/sysop/wire/wire-team-bot-backups/qa6-20260918-v3m1uubm/rollback.override.yml \
-  up -d --no-deps --no-build --pull never wire-team-bot
-```
+The historical command is retained in Git snapshot `f0879c0`. For the renamed deployment,
+use the [current activation/rollback procedure](#canonical-naming-cleanup--2026-09-22).
 
 Do not restore the pre-upgrade crypto snapshot for an ordinary image rollback: the live store
 may have advanced. Database restoration is unnecessary because schema and migrations did not
@@ -673,11 +725,8 @@ with zero errors and the expected embeddings-disabled warning. No production act
 Private backups and rollback override: `/home/sysop/wire/wire-team-bot-backups/timezone-ngs69pir`.
 To restore the preceding bot image while retaining current DB/crypto state:
 
-```bash
-docker compose -f docker-compose.staging.yml \
-  -f /home/sysop/wire/wire-team-bot-backups/timezone-ngs69pir/rollback.override.yml \
-  up -d --no-deps --no-build --pull never wire-team-bot
-```
+The historical command is retained in Git snapshot `f0879c0`. For the renamed deployment,
+use the [current activation/rollback procedure](#canonical-naming-cleanup--2026-09-22).
 
 **UI retest passed — September 21, 13:07 UTC:** the operator screenshot shows explicit UTC
 labels on creation, listing and snooze, then cancellation. [Scoped stored evidence](tests/acceptance/manual-timezone-ui-0921.json)
@@ -1185,8 +1234,8 @@ remains an operational naming check.
 
 Rollback snapshots (private, outside Git): `/tmp/wire-v3-staging-backup-kcqACp/database.dump`
 and `crypto-store.tar.gz`; both were checked readable. The candidate override is in that same
-directory as `candidate.override.yml`. The old `wire-team-bot:staging` image was retained. If rollback
-is needed, use `docker compose -f docker-compose.staging.yml up -d --no-deps --no-build wire-team-bot`;
+directory as `candidate.override.yml`. The old `wire-team-bot:staging` image was retained.
+For the renamed deployment, use the [current rollback procedure](#canonical-naming-cleanup--2026-09-22);
 retain the current database and crypto volume. Do not reset or restore identity storage for an
 ordinary image rollback.
 
@@ -1315,8 +1364,9 @@ remains attributed to its measured image. This is not general natural-language i
 At 15:05 UTC staging was updated to `wire-team-bot:v3-rc-17b8e42`, preserving database and crypto volumes.
 Readable snapshots and override: `/tmp/wire-v3-assignment-backup-vcoikohf/`. No reminders were
 pending before the switch. Startup connected, hydrated two conversations and reported zero
-SDK errors. The subsequent operator replay exposed the structured-mention regression below. Previous rollback command:
-`docker compose -f docker-compose.staging.yml -f /tmp/wire-v3-reminder-format-backup-gjeyvsyr/candidate.override.yml up -d --no-deps --no-build wire-team-bot`.
+SDK errors. The subsequent operator replay exposed the structured-mention regression below.
+The original rollback command is preserved in Git snapshot `f0879c0`; use the
+[current procedure](#canonical-naming-cleanup--2026-09-22) with renamed resources.
 
 Structured mention regression (2026-09-17): the next demo used `@member really needs to`.
 Three before-fix contract cases fail: routing dropped the qualified mention ID, and the adverb

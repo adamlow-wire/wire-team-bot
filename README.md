@@ -363,16 +363,17 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-Staging now runs the tested image `wire-team-bot:v3-rc-2dbc0fd`, with its existing database
+Staging now runs the tested image `wire-team-bot:v3-rc-4a2f003`, with its existing database
 and crypto identity preserved and verified backups available. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
 for the fixes, evaluator calibration and preserved failure evidence. The current image passes
-64/64 real-model scenarios, 18 mandatory stored/state checks and 393 unit/contract/isolated DB
-tests, plus build, type-check and lint. The earlier 20/20 stored-fact quality sample remains
-historical evidence. Staging activation and the timezone Wire retest are complete; detailed human
-quality approval remains pending. These are recorded results, not a fresh run for documentation edits.
+64/64 real-model scenarios, 18 mandatory stored/state checks and 394 unit/contract/isolated DB
+tests, plus build, type-check and lint. A fresh stored-fact sample matched 20/20 expected facts
+with zero duplicates. Staging naming migration is complete; a final Wire `status` round trip
+on the renamed stack and detailed human quality approval remain pending. The earlier timezone
+Wire retest remains recorded evidence on its original image.
 Use the [pinned-image manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
 and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md). The exact activation
-and rollback commands are in [PLAN.md](PLAN.md#reminder-timezone-correction--2026-09-21).
+and rollback commands are in [PLAN.md](PLAN.md#canonical-naming-cleanup--2026-09-22).
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.
