@@ -367,17 +367,18 @@ refresh changes the token only. Removing a volume or regenerating the key is not
 
 ## Release-candidate acceptance
 
-Staging now runs the tested image `wire-team-bot:v3-rc-4a2f003`, with its existing database
-and crypto identity preserved and verified backups available. See [PLAN.md](PLAN.md#automated-qa-before-final-manual-acceptance)
-for the fixes, evaluator calibration and preserved failure evidence. The current image passes
-64/64 real-model scenarios, 18 mandatory stored/state checks and 394 unit/contract/isolated DB
-tests, plus build, type-check and lint. A fresh stored-fact sample matched 20/20 expected facts
-with zero duplicates. Staging naming migration is complete; a final Wire `status` round trip
-on the renamed stack and detailed human quality approval remain pending. The earlier timezone
-Wire retest remains recorded evidence on its original image.
-Use the [pinned-image manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
-and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md). The exact activation
-and rollback commands are in [PLAN.md](PLAN.md#canonical-naming-cleanup--2026-09-22).
+Staging runs the post-release reviewed image `wire-team-bot:staging-pr-review-d59b444`, with its
+existing database and crypto identity preserved and verified backups available. See
+[PLAN.md](PLAN.md#post-release-staging-activation) for activation evidence and rollback.
+The reviewed source passed 64/64 real-model scenarios, 18 mandatory stored/state checks and
+403 unit/contract/isolated DB tests, plus build, type-check and lint. The final status-label edit
+was followed by a fresh build and full test run; the model suite preceded that wording edit.
+The earlier 20/20 stored-fact sample belongs to the pre-PR candidate. A fresh Wire `status`
+round trip on this image and detailed human quality approval remain pending. The earlier
+timezone Wire retest remains recorded evidence on its original image.
+The earlier [manual QA packet](PLAN.md#final-manual-qa-on-the-pinned-staging-candidate)
+and [readable synthetic quality evidence](tests/acceptance/qa6-quality-review.md) remain available.
+Current activation and rollback details are in [PLAN.md](PLAN.md#post-release-staging-activation).
 The [automated QA sequence](PLAN.md#automated-qa-before-final-manual-acceptance) fixes the known
 failures, reruns stored-record evaluation, packages one candidate and prepares the final manual
 QA session. No new features or legacy branch imports are part of that sequence.

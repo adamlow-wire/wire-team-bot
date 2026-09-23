@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-23. Staging runtime/image: `4a2f003` (canonical naming; baseline `e35428b`). Latest tested QA runtime: `4a2f003`.
+Updated: 2026-09-23. Staging runtime/image: `d59b444` (post-release PR review). Latest tested QA runtime: `d59b444`; `v1.0.0` remains pinned to its released image.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -65,9 +65,36 @@ and [PR #11 build](https://github.com/adamlow-wire/wire-team-bot/actions/runs/35
 both passed tests and container publication. The model result is not a fresh Wire UI or human pilot run.
 
 The `v1.0.0` release remains pinned to its published source and container image. These merges
-are post-release changes on `main`; staging and production still need their separate deployment
-and Wire checks before the new behavior is claimed there. The existing human quality review,
-app-profile branding check, post-naming Wire round trip and five-day pilot decision remain pending.
+are post-release changes on `main`. Staging activation is recorded below; the new behavior still
+needs a Wire UI round trip there. Production remains unchanged. The existing human quality review,
+app-profile branding check and five-day pilot decision remain pending.
+
+### Post-release staging activation — 2026-09-23
+
+Adam requested the staging update. At **09:44:26 UTC**, only the staging bot container was
+recreated from the verified `d59b444` registry image (`sha256:8522b9dabbfdb9a91e17e5151409f11c234fa108981aed9b9f0b9403d063d4ae`).
+The image's OCI revision label matches the tested commit. The staging Postgres container and
+both existing database/crypto volumes were retained. A stopped-bot PostgreSQL custom dump and
+crypto archive passed restore-list/archive checks; the copied SDK SQLite store passed integrity
+check. The bot's environment and volume attachments compare unchanged across recreation.
+The private backup and pinned candidate/rollback overrides are in
+`/home/sysop/wire/wire-team-bot-backups/pr-review-20260923-G7wLhl`.
+
+Startup reported no pending migrations, hydrated three conversations and connected to Wire.
+At 09:45 UTC the bot was running with zero restarts and zero application errors; the sole warning
+was the expected embeddings-disabled setting. The staging database was healthy. No test message
+was sent from this deployment check, so a fresh Wire UI reply and the PR-specific live behavior
+are **pending**, as are human quality review and the five-day pilot. No production service was
+touched. [Content-free activation evidence](tests/acceptance/postrelease-pr-staging-activation.json)
+records the image, backup checks and startup observations.
+
+To roll back only the bot image, keeping current database and crypto state, run:
+
+```bash
+docker compose -f docker-compose.staging.yml \
+  -f /home/sysop/wire/wire-team-bot-backups/pr-review-20260923-G7wLhl/rollback.override.yml \
+  up -d --no-deps --no-build --pull never wire-team-bot
+```
 
 ## 1. What we are building
 

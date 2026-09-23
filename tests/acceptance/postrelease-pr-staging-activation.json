@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-23",
+  "checkedAt": "2026-09-23T09:47:28+00:00",
+  "runtimeCommit": "d59b444422d1fe5b8faac3d97b91923d0d9d88bf",
+  "image": "wire-team-bot:staging-pr-review-d59b444",
+  "imageId": "sha256:8522b9dabbfdb9a91e17e5151409f11c234fa108981aed9b9f0b9403d063d4ae",
+  "registryDigest": "sha256:8522b9dabbfdb9a91e17e5151409f11c234fa108981aed9b9f0b9403d063d4ae",
+  "previousImage": "wire-team-bot:v3-rc-4a2f003",
+  "previousImageId": "sha256:04538ecbf1d4e651207b10a90e0ecb6c118fbac81d0ac6e5eb55bcada7c0af69",
+  "botStartedAt": "2026-09-23T09:44:26.977021275Z",
+  "privateBackupDirectory": "/home/sysop/wire/wire-team-bot-backups/pr-review-20260923-G7wLhl",
+  "backups": {
+    "postgresCustomDump": {
+      "bytes": 41533,
+      "sha256": "2cec4b3d2262ce7f32e3ae218183e1f3d080d89676a879991229c2bf899c3446",
+      "restoreListReadable": true
+    },
+    "cryptoArchive": {
+      "bytes": 3136388,
+      "sha256": "236172f1048757f101271066ba10f12707d349f4862ba228326eaaf4bf21ab74",
+      "archiveReadable": true,
+      "sdkSqliteIntegrity": "ok"
+    }
+  },
+  "preservation": {
+    "environmentUnchanged": true,
+    "volumeAttachmentsUnchanged": true,
+    "stagingDatabaseContainerRecreated": false,
+    "databaseAndCryptoVolumesRetained": true
+  },
+  "startup": {
+    "botState": "running",
+    "restartCount": 0,
+    "postgresHealth": "healthy",
+    "noPendingMigrations": true,
+    "memberCacheConversations": 3,
+    "wireConnected": true,
+    "applicationErrorCount": 0,
+    "warnings": [
+      "embeddings disabled"
+    ]
+  },
+  "manualWireUiRoundTrip": "pending",
+  "prSpecificLiveBehavior": "pending",
+  "productionTouched": false,
+  "rollbackOverride": "/home/sysop/wire/wire-team-bot-backups/pr-review-20260923-G7wLhl/rollback.override.yml"
+}
