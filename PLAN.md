@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-22. Staging runtime/image: `4a2f003` (canonical naming; baseline `e35428b`). Latest tested QA runtime: `4a2f003`.
+Updated: 2026-09-23. Staging runtime/image: `4a2f003` (canonical naming; baseline `e35428b`). Latest tested QA runtime: `4a2f003`.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -32,6 +32,42 @@ no dependency versions change. The [GitHub release](https://github.com/adamlow-w
 records the final tag, build evidence and published container digest; publication follows successful
 packaging/CI verification. Staging remains pinned to its tested image and preserved volumes;
 creating this release does not deploy to production.
+
+### Post-release PR review — 2026-09-23
+
+Adam authorised reviewing and merging the two open PRs with Mathias Staab credited.
+[PR #10](https://github.com/adamlow-wire/wire-team-bot/pull/10) fixes the misleading
+`Entities tracked: 0` status when explicit decisions, actions or reminders exist. Channel status
+now gives qualified-conversation totals for open actions, pending reminders and active decisions,
+then labels the separate graph-entity total. A two-member synthetic check exposed that `show
+reminders` is requester-filtered while status is channel-wide. The reviewer recorded that finding
+on the PR and changed the label to `Pending reminders in this channel` before merging.
+Action/decision queries cap at 100 records and display a lower bound with `+` at the cap;
+pending reminders are counted without a cap. This is a pilot-scale read, not a database count
+endpoint or a claim of a latency improvement. The PR merged as `87acaef`.
+
+[PR #11](https://github.com/adamlow-wire/wire-team-bot/pull/11) remembers a model that explicitly
+rejects the `temperature` option, omits it from later requests to that model, and shares one
+chat-client factory across production adapters. The first compatibility retry remains bounded;
+other models retain the option. The PR merged as `2688e07`. No dependency, schema, record-ID or
+supported-command change was needed.
+
+Reviewed together on Node 22.23.2/trixie with isolated Postgres 16 + pgvector on port 55439:
+build, type-check, lint and **403/403 unit/contract/isolated-DB tests** pass. The unchanged
+judge fixture calibrated **12/12**. The [raw synthetic real-model report](tests/acceptance/postrelease-pr-review-e2e.json)
+passed **64/64 scenarios**, including **18 post-exit stored/state checks** with zero failures.
+That full model run preceded only the status-label clarification; after that wording edit, the
+exact combined source again passed build/type-check/lint and all 403 tests, and a CLI run against
+isolated storage returned one action, reminder and decision with zero graph entities and the
+explicit channel-wide label. All six changed files on merged `main` match the reviewed combined
+checkout byte-for-byte. GitHub's main-branch [PR #10 build](https://github.com/adamlow-wire/wire-team-bot/actions/runs/35843436559)
+and [PR #11 build](https://github.com/adamlow-wire/wire-team-bot/actions/runs/35843665792)
+both passed tests and container publication. The model result is not a fresh Wire UI or human pilot run.
+
+The `v1.0.0` release remains pinned to its published source and container image. These merges
+are post-release changes on `main`; staging and production still need their separate deployment
+and Wire checks before the new behavior is claimed there. The existing human quality review,
+app-profile branding check, post-naming Wire round trip and five-day pilot decision remain pending.
 
 ## 1. What we are building
 
