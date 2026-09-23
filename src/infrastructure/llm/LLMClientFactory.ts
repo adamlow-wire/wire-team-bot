@@ -6,6 +6,10 @@
  *   - On 503/529 or AbortError (timeout): retry once with the slot's fallback model.
  *   - Both attempts are logged.
  *
+ * A model that rejects `temperature` as deprecated or unsupported is remembered for
+ * the life of the instance, and later requests to it omit the parameter. Share one
+ * instance across adapters so each model is learned once per process.
+ *
  * Usage:
  *   const factory = new LLMClientFactory(config.llm.bot, logger);
  *   const result = await factory.chatCompletion("classify", messages, { max_tokens: 200 });
@@ -43,6 +47,8 @@ export interface ChatCompletionResult {
 export class LLMClientFactory {
   private readonly url: string;
   private readonly headers: Record<string, string>;
+  /** Models whose provider has rejected `temperature`; requests to them omit it. */
+  private readonly modelsRejectingTemperature = new Set<string>();
 
   constructor(
     private readonly config: LLMConfig,
@@ -99,8 +105,12 @@ export class LLMClientFactory {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
-    // Strip internal-only fields before sending to the API
-    const { complexity: _c, escalateToSlot: _e, ...apiOptions } = options;
+    // Strip internal-only fields before sending to the API, and temperature for a
+    // model already known to reject it.
+    const { complexity: _c, escalateToSlot: _e, ...requestOptions } = options;
+    const { temperature: _t, ...withoutTemperature } = requestOptions;
+    const apiOptions: Omit<ChatCompletionOptions, "complexity" | "escalateToSlot"> =
+      this.modelsRejectingTemperature.has(model) ? withoutTemperature : requestOptions;
 
     try {
       const res = await fetch(this.url, {
@@ -109,16 +119,17 @@ export class LLMClientFactory {
       });
       if (res.status === 503 || res.status === 529) throw new LLMServiceUnavailableError(model, res.status);
       if (!res.ok) {
-        // Some models explicitly reject temperature. Retry that read-only model
-        // request once without it; never log the provider body (it may echo input).
+        // Some models explicitly reject temperature. Remember the model and retry this
+        // read-only request once without it; never log the provider body (it may echo input).
+        // The retry cannot loop: the model is now remembered, so it sends no temperature.
         if (res.status === 400 && apiOptions.temperature !== undefined) {
           const body = await res.json().catch(() => null) as { error?: { message?: unknown } } | null;
           const message = body?.error?.message;
           if (typeof message === "string" && /temperature/i.test(message) && /deprecated|unsupported|not supported/i.test(message)) {
             clearTimeout(timeout);
-            const { temperature: _temperature, ...compatibleOptions } = options;
-            this.logger.info("Model rejected temperature; retrying without it", { model });
-            return await this.attempt(model, messages, compatibleOptions);
+            this.modelsRejectingTemperature.add(model);
+            this.logger.info("Model rejected temperature; omitting it for this model", { model });
+            return await this.attempt(model, messages, options);
           }
         }
         throw new Error(`LLM request failed (${res.status})`);
