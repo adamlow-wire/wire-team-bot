@@ -103,7 +103,7 @@ describe("StatusCommand", () => {
 
     const msg = sentMessage(deps);
     expect(msg).toContain("Open actions: 1");
-    expect(msg).toContain("Pending reminders: 1");
+    expect(msg).toContain("Pending reminders in this channel: 1");
     expect(msg).toContain("Active decisions: 1");
     expect(msg).toContain("Knowledge graph entities: 0");
     expect(msg).not.toContain("Entities tracked");
@@ -117,9 +117,9 @@ describe("StatusCommand", () => {
     expect(deps.actionRepo.query).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: convId, statusIn: ["open", "in_progress", "overdue"],
     }));
-    expect(deps.reminderRepo.query).toHaveBeenCalledWith(expect.objectContaining({
+    expect(deps.reminderRepo.query).toHaveBeenCalledWith({
       conversationId: convId, statusIn: ["pending"],
-    }));
+    });
     expect(deps.decisionRepo.query).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: convId, statusIn: ["active"],
     }));
@@ -136,7 +136,7 @@ describe("StatusCommand", () => {
 
     const msg = sentMessage(deps);
     expect(msg).toContain("Open actions: 2");
-    expect(msg).toContain("Pending reminders: 0");
+    expect(msg).toContain("Pending reminders in this channel: 0");
     expect(msg).toContain("Active decisions: 1");
   });
 
@@ -155,7 +155,7 @@ describe("StatusCommand", () => {
 
     await makeCommand(deps).execute({ conversationId: convId, channelId, replyToMessageId: "msg-1" });
 
-    expect(sentMessage(deps)).toContain("Pending reminders: 150");
-    expect(sentMessage(deps)).not.toContain("Pending reminders: 150+");
+    expect(sentMessage(deps)).toContain("Pending reminders in this channel: 150");
+    expect(sentMessage(deps)).not.toContain("Pending reminders in this channel: 150+");
   });
 });

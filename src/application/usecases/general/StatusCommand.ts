@@ -68,7 +68,7 @@ export class StatusCommand {
     lines.push(
       `Open actions: ${formatCount(actions, true)}`,
       // The reminder query takes no limit, so its count is always exact.
-      `Pending reminders: ${formatCount(reminders, false)}`,
+      `Pending reminders in this channel: ${formatCount(reminders, false)}`,
       `Active decisions: ${formatCount(decisions, true)}`,
       `Knowledge graph entities: ${entityNames.length}`,
     );
