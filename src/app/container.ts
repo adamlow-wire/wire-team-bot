@@ -161,7 +161,7 @@ export function createContainer(config: Config, logger: Logger): Container {
     logger,
   );
 
-  const statusCommand = new StatusCommand(channelConfigRepo, entityRepo, wireOutbound);
+  const statusCommand = new StatusCommand(channelConfigRepo, entityRepo, actionsRepo, remindersRepo, decisionsRepo, wireOutbound);
 
   const logDecision = new LogDecision(decisionsRepo, wireOutbound, auditLogRepo, logger);
   const searchDecisions = new SearchDecisions(decisionsRepo, wireOutbound);

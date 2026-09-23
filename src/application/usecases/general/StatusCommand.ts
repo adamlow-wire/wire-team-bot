@@ -1,6 +1,9 @@
 import type { WireOutboundPort } from "../../ports/WireOutboundPort";
 import type { ChannelConfigRepository } from "../../../domain/repositories/ChannelConfigRepository";
 import type { EntityRepository } from "../../../domain/repositories/EntityRepository";
+import type { ActionRepository } from "../../../domain/repositories/ActionRepository";
+import type { ReminderRepository } from "../../../domain/repositories/ReminderRepository";
+import type { DecisionRepository } from "../../../domain/repositories/DecisionRepository";
 import type { QualifiedId } from "../../../domain/ids/QualifiedId";
 
 export interface StatusCommandInput {
@@ -9,11 +12,15 @@ export interface StatusCommandInput {
   replyToMessageId: string;
 }
 
+/** Rows fetched per record type. A count that reaches the cap is shown as "N+". */
+const COUNT_CAP = 100;
+
 /**
  * Reports the current channel status in Wire Team Bot voice:
  * - Channel state (active / paused / secure)
  * - Time active since joining
- * - Number of entities tracked in the knowledge graph
+ * - Open actions, pending reminders and active decisions in this conversation
+ * - Number of knowledge graph entities (written only by passive extraction)
  * - Channel purpose (if set)
  * - Context type / tags (if set)
  */
@@ -21,12 +28,22 @@ export class StatusCommand {
   constructor(
     private readonly channelConfig: ChannelConfigRepository,
     private readonly entityRepo: EntityRepository,
+    private readonly actionRepo: ActionRepository,
+    private readonly reminderRepo: ReminderRepository,
+    private readonly decisionRepo: DecisionRepository,
     private readonly wireOutbound: WireOutboundPort,
   ) {}
 
   async execute(input: StatusCommandInput): Promise<void> {
-    const cfg = await this.channelConfig.get(input.channelId);
-    const entityNames = await this.entityRepo.listNames(input.channelId);
+    const conversationId = input.conversationId;
+    const [cfg, entityNames, actions, reminders, decisions] = await Promise.all([
+      this.channelConfig.get(input.channelId),
+      this.entityRepo.listNames(input.channelId),
+      // Same status sets as `team actions`, `show reminders` and `list decisions`.
+      this.actionRepo.query({ conversationId, statusIn: ["open", "in_progress", "overdue"], limit: COUNT_CAP }),
+      this.reminderRepo.query({ conversationId, statusIn: ["pending"] }),
+      this.decisionRepo.query({ conversationId, statusIn: ["active"], limit: COUNT_CAP }),
+    ]);
 
     const state = cfg?.state ?? "active";
     const stateLabel: Record<string, string> = {
@@ -48,7 +65,13 @@ export class StatusCommand {
       }
     }
 
-    lines.push(`Entities tracked: ${entityNames.length}`);
+    lines.push(
+      `Open actions: ${formatCount(actions, true)}`,
+      // The reminder query takes no limit, so its count is always exact.
+      `Pending reminders in this channel: ${formatCount(reminders, false)}`,
+      `Active decisions: ${formatCount(decisions, true)}`,
+      `Knowledge graph entities: ${entityNames.length}`,
+    );
 
     if (cfg?.purpose) {
       lines.push(``, `Purpose: ${cfg.purpose}`);
@@ -72,4 +95,13 @@ export class StatusCommand {
       { replyToMessageId: input.replyToMessageId },
     );
   }
+}
+
+/**
+ * Counts non-deleted records. For a capped query, a full page means more rows may exist,
+ * so the cap is checked on the raw result and the count is shown as "N+".
+ */
+function formatCount(records: Array<{ deleted: boolean }>, capped: boolean): string {
+  const count = records.filter((r) => !r.deleted).length;
+  return capped && records.length >= COUNT_CAP ? `${count}+` : `${count}`;
 }

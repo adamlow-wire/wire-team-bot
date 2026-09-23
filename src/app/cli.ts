@@ -242,7 +242,7 @@ async function main() {
 
   // Use cases
   const answerQuestion = new AnswerQuestion(generalAnswerAdapter(llmFactory, logger), wireOutbound, queryAnalysis, retrievalEngine, logger);
-  const statusCommand  = new StatusCommand(channelConfigRepo, entityRepo, wireOutbound);
+  const statusCommand  = new StatusCommand(channelConfigRepo, entityRepo, actionsRepo, remindersRepo, decisionsRepo, wireOutbound);
   const catchMeUp      = new CatchMeUpCommand(summaryRepo, generateSummary, wireOutbound);
 
   const router = new WireEventRouter({
