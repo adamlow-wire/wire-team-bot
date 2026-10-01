@@ -549,3 +549,17 @@ that looks like a mention is not sufficient for resume from PAUSED/SECURE.
 Begin the five-working-day P3 pilot only after the unresolved acceptance items in PLAN.md are
 closed. Use a short feedback log for saved effort, errors, latency and noise, then choose keep,
 fix or stop. Production deployment remains a separate operator action.
+
+## License
+
+Copyright (C) 2026 Adam Low
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License version 3 as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+[LICENSE](LICENSE) file for the full text of the GNU General Public License version 3.
+
+`@wireapp/wire-apps-js-sdk` is itself licensed under GPL-3.0, so a GPL-compatible license is a
+requirement for this application, not only a choice.

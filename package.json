@@ -2,6 +2,7 @@
   "name": "wire-team-bot",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "main": "dist/app/main.js",
   "scripts": {
     "build": "tsc",
