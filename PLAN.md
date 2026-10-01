@@ -1,6 +1,6 @@
 # Wire Team Bot — App and Delivery Plan
 
-Updated: 2026-09-23. Staging runtime/image: `d59b444` (post-release PR review). Latest tested QA runtime: `d59b444`; `v1.0.0` remains pinned to its released image.
+Updated: 2026-10-01. Staging runtime/image: `d59b444` (post-release PR review). Latest tested QA runtime: `d59b444`; `v1.0.0` and `v1.0.1` remain pinned to their released images.
 
 This is the single source of truth for the app, feature scope, architecture and delivery
 progress. The app is a **proof of concept demonstrating the Wire JS SDK**. The next milestone is
@@ -32,6 +32,17 @@ no dependency versions change. The [GitHub release](https://github.com/adamlow-w
 records the final tag, build evidence and published container digest; publication follows successful
 packaging/CI verification. Staging remains pinned to its tested image and preserved volumes;
 creating this release does not deploy to production.
+
+### 1.0.1 release — 2026-10-01
+
+Adam requested tagging **1.0.1** on 2026-10-01. The release packages the two post-release merges
+(`87acaef` channel status record counts, `2688e07` temperature-option memory), the GPL-3.0-only
+license and the security policy. No schema, dependency, record-ID or supported-command change.
+Package/lockfile metadata, the README release line and the default Compose image move to `1.0.1`.
+Validation is the 2026-09-23 post-release review evidence above plus a fresh local build,
+type-check and lint on `main`; the two SDK contract tests cannot load the core-crypto native
+library on the glibc 2.38-less dev host and are verified by CI. Creating this release does not
+deploy to staging or production, and the pending human review, branding check and pilot are unchanged.
 
 ### Post-release PR review — 2026-09-23
 

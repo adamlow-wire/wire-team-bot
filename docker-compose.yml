@@ -2,7 +2,7 @@ services:
   wire-team-bot:
     # Pull the versioned release image from GitHub Container Registry.
     # To build locally instead: replace `image:` with `build: .`
-    image: ghcr.io/adamlow-wire/wire-team-bot:1.0.0
+    image: ghcr.io/adamlow-wire/wire-team-bot:1.0.1
     container_name: wire-team-bot
     restart: unless-stopped
     env_file:
